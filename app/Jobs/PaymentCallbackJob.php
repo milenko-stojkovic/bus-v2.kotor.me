@@ -62,12 +62,22 @@ class PaymentCallbackJob implements ShouldQueue, ShouldBeUnique
         $txId = $this->payload['merchant_transaction_id'] ?? null;
         $callbackStatus = $this->normalizeStatus($this->payload['status'] ?? null);
 
-        if (! $txId || ! $callbackStatus) {
-            Log::channel('payments')->warning('Payment callback job skipped: missing tx or unknown status', [
-                'merchant_transaction_id' => $txId,
-                'reservation_id' => null,
-                'status' => $this->payload['status'] ?? null,
+        if (! $txId) {
+            Log::channel('payments')->warning('Payment callback job skipped: missing merchant_transaction_id', [
+                'payload_status' => $this->payload['status'] ?? null,
+                'job' => static::class,
             ]);
+
+            return;
+        }
+
+        if (! $callbackStatus) {
+            Log::channel('payments')->warning('Payment callback job skipped: unsupported or empty callback status', [
+                'merchant_transaction_id' => $txId,
+                'raw_status' => $this->payload['status'] ?? null,
+                'job' => static::class,
+            ]);
+
             return;
         }
 

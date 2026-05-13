@@ -114,8 +114,9 @@ Pregled u skladu sa specifikacijom. Model **TimeSlot** u kodu = **ListOfTimeSlot
 
 | Zahtev | Status |
 |--------|--------|
-| Polja: id, email, created_at (nema updated_at) | ✅ UPDATED_AT = null |
-| Fillable: email | ✅ |
+| Polja: id, email, **purpose** (ENUM u bazi: **`report`**, **`limo_incidents`**; podrazumijevano `report`), created_at (nema updated_at) | ✅ UPDATED_AT = null |
+| Fillable: email, purpose (u kodu modela) | ✅ |
+| Namena po **purpose**: `report` — primaoci zakazanih admin PDF izvještaja; `limo_incidents` — primaoci emaila za Limo incidente (v. `docs/admin-panel.md`, `docs/limo-service.md`) | ✅ |
 
 ---
 

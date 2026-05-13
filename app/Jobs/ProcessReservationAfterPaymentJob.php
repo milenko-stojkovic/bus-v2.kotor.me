@@ -58,6 +58,12 @@ class ProcessReservationAfterPaymentJob implements ShouldQueue
     {
         $reservation = Reservation::find($this->reservationId);
         if (! $reservation) {
+            Log::channel('payments')->warning('process_reservation_after_payment_reservation_missing', [
+                'reservation_id' => $this->reservationId,
+                'fake_fiscal_scenario' => $this->fakeFiscalScenario,
+                'job' => static::class,
+            ]);
+
             return;
         }
 

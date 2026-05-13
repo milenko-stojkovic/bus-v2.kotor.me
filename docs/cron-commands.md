@@ -15,11 +15,13 @@ Puna tabela rasporeda: **`docs/scheduled-tasks-overview.md`**.
 
 **Komanda:** `reservations:process-pending`
 
-**Opis:** Namenjeno obradi `pending` redova (npr. naknadna fiskalizacija). **Trenutno je komanda u velikoj meri stub** — v. `ProcessPendingReservations.php`. Poslovno pravilo: **`temp_data` se ne briše** na uspehu u glavnom payment toku (status `processed`); bilo kakvo buduće „čišćenje“ mora biti usklađeno sa `docs/workflow-placanje-temp-data.md`.
+**Stanje u kodu (važno):** komanda je trenutno **no-op / stub** — `handle()` ne menja redove, **ne briše `temp_data`**, **ne kreira rezervacije** i **ne poziva fiskal** (`app/Console/Commands/ProcessPendingReservations.php`). Izlaz u konzoli samo broji `pending` redove radi transparentnosti. U produkciji je i dalje zakazana u `bootstrap/app.php` radi budućeg razvoja, ali **ne smije se tumačiti** kao aktivna obrada plaćanja ili pending rezervacija.
 
-**Frekvencija:** npr. svakih 5 minuta.
+**Originalna namjera (dok se ne implementira):** eventualna obrada `pending` redova mora biti usklađena sa `docs/payment-state-machine.md` i `docs/workflow-placanje-temp-data.md` — **`temp_data` se ne briše** na uspehu glavnog payment toka (audit).
 
-**Tabele:** temp_data, reservations, post_fiscalization_data (ako se koristi za istoriju pokušaja).
+**Frekvencija:** npr. svakih 5 minuta (kada je uključena u schedule).
+
+**Tabele (kad/ako bude implementacija):** temp_data, reservations, eventualno post_fiscalization_data — trenutno komanda ih **ne dira**.
 
 ---
 

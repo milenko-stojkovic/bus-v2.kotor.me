@@ -10,11 +10,11 @@ Stanja plaćanja i fiskalizacije. Rezervacija se **uvek** kreira na **success**;
 
 - **pending** – plaćanje u toku (temp_data.status = pending).
 - **success** – banka vratila SUCCESS → rezervacija se **kreira** (reservation), temp_data → processed. Fiskalizacija se pokreće u pozadini (ProcessReservationAfterPaymentJob).
-- **failed** – banka vratila CANCEL/ERROR → temp_data → canceled. **Nema** rezervacije.
+- **canceled** (odbijeno / otkazano plaćanje) – banka vratila CANCEL/ERROR (ili ekvivalent) → **temp_data.status = `canceled`**. **Nema** rezervacije. *(U bazi se ne koristi posebna vrednost `failed` za ovu granu.)*
 
 ---
 
-## Flow: pending → success → failed
+## Flow: pending → success → canceled
 
 - Bank callback **SUCCESS** → rezervacija se kreira, temp_data = processed.
 - Bank callback **CANCEL/ERROR** → temp_data = canceled, rezervacija se **ne** kreira.

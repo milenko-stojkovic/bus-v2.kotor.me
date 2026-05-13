@@ -1,6 +1,6 @@
 # Project TODO (otvoreno)
 
-**Poslednje ažuriranje:** 2026-05-07
+**Poslednje ažuriranje:** 2026-05-13
 
 Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/project-done.md` i ukloni odavde.
 
@@ -18,7 +18,7 @@ Trenutno stanje + šta još fali: **[limo-service.md](./limo-service.md)** (impl
 
 ## 1. Produkcija / Bankart
 
-- [ ] Finalna provera **HMAC / potpisa** callback-a po specifikaciji banke (`RealCallbackSignatureValidator` i srodnо).
+- [ ] **Operativna verifikacija** callback potpisa i header-a sa **pravim** Bankart okruženjem na **hostovanom** domen (HMAC je implementiran u kodu — `RealCallbackSignatureValidator`, v. `docs/payment-callback-handling.md` i `docs/payment-state-machine.md`; ovdje ostaje E2E / bankin mod).
 - [ ] **E2E** sa realnim callback primerima na **hostovanom** okruženju (banka / simulation mod) — v. `docs/project-status-next-steps.md` § Real E2E.
 
 ## 2. `late_success` automatska obrada

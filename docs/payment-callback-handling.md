@@ -21,7 +21,7 @@ Pravila za validaciju callback-a, idempotentnost, CANCEL/ERROR, notifikacije i r
 
 ## 2. Idempotentnost (callback može stići više puta)
 
-- Ako je **temp_data.status** već **failed** ili **processed** → prekinuti obradu (return).
+- Ako je **temp_data.status** već **canceled** ili **processed** (ili drugi terminalni status) → prekinuti obradu (return) — v. `TempData::TERMINAL_STATES` u kodu.
 - **Nikad ne brisati temp_data fizički** (audit trail); samo menjati status.
 - Cleanup `temp-data:cleanup` briše samo **stare ne-pending** redove po retention pravilu (default 180 dana) i **nikad** ne briše `pending`.
 
@@ -29,9 +29,9 @@ Pravila za validaciju callback-a, idempotentnost, CANCEL/ERROR, notifikacije i r
 
 ## 3. CANCEL / ERROR logika (čišćenje)
 
-Ako je status **CANCEL** ili **ERROR** (ili **failed**):
+Ako banka šalje **CANCEL** ili **ERROR**, ili se payload normalizuje na neuspeh (**`failed`** kao *callback* status u jobu, ne kao vrednost kolone u bazi):
 
-- **temp_data.status** = `failed`
+- **temp_data.status** = **`canceled`** (u bazi nema odvojenog `failed` za ovu granu)
 - Sačuvati:
   - **raw_callback_payload** (JSON) u temp_data
   - **callback_error_code** i **callback_error_reason** (ako banka šalje)
@@ -64,7 +64,7 @@ Frontend: ping **GET /payment/result?merchant_transaction_id=...** → backend v
 ## 6. Queue job – SUCCESS vs CANCEL/ERROR grana
 
 - **SUCCESS** → kreiraj reservation, temp_data.status = processed, oslobodi soft-lock (pending→reserved), PostFiscalizationJob, email (cron).
-- **CANCEL/ERROR/failed** → mark failed, sačuvaj raw payload + error, oslobodi soft-lock (decrement pending), **emit PaymentFailed event** (log + notify).
+- **CANCEL/ERROR** (i normalizovani neuspeh) → **temp_data.status = `canceled`**, sačuvaj raw payload + error, oslobodi soft-lock (decrement pending), **emit PaymentFailed event** (log + notify).
 
 Job **emituje PaymentFailed** event koji frontend ne prima direktno – frontend otkriva status preko **/payment/result**. Event služi za backend (log u payments channel, email).
 
@@ -77,7 +77,7 @@ Job **emituje PaymentFailed** event koji frontend ne prima direktno – frontend
 - **Success/cancel URL** (stranica na koju banka vrati korisnika): **GET /payment/return?merchant_transaction_id=...**
   - Stranica **uvek čita status iz baze** (**`PaymentResultResolver`**) – UI nije izvor istine.
   - Ako je status **`pending`** → prikaže se stranica sa porukom „u obradi“ i **polling** na **`GET /payment/result`**. Okvir: **`x-guest-layout`** (gost) ili **`x-app-layout`** (ulogovan korisnik).
-  - Ako je **`success` / `failed` / `late_success`** → **HTTP redirect** na **`guest.reserve`** ili **`panel.reservations`** (prema tipu korisnika) sa **`checkout_banner`** flash porukom (**`CheckoutResultFlash`**, **`checkout_result`** u **`ui_translations`**); nema posebnog „result“ template-a za te statuse.
+  - Ako je **`success` / neuspjeh plaćanja** (u UI resolveru često označeno kao `failed`; u **`temp_data`** je to **`canceled`**) **/ `late_success`** → **HTTP redirect** na **`guest.reserve`** ili **`panel.reservations`** (prema tipu korisnika) sa **`checkout_banner`** flash porukom (**`CheckoutResultFlash`**, **`checkout_result`** u **`ui_translations`**); nema posebnog „result“ template-a za te statuse.
   - API za polling: **GET /payment/result?merchant_transaction_id=...** → JSON (npr. `status`, `user_type`, `message`, `redirect_guest`, `redirect_auth`, `resolution_reason`, `fiscal_complete`, … prema resolveru).
 
 ## 8. User zatvori browser tokom redirecta
@@ -87,7 +87,7 @@ Job **emituje PaymentFailed** event koji frontend ne prima direktno – frontend
   - **GET /payment/return?merchant_transaction_id=...** ponovo pita bazu.
   - Ako postoji **reservation** → **redirect** na booking stranicu sa **success/info** `checkout_banner` (plaćeno + fiskal OK ili odložen fiskal).
   - Ako je još **pending** → ista return stranica + polling dok callback ne završi.
-  - Ako je **failed** / **late_success** → redirect sa odgovarajućom flash porukom.
+  - Ako je **neuspjeh plaćanja** (UI status, npr. `failed`) **/ `late_success`** → redirect sa odgovarajućom flash porukom.
 
 ---
 

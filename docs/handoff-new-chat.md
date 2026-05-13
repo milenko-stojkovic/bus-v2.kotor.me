@@ -82,4 +82,4 @@ Duga jedna sesija (mnogo alata, terminal, kontekst) često **poveća potrošnju 
 
 ---
 
-Poslednje ažuriranje ovog fajla: 2026-05-14 (README u `docs/`, napomena o dugim Cursor sesijama)
+Poslednje ažuriranje ovog fajla: 2026-05-13 (README u `docs/`, napomena o dugim Cursor sesijama)

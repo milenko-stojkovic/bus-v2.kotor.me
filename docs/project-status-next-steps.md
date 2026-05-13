@@ -1,6 +1,6 @@
 # Project status — indeks
 
-**Poslednje ažuriranje:** 2026-05-14
+**Poslednje ažuriranje:** 2026-05-13
 
 Ovaj fajl je **kratak smerač**. Detalji su podeljeni da bi novi chat mogao da učita samo ono što treba. Ako prilažeš samo folder **`docs/`**, počni od **[README.md](./README.md)** pa ovde.
 

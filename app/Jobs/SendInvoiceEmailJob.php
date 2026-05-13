@@ -86,7 +86,17 @@ class SendInvoiceEmailJob implements ShouldQueue
             $claimed = true;
         });
 
-        if (! $reservation || ! $claimed) {
+        if (! $reservation) {
+            Log::channel('payments')->warning('invoice_email_reservation_missing', [
+                'reservation_id' => $this->reservationId,
+                'is_fiscal' => $this->isFiscal,
+                'job' => static::class,
+            ]);
+
+            return;
+        }
+
+        if (! $claimed) {
             return;
         }
 

@@ -19,7 +19,7 @@ Pravila za bezbedno paralelno plaćanje i obrada callback-a.
 Callback (**`POST /api/payment/callback`**, API ruta; **samo machine-to-machine**, frontend ga nikad ne poziva) mora:
 
 1. **Validirati potpis** – pre bilo kakve obrade. Ako potpis nije validan → **HTTP 400**, job se **ne** dispatch-uje (v. `PaymentCallbackController`; opciono audit u `temp_data`).
-   - Implementacija: `CallbackSignatureValidator` (Fake = uvek prolazi; Real = HMAC/secret, dok nije implementirano odbija).
+   - Implementacija: `CallbackSignatureValidator` (Fake = uvek prolazi; Real = Bankart HMAC prema `RealCallbackSignatureValidator` kada je `BANK_DRIVER=bankart`).
    - Config: `services.bankart.shared_secret` (env `BANKART_SHARED_SECRET`) za real gateway.
 
 2. **Dispatch queue job-a sa merchant_transaction_id** – payload koji se šalje job-u sadrži `merchant_transaction_id` i `status`. Nema obrade rezultata u HTTP request-u.

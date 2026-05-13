@@ -1,6 +1,6 @@
 # Limo service
 
-**Poslednje ažuriranje:** 2026-05-14
+**Poslednje ažuriranje:** 2026-05-13
 
 **Povezano:** [project-todo.md](./project-todo.md) (preostali Limo TODO), [project-done.md](./project-done.md) (urađeno), [agency-panel.md](./agency-panel.md) (agencijski `/panel/limo`).
 

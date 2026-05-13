@@ -31,22 +31,27 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $bankDriver = config('services.bank.driver') ?? config('payment.provider', 'fake');
-        $this->app->bind(PaymentService::class, function () use ($bankDriver) {
+        $this->app->bind(PaymentService::class, function () {
+            $bankDriver = config('services.bank.driver') ?? config('payment.provider', 'fake');
+
             return match ($bankDriver) {
                 'bankart' => $this->app->make(RealPaymentProvider::class),
                 default => $this->app->make(FakePaymentProvider::class),
             };
         });
 
-        $this->app->bind(CallbackSignatureValidator::class, function () use ($bankDriver) {
+        $this->app->bind(CallbackSignatureValidator::class, function () {
+            $bankDriver = config('services.bank.driver') ?? config('payment.provider', 'fake');
+
             return match ($bankDriver) {
                 'bankart' => $this->app->make(RealCallbackSignatureValidator::class),
                 default => $this->app->make(FakeCallbackSignatureValidator::class),
             };
         });
 
-        $this->app->bind(PaymentStatusInquiryService::class, function () use ($bankDriver) {
+        $this->app->bind(PaymentStatusInquiryService::class, function () {
+            $bankDriver = config('services.bank.driver') ?? config('payment.provider', 'fake');
+
             return match ($bankDriver) {
                 'bankart' => $this->app->make(RealPaymentStatusInquiryService::class),
                 default => $this->app->make(FakePaymentStatusInquiryService::class),

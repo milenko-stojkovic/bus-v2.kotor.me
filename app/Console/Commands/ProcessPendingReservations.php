@@ -6,29 +6,28 @@ use App\Models\TempData;
 use Illuminate\Console\Command;
 
 /**
- * Cron: proverava temp_data sa statusom pending, pokušava naknadnu fiskalizaciju.
- * Uspeh → upis fiscal podataka u reservations, brisanje iz temp_data. Neuspeh → pending ili failed posle X pokušaja.
- * V. docs/cron-commands.md. Frekvencija: npr. everyFiveMinutes().
+ * Placeholder komanda: trenutno **ne radi poslovnu obradu** (no-op).
+ *
+ * Ne briše `temp_data`, ne kreira rezervacije, ne poziva fiskal. Samo broji `pending` redove i završava uspešno.
+ * Bilo koja buduća implementacija mora poštovati audit pravilo: `temp_data` se ne briše na uspeh glavnog payment toka
+ * (v. `docs/payment-state-machine.md`, `docs/workflow-placanje-temp-data.md`, `docs/cron-commands.md`).
  */
 class ProcessPendingReservations extends Command
 {
     protected $signature = 'reservations:process-pending';
 
-    protected $description = 'Process pending temp_data: attempt post-fiscalization, write to reservations and delete on success';
+    protected $description = '[No-op stub] Counts pending temp_data rows; does not modify DB, fiscal, or reservations';
 
     public function handle(): int
     {
         $rows = TempData::where('status', TempData::STATUS_PENDING)->get();
 
-        foreach ($rows as $temp) {
-            // TODO: poziv fiskalnog API-ja; ako uspe:
-            //   - kreiraj Reservation iz temp (user_id, snapshot, termini); eventualno PostFiscalizationData ako treba istorija
-            //   - upiši fiscal_* u reservation
-            //   - $temp->delete();
-            // ako ne uspe: po broju pokušaja ostavi pending ili $temp->update(['status' => TempData::STATUS_CANCELED]);
+        foreach ($rows as $_) {
+            // No-op stub: no DB updates (v. PHPDoc).
         }
 
-        $this->info('Processed '.$rows->count().' pending rows.');
+        $this->info('reservations:process-pending (no-op): scanned '.$rows->count().' pending temp_data row(s); no changes applied.');
+
         return self::SUCCESS;
     }
 }

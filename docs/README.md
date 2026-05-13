@@ -32,4 +32,4 @@
 
 Duga sesija u Cursoru često poveća memoriju i može usporiti odgovore. **Novi chat** je normalan korak; kontekst za zadatak preuzmi iz ovog foldera (`handoff` + TODO/DONE), ne iz starog četa.
 
-**Poslednje ažuriranje:** 2026-05-14
+**Poslednje ažuriranje:** 2026-05-13
