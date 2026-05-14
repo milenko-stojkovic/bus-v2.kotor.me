@@ -1,12 +1,15 @@
 # Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-05-13  
+**Poslednje ažuriranje:** 2026-05-14  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
 ---
 
 ## 2026-04 — Agency panel, besplatan checkout, dokumentacija
+
+- **2026-05-14** — **MEGA restore (megajs download):** `scripts/mega-archive.js` — download koristi **Readable** iz `file.download({})` i `pipe` u lokalni fajl (raniji callback je dobijao **Buffer**, ne stream). Fallback pretrage po **`generated_file_name`** u baznom folderu; PHP (`MegaArchiveService` / `restoreFromMega`) šalje to polje u JSON payload. Test: `ExternalFileArchiveTest::test_restore_passes_generated_file_name_to_client`. **`docs/external-file-archive.md`**.
+- **2026-05-14** — **MEGA eksterna arhiva privatnih fajlova:** migracija `external_file_archives`, model `ExternalFileArchive`, `MegaArchiveService` + `ExternalFileArchiveService`, Node `scripts/mega-archive.js` (`megajs`), Artisan `files:archive-private` / `files:restore-private`, testovi u `tests/Feature/ExternalArchive/`, fake `Tests\Support\MegaArchiveFakeClient`. Dokumentacija: **`docs/external-file-archive.md`**, ažurirani **`project-conventions.md`** (§2.2), **`limo-service.md`**, **`agency-panel.md`**.
 
 - **2026-05-13** — **Limo OCR — čišćenje privremenih / debug fajlova:** nakon OCR-a uvek se brišu GD varijante u `storage/framework/cache/limo_ocr/*` (`finally` u `LimoPlateOcrService`). **`limo_ocr_debug/{sufiks}/`** ostaje samo kad su **`APP_DEBUG=true`** i **`LIMO_OCR_DEBUG_SAVE_IMAGES=true`**; inače se folder tog prolaska briše (`LimoOcrDebugImages::deleteRunFolder`). TTL (`LIMO_OCR_DEBUG_IMAGE_TTL_MINUTES`) — `purgeExpired` poslije OCR-a i u **`limo:cleanup-temporary-data`**; original **`limo_plate_uploads`** netaknut. Testovi u **`LimoPlateFallbackTest`**, **`LimoCleanupTemporaryDataTest`**; **`docs/limo-service.md`**.
 - **2026-05-13** — **Payment audit doc:** uklonjen zastarjeli red u **`docs/payment-v1-production-audit.md`** („RealCallbackSignatureValidator uvijek false“); dodata napomena o usklađenosti sa §3/§9 i `payment-callback-handling.md`. **`docs/project-todo.md`** — datum; sekcija Bankart razjašnjava da je HMAC u kodu, a TODO ostaje za hostovanu/E2E verifikaciju.

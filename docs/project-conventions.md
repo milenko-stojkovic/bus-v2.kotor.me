@@ -1,6 +1,6 @@
 # Konvencije projekta (bus.kotor.me)
 
-**Poslednje ažuriranje:** 2026-04-27  
+**Poslednje ažuriranje:** 2026-05-14  
 
 Za AI i ljude: držati se ovoga pri novim izmenama da ostane konzistentno.
 
@@ -78,6 +78,12 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 
 - Feature flags su u `config/features.php` i u `.env` kao `*_ENABLED`.
 - Pravilo: feature koji je isključen treba da bude “nevidljiv kao surface” (tipično **404** na rute), ali UI može prikazati disabled stavku ako UX to traži.
+
+### 2.2 MEGA arhiva privatnih fajlova
+
+- Konfiguracija: `config/services.php` (`services.mega`), tajne samo u **`.env`** (`MEGA_EMAIL`, `MEGA_PASSWORD`, opciono `MEGA_BASE_FOLDER`, `MEGA_NODE_BINARY`). **Ne** slati kredencijale u frontend ili logove sa sadržajem fajla.
+- Operativni opis: **[external-file-archive.md](./external-file-archive.md)** (tabela `external_file_archives`, komande `files:archive-private`, `files:restore-private`, Node `scripts/mega-archive.js`).
+
 - **Limo servis:** `features.limo_service` (ENV `LIMO_SERVICE_ENABLED`) i **mora** imati i `features.advance_payments` ON. Effective rule: \(advance\_payments \land limo\_service\).
 
 ---

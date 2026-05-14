@@ -67,4 +67,16 @@ return [
         'driver' => env('FISCALIZATION_DRIVER', 'real'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | MEGA (external private file archive — server-side only)
+    |--------------------------------------------------------------------------
+    */
+    'mega' => [
+        'email' => env('MEGA_EMAIL'),
+        'password' => env('MEGA_PASSWORD'),
+        'base_folder' => env('MEGA_BASE_FOLDER', 'bus.kotor'),
+        'node_binary' => env('MEGA_NODE_BINARY'),
+    ],
+
 ];

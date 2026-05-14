@@ -1,6 +1,6 @@
 # Agency panel (ulogovani korisnik, `/panel`)
 
-**Poslednje ažuriranje:** 2026-05-07
+**Poslednje ažuriranje:** 2026-05-14
 
 Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navigacija: `resources/views/layouts/navigation.blade.php`.
 
@@ -132,6 +132,8 @@ Na vrhu stranice prikazuje se:
 - **pravno / procesno objašnjenje** (ključ `free_request.fzbr_description`)
 - **instrukcija korisniku** u odvojenom info-bloku (ključ `free_request.fzbr_instruction`)
 - **pomoć za priloge** (`free_request.documents_hint` + `documents_limit`)
+
+**Arhiva privatnih priloga (MEGA):** kada je zahtjev u terminalnom statusu (`fulfilled` / `rejected`), operativno se mogu arhivirati fajlovi sa privatnog diska na MEGA (`files:archive-private --source=fzbr`); detalji u **[external-file-archive.md](./external-file-archive.md)**. Kredencijali ostaju u `.env`; nema uploada iz browsera.
 
 ---
 

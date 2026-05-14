@@ -60,6 +60,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Limo OCR runner (advisory suggestion only; may be disabled/unavailable).
         $this->app->bind(LimoOcrRunner::class, fn () => $this->app->make(TesseractOcrRunner::class));
+
+        $this->app->singleton(\App\Contracts\MegaArchiveClient::class, \App\Services\ExternalArchive\MegaArchiveService::class);
+        $this->app->singleton(\App\Services\ExternalArchive\ExternalFileArchiveService::class);
     }
 
     /**
