@@ -14,7 +14,7 @@
         @include('partials.password-field-overlay-styles')
     </head>
     <body class="font-sans text-gray-900 antialiased">
-        <div class="relative isolate min-h-screen flex flex-col sm:justify-center items-center bg-red-50 pt-6 sm:pt-0">
+        <div class="relative isolate flex min-h-screen flex-col bg-red-50 pt-6 sm:pt-0">
             @if ($landingBackground ?? false)
                 <div
                     aria-hidden="true"
@@ -22,7 +22,7 @@
                     style="background-image: url('{{ asset('images/background.svg') }}'); background-repeat: no-repeat; background-position: center center; background-size: 50% auto;"
                 ></div>
             @endif
-            <div class="relative z-10 flex w-full min-h-screen flex-col sm:justify-center items-center pt-6 sm:pt-0">
+            <div class="relative z-10 mb-6 flex w-full flex-1 flex-col items-center pt-6 sm:mb-8 sm:justify-center sm:pt-0">
                 <div class="w-full sm:max-w-lg flex justify-end px-6">
                     <div class="flex items-center gap-3">
                         <a
@@ -55,6 +55,8 @@
                     {{ $slot }}
                 </div>
             </div>
+
+            @include('partials.site-footer')
         </div>
     </body>
 </html>

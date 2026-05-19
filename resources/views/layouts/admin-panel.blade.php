@@ -15,7 +15,7 @@
         @include('partials.password-field-overlay-styles')
     </head>
     <body class="font-sans text-gray-900 antialiased bg-red-50">
-        <div class="min-h-screen">
+        <div class="flex min-h-screen flex-col">
             <header class="bg-white border-b border-red-100 shadow-sm">
                 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
                     <span class="text-sm font-semibold text-gray-800">Admin panel</span>
@@ -40,9 +40,11 @@
                 </div>
             </header>
 
-            <div class="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <div class="mx-auto max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
                 {{ $slot }}
             </div>
+
+            @include('partials.site-footer')
         </div>
     </body>
 </html>
