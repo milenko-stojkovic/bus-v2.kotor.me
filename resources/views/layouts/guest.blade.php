@@ -7,31 +7,53 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
-        <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @include('partials.password-field-overlay-styles')
     </head>
     <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
-            <div class="w-full sm:max-w-lg flex justify-end px-6">
-                <div class="flex gap-2 text-sm">
-                <a href="{{ url('/locale/cg') }}" class="{{ app()->getLocale() === 'cg' ? 'font-semibold' : 'text-gray-500' }}">CG</a>
-                <span class="text-gray-300">|</span>
-                <a href="{{ url('/locale/en') }}" class="{{ app()->getLocale() === 'en' ? 'font-semibold' : 'text-gray-500' }}">EN</a>
+        <div class="relative isolate min-h-screen flex flex-col sm:justify-center items-center bg-red-50 pt-6 sm:pt-0">
+            @if ($landingBackground ?? false)
+                <div
+                    aria-hidden="true"
+                    class="pointer-events-none fixed inset-0 z-0 bg-red-50"
+                    style="background-image: url('{{ asset('images/background.svg') }}'); background-repeat: no-repeat; background-position: center center; background-size: 50% auto;"
+                ></div>
+            @endif
+            <div class="relative z-10 flex w-full min-h-screen flex-col sm:justify-center items-center pt-6 sm:pt-0">
+                <div class="w-full sm:max-w-lg flex justify-end px-6">
+                    <div class="flex items-center gap-3">
+                        <a
+                            href="{{ url('/locale/cg') }}"
+                            class="inline-flex rounded transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 {{ app()->getLocale() === 'cg' ? 'ring-2 ring-red-700 ring-offset-2 ring-offset-red-50' : 'opacity-60 hover:opacity-100' }}"
+                            title="Crnogorski"
+                            aria-label="Crnogorski"
+                        >
+                            <img src="{{ asset('images/cg.png') }}" alt="" class="block h-6 w-auto" decoding="async" />
+                            <span class="sr-only">CG</span>
+                        </a>
+                        <a
+                            href="{{ url('/locale/en') }}"
+                            class="inline-flex rounded transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 {{ app()->getLocale() === 'en' ? 'ring-2 ring-red-700 ring-offset-2 ring-offset-red-50' : 'opacity-60 hover:opacity-100' }}"
+                            title="English"
+                            aria-label="English"
+                        >
+                            <img src="{{ asset('images/en.png') }}" alt="" class="block h-6 w-auto" decoding="async" />
+                            <span class="sr-only">EN</span>
+                        </a>
+                    </div>
                 </div>
-            </div>
-            <div>
-                <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
-                </a>
-            </div>
+                <div class="w-full sm:max-w-lg mx-auto px-6">
+                    <a href="/">
+                        <x-application-logo class="mx-auto block max-w-full" style="height: 5rem; width: auto;" />
+                    </a>
+                </div>
 
-            <div class="w-full sm:max-w-lg mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
-                {{ $slot }}
+                <div class="w-full sm:max-w-lg mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
+                    {{ $slot }}
+                </div>
             </div>
         </div>
     </body>

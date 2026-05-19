@@ -59,7 +59,7 @@
             </div>
         </div>
 
-        <div class="rounded-md bg-amber-50 p-4 text-sm text-amber-900">
+        <div class="rounded-md bg-red-50 p-4 text-sm text-red-900">
             {{ $ui('intro_note', 'Popunjena forma ne znači da je rezervacija automatski napravljena. Podaci se upućuju administratorima koji će prvo da provjere autentičnost podataka, a potom da naprave rezervaciju u skladu sa Vašim željama i našim kapacitetima. Iz tog razloga Vas molimo da što ranije pošaljete zahtjev (popunite formu) kako bi izgledi da dobijete željene termine bili što veći. Sva polja su obavezna.') }}
         </div>
 
@@ -84,7 +84,7 @@
                     min="{{ $minDate }}"
                     max="{{ $maxDate }}"
                     value="{{ $selected_date ?? '' }}"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                 />
                 <x-input-error class="mt-2" :messages="$errors->get('reservation_date')" />
             </div>
@@ -94,7 +94,7 @@
                 <select
                     id="drop_off_time_slot_id"
                     name="drop_off_time_slot_id"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                     @disabled(empty($selected_date))
                 >
                     <option value="">{{ $ui('select_time_slot', 'Izaberite termin') }}</option>
@@ -112,7 +112,7 @@
                 <select
                     id="pick_up_time_slot_id"
                     name="pick_up_time_slot_id"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                     @disabled($departure_disabled ?? true)
                 >
                     <option value="">{{ $ui('select_time_slot', 'Izaberite termin') }}</option>
@@ -143,7 +143,7 @@
 
             <div>
                 <x-input-label for="country" :value="$ui('country', 'Država')" />
-                <select id="country" name="country" x-model="country" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                <select id="country" name="country" x-model="country" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                     <option value="">{{ $ui('select_country', 'Izaberite državu') }}</option>
                     @foreach (($countries ?? []) as $code => $labels)
                         @php
@@ -189,7 +189,7 @@
                         <div class="md:col-span-6 min-w-0">
                             <x-input-label :value="$ui('license_plate', 'Registarska tablica')" />
                             <input
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                 type="text"
                                 :name="`vehicles[${idx}][license_plate]`"
                                 x-model="row.license_plate"
@@ -204,7 +204,7 @@
                         <div class="md:col-span-4 min-w-0">
                             <x-input-label :value="$ui('vehicle_type', 'Kategorija vozila')" />
                             <select
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                 :name="`vehicles[${idx}][vehicle_type_id]`"
                                 x-model="row.vehicle_type_id"
                                 required
@@ -219,7 +219,7 @@
                         <div class="md:col-span-2 flex gap-2 md:justify-end pt-6 min-w-0">
                             <button
                                 type="button"
-                                class="inline-flex items-center justify-center rounded-md bg-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                                 x-show="idx === vehicles.length - 1"
                                 :disabled="vehicles.length >= 9"
                                 @click="addVehicle()"
@@ -228,7 +228,7 @@
                             </button>
                             <button
                                 type="button"
-                                class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-gray-50"
+                                class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50"
                                 x-show="idx !== vehicles.length - 1"
                                 @click="confirmRemove(idx)"
                             >
@@ -243,7 +243,7 @@
                     <div class="relative w-[92%] max-w-md rounded-lg bg-white shadow-lg p-4 space-y-3">
                         <div class="font-semibold">{{ $ui('remove_vehicle_confirm', 'Da li si siguran da želite da uklonite to vozilo?') }}</div>
                         <div class="flex justify-end gap-2">
-                            <button type="button" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-gray-50" @click="cancelRemove()">
+                            <button type="button" class="rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50" @click="cancelRemove()">
                                 {{ $ui('remove_vehicle_no', 'Ne') }}
                             </button>
                             <button type="button" class="rounded-md bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-700" @click="applyRemove()">
@@ -256,7 +256,7 @@
 
             <div class="space-y-2">
                 <label class="flex items-start gap-2 text-sm">
-                    <input type="checkbox" name="accept_privacy" value="1" x-model="accept_privacy" class="mt-1 rounded border-gray-300" {{ old('accept_privacy') ? 'checked' : '' }} required>
+                    <input type="checkbox" name="accept_privacy" value="1" x-model="accept_privacy" class="mt-1 rounded border-red-200" {{ old('accept_privacy') ? 'checked' : '' }} required>
                     <span>{{ \App\Support\UiText::t('reservation', 'accept_privacy') }}</span>
                 </label>
                 <x-input-error class="mt-2" :messages="$errors->get('accept_privacy')" />
@@ -272,7 +272,7 @@
                 $finalNoticeParagraphs = preg_split("/\r?\n\r?\n/", trim((string) $finalNoticeBody)) ?: [];
                 $finalNoticeParagraphs = array_values(array_filter(array_map('trim', $finalNoticeParagraphs), fn ($p) => $p !== ''));
             @endphp
-            <div class="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm space-y-3 text-gray-700">
+            <div class="rounded-md border border-red-100 bg-red-50 p-4 text-sm space-y-3 text-gray-700">
                 <div class="font-semibold text-gray-900">{{ $finalNoticeTitle }}</div>
                 @foreach ($finalNoticeParagraphs as $paragraph)
                     <p class="leading-relaxed">{!! nl2br(e($paragraph)) !!}</p>
@@ -281,7 +281,7 @@
 
             <button
                 type="submit"
-                class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 :disabled="!canSubmit"
             >
                 {{ $ui('submit', 'Podnesi zahtjev') }}

@@ -20,7 +20,7 @@
         <!-- Country -->
         <div class="mt-4">
             <x-input-label for="country" :value="$ui('country', 'Country')" />
-            <select id="country" name="country" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+            <select id="country" name="country" class="block mt-1 w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                 <option value="">{{ $ui('select_country') }}</option>
                 @foreach (($countries ?? []) as $code => $labels)
                     <?php $label = is_array($labels) ? ($labels[app()->getLocale()] ?? ($labels['en'] ?? $code)) : (string) $labels; ?>
@@ -73,7 +73,7 @@
         </div>
 
         <div class="flex items-center justify-end mt-4">
-            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('login') }}">
+            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" href="{{ route('login') }}">
                 {{ $ui('register_already_registered') }}
             </a>
 
@@ -83,7 +83,7 @@
         </div>
 
         <div class="mt-4 text-center">
-            <a href="{{ route('login') }}" class="underline font-semibold text-sm text-indigo-700 hover:text-indigo-900">
+            <a href="{{ route('login') }}" class="underline font-semibold text-sm text-red-700 hover:text-red-900">
                 {{ $ui('register_login_link') }}
             </a>
         </div>

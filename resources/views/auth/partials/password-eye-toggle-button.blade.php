@@ -1,6 +1,6 @@
 <button
     type="button"
-    class="col-start-1 row-start-1 z-10 inline-flex shrink-0 items-center justify-center justify-self-end self-center rounded-md bg-transparent p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0"
+    class="col-start-1 row-start-1 z-10 inline-flex shrink-0 items-center justify-center justify-self-end self-center rounded-md bg-transparent p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-0"
     data-pw-toggle
     data-show-text="{{ $showText }}"
     data-hide-text="{{ $hideText }}"

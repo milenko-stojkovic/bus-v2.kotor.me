@@ -16,7 +16,7 @@
         @include('partials.password-field-overlay-styles')
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100">
+        <div class="min-h-screen bg-red-50">
             @include('layouts.navigation')
 
             <!-- Page Heading -->

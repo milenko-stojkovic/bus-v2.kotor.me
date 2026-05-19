@@ -17,5 +17,5 @@
 <p>Usluge koje pruža Opština Kotor putem sajta bus.kotor.me ne uključuju troškove nastale korišćenjem računarske opreme i usluga internet provajdera za pristup našem sajtu.</p>
 <p>Opština Kotor nije odgovorna za bilo kakve troškove, uključujući, ali ne ograničavajući se na telefonske račune, račune za internet saobraćaj ili bilo koje druge troškove koji mogu nastati.</p>
 <p>Kupac nema pravo na povraćaj novca.</p>
-<p>Opština Kotor ne može garantovati da će usluga biti bez grešaka. Ukoliko dođe do greške, molimo vas da je prijavite na: <a href="mailto:bus@kotor.me" class="underline text-blue-700 hover:text-blue-900">bus@kotor.me</a> i uklonićemo je u najkraćem mogućem roku.</p>
+<p>Opština Kotor ne može garantovati da će usluga biti bez grešaka. Ukoliko dođe do greške, molimo vas da je prijavite na: <a href="mailto:bus@kotor.me" class="underline text-red-700 hover:text-red-900">bus@kotor.me</a> i uklonićemo je u najkraćem mogućem roku.</p>
 

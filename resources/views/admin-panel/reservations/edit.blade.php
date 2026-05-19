@@ -48,7 +48,7 @@
         },
     }">
         @if (session('status'))
-            <div class="rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('status') }}</div>
+            <div class="rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('status') }}</div>
         @endif
         @if (session('error'))
             <div class="rounded-md bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
@@ -64,15 +64,15 @@
                     @endif
                 </p>
             </div>
-            <a href="{{ $cancelUrl }}" class="text-sm text-indigo-700 hover:underline">Odkaži</a>
+            <a href="{{ $cancelUrl }}" class="text-sm text-red-700 hover:underline">Odkaži</a>
         </div>
 
-        <p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3">
+        <p class="text-sm text-red-800 bg-red-50 border border-red-200 rounded-md p-3">
             Kalendar i lista termina su <strong>prefilter</strong>. Konačna provjera dostupnosti radi se pri „Primjeni promjenu“, nakon zaključavanja redova u bazi.
         </p>
 
         <form x-ref="mainForm" method="post" action="{{ route('panel_admin.reservations.update', $reservation, false) }}"
-            class="bg-white shadow rounded-lg p-6 space-y-5 border border-gray-100"
+            class="bg-white shadow rounded-lg p-6 space-y-5 border border-red-100"
             @input="tick++"
             @change="tick++">
             @csrf
@@ -85,7 +85,7 @@
                     <input type="date" name="reservation_date" id="reservation_date" required
                         min="{{ $dateMin }}" max="{{ $dateMax }}"
                         value="{{ $fd }}"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                         @change="
                             const u = new URL(@json($editBase), window.location.origin);
                             u.searchParams.set('form_date', $event.target.value);
@@ -100,7 +100,7 @@
                 <div>
                     <x-input-label for="drop_off_time_slot_id" value="Vrijeme dolaska (drop-off)" />
                     <select name="drop_off_time_slot_id" id="drop_off_time_slot_id" required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        class="mt-1 block w-full rounded-md border-red-200 shadow-sm">
                         <option value="">— izaberite —</option>
                         @foreach ($slotOptions as $row)
                             @php
@@ -125,7 +125,7 @@
                 <div>
                     <x-input-label for="pick_up_time_slot_id" value="Vrijeme odlaska (pick-up)" />
                     <select name="pick_up_time_slot_id" id="pick_up_time_slot_id" required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        class="mt-1 block w-full rounded-md border-red-200 shadow-sm">
                         <option value="">— izaberite —</option>
                         @foreach ($slotOptions as $row)
                             @php
@@ -157,7 +157,7 @@
 
                 <div>
                     <x-input-label for="country" value="Država" />
-                    <select name="country" id="country" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    <select name="country" id="country" class="mt-1 block w-full rounded-md border-red-200 shadow-sm" required>
                         @foreach ($countries as $code => $labels)
                             @php $lab = is_array($labels) ? ($labels['cg'] ?? $code) : $labels; @endphp
                             <option value="{{ $code }}" @selected(old('country', $reservation->country) === $code)>{{ $lab }} ({{ $code }})</option>
@@ -176,7 +176,7 @@
 
                 <div class="md:col-span-2">
                     <x-input-label for="vehicle_type_id" value="Kategorija vozila" />
-                    <select name="vehicle_type_id" id="vehicle_type_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    <select name="vehicle_type_id" id="vehicle_type_id" class="mt-1 block w-full rounded-md border-red-200 shadow-sm" required>
                         @foreach ($vehicleTypesAllowed as $vt)
                             <option value="{{ $vt->id }}" @selected((string) old('vehicle_type_id', $reservation->vehicle_type_id) === (string) $vt->id)>
                                 {{ $vt->formatLabel('cg', 'EUR') }}
@@ -196,11 +196,11 @@
 
             <div class="flex flex-wrap justify-end gap-3 pt-2">
                 <a href="{{ $cancelUrl }}"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+                    class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50">
                     Odkaži
                 </a>
                 <button type="submit"
-                    class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 disabled:opacity-50"
+                    class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800 disabled:opacity-50"
                     x-bind:disabled="!canSubmit()">
                     Primjeni promjenu
                 </button>

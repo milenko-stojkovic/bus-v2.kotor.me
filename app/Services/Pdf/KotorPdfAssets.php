@@ -16,13 +16,16 @@ final class KotorPdfAssets
 {
     public static function logoDataUri(): ?string
     {
-        $path = public_path('images/logo_kotor.png');
+        $path = public_path('images/buslogo.svg');
         if (! is_readable($path)) {
             return null;
         }
         $data = @file_get_contents($path);
+        if ($data === false) {
+            return null;
+        }
 
-        return $data !== false ? 'data:image/png;base64,'.base64_encode($data) : null;
+        return 'data:image/svg+xml;base64,'.base64_encode($data);
     }
 
     /**

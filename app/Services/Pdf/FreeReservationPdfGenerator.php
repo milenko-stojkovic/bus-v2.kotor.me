@@ -8,7 +8,7 @@ use RuntimeException;
 
 /**
  * PDF potvrda besplatne rezervacije — sav sadržaj u šablonu na crnogorskom (cg), bez en varijante.
- * Logo: {@see public_path('images/logo_kotor.png')} — ako fajl ne postoji, PDF ide bez slike.
+ * Logo: {@see public_path('images/buslogo.svg')} — ako fajl ne postoji, PDF ide bez slike.
  * Generiše se na zahtev; ne čuva se trajno na disku.
  */
 class FreeReservationPdfGenerator

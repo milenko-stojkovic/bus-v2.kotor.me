@@ -13,7 +13,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 space-y-6">
                 <div class="flex justify-center">
-                    <img src="{{ $qrDataUri }}" alt="{{ $p('limo_qr_img_alt', 'Limo QR kod') }}" class="max-w-xs w-full h-auto border border-gray-200 rounded" />
+                    <img src="{{ $qrDataUri }}" alt="{{ $p('limo_qr_img_alt', 'Limo QR kod') }}" class="max-w-xs w-full h-auto border border-red-100 rounded" />
                 </div>
                 <div class="flex flex-wrap gap-3 justify-center">
                     <a href="{{ route('panel.limo.qr.pdf', ['limoQrToken' => $token->id], false) }}">

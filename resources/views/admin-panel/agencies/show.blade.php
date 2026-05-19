@@ -28,11 +28,11 @@
                 <h1 class="text-2xl font-semibold text-gray-900">Agencija: {{ $user->name }}</h1>
                 <div class="text-sm text-gray-600 mt-1">{{ $user->email }} • Registrovana: {{ $user->created_at?->format('d.m.Y.') ?? '—' }}</div>
             </div>
-            <a href="{{ route('panel_admin.agencies.index', [], false) }}" class="text-sm text-indigo-700 underline font-medium">Nazad na listu</a>
+            <a href="{{ route('panel_admin.agencies.index', [], false) }}" class="text-sm text-red-700 underline font-medium">Nazad na listu</a>
         </header>
 
         @if (! $advanceEnabled)
-            <div class="rounded-md bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700">
+            <div class="rounded-md bg-red-50 border border-red-100 p-4 text-sm text-gray-700">
                 Avansna funkcionalnost trenutno nije aktivna.
             </div>
         @else
@@ -42,7 +42,7 @@
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-left text-sm">
                             <thead>
-                                <tr class="border-b border-gray-200 text-gray-600">
+                                <tr class="border-b border-red-100 text-gray-600">
                                     <th class="py-2 pr-4">Datum</th>
                                     <th class="py-2 pr-4">Tablica</th>
                                     <th class="py-2 pr-4">Stara kategorija</th>
@@ -54,13 +54,13 @@
                             </thead>
                             <tbody>
                                 @foreach ($pendingVehicleCategoryChangeRequests as $req)
-                                    <tr class="border-b border-gray-100">
+                                    <tr class="border-b border-red-100">
                                         <td class="py-2 pr-4 whitespace-nowrap">{{ $req->created_at?->format('d.m.Y. H:i') ?? '—' }}</td>
                                         <td class="py-2 pr-4 font-medium whitespace-nowrap">{{ $req->license_plate }}</td>
                                         <td class="py-2 pr-4">{{ $req->oldVehicleType?->formatLabel('cg', 'EUR') ?? ('#'.$req->old_vehicle_type_id) }}</td>
                                         <td class="py-2 pr-4">{{ $req->requestedVehicleType?->formatLabel('cg', 'EUR') ?? ('#'.$req->requested_vehicle_type_id) }}</td>
                                         <td class="py-2 pr-4 whitespace-nowrap">
-                                            <a class="text-indigo-700 underline font-medium"
+                                            <a class="text-red-700 underline font-medium"
                                                href="{{ route('panel_admin.agencies.vehicle_category_change_requests.document', ['user' => $user->id, 'request' => $req->id], false) }}"
                                                target="_blank" rel="noopener">
                                                 Preview
@@ -72,7 +72,7 @@
                                                 <form method="POST" action="{{ route('panel_admin.agencies.vehicle_category_change_requests.approve', ['user' => $user->id, 'request' => $req->id], false) }}">
                                                     @csrf
                                                     <button type="submit"
-                                                            class="inline-flex items-center rounded-md bg-green-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-green-600"
+                                                            class="inline-flex items-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-600"
                                                             onclick="return confirm('Prihvatiti zahtjev i reaktivirati vozilo?');">
                                                         Prihvati
                                                     </button>
@@ -99,10 +99,10 @@
                 <h2 class="text-lg font-semibold text-gray-900">Avans</h2>
                 <div class="text-3xl font-semibold text-gray-900">{{ number_format((float) $balance, 2, '.', '') }} EUR</div>
                 @if (session('status'))
-                    <div class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</div>
+                    <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('status') }}</div>
                 @endif
                 @if (session('message'))
-                    <div class="rounded-md bg-blue-50 p-3 text-sm text-blue-900">{{ session('message') }}</div>
+                    <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('message') }}</div>
                 @endif
                 @if (session('error'))
                     <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ session('error') }}</div>
@@ -115,7 +115,7 @@
                     </div>
                 @endif
 
-                <details class="rounded-md border border-gray-200 bg-gray-50 p-4">
+                <details class="rounded-md border border-red-100 bg-red-50 p-4">
                     <summary class="cursor-pointer text-sm font-semibold text-gray-900">Dodaj korekciju</summary>
                     <form method="POST" action="{{ route('panel_admin.agencies.advance.correction.store', $user, false) }}" class="mt-4 space-y-3">
                         @csrf
@@ -124,13 +124,13 @@
                                 <label class="block text-sm font-medium text-gray-700" for="corr_amount">Iznos korekcije</label>
                                 <input id="corr_amount" name="amount" type="number" step="0.01" min="0.01" max="99999.99"
                                        value="{{ old('amount') }}"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                        required>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700" for="corr_dir">Tip korekcije</label>
                                 <select id="corr_dir" name="direction"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                         required>
                                     <option value="increase" @selected(old('direction', 'increase') === 'increase')>Povećaj saldo</option>
                                     <option value="decrease" @selected(old('direction') === 'decrease')>Smanji saldo</option>
@@ -138,7 +138,7 @@
                             </div>
                             <div class="sm:justify-end flex">
                                 <button type="submit"
-                                        class="inline-flex items-center justify-center rounded-md bg-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700">
+                                        class="inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-800">
                                     Evidentiraj
                                 </button>
                             </div>
@@ -146,7 +146,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700" for="corr_reason">Razlog korekcije</label>
                             <textarea id="corr_reason" name="reason" rows="3"
-                                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                      class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                       required>{{ old('reason') }}</textarea>
                             <p class="mt-1 text-xs text-gray-500">Min 5, max 1000 karaktera.</p>
                         </div>
@@ -159,7 +159,7 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-left text-sm">
                         <thead>
-                            <tr class="border-b border-gray-200 text-gray-600">
+                            <tr class="border-b border-red-100 text-gray-600">
                                 <th class="py-2 pr-4">Datum</th>
                                 <th class="py-2 pr-4">Tip</th>
                                 <th class="py-2 pr-4">Iznos</th>
@@ -169,14 +169,14 @@
                         </thead>
                         <tbody>
                             @forelse ($ledger as $tx)
-                                <tr class="border-b border-gray-100">
+                                <tr class="border-b border-red-100">
                                     <td class="py-2 pr-4 whitespace-nowrap">{{ $tx->created_at?->format('d.m.Y. H:i') ?? '—' }}</td>
                                     <td class="py-2 pr-4">{{ $typeLabel((string) $tx->type) }}</td>
                                     <td class="py-2 pr-4 font-medium whitespace-nowrap">{{ $fmtSigned($tx->amount) }}</td>
                                     <td class="py-2 pr-4 text-gray-700">{{ $tx->note ?? '—' }}</td>
                                     <td class="py-2 pr-4 text-gray-700">
                                         @if (($tx->reference_type ?? null) === 'reservation' && $tx->reference_id)
-                                            <a class="text-indigo-700 underline font-medium" href="{{ route('panel_admin.reservations.edit', ['reservation' => $tx->reference_id], false) }}">
+                                            <a class="text-red-700 underline font-medium" href="{{ route('panel_admin.reservations.edit', ['reservation' => $tx->reference_id], false) }}">
                                                 reservation#{{ $tx->reference_id }}
                                             </a>
                                         @elseif (($tx->reference_type ?? null) === 'advance_topup' && $tx->reference_id)
@@ -202,7 +202,7 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-left text-sm">
                         <thead>
-                            <tr class="border-b border-gray-200 text-gray-600">
+                            <tr class="border-b border-red-100 text-gray-600">
                                 <th class="py-2 pr-4">Datum</th>
                                 <th class="py-2 pr-4">Iznos</th>
                                 <th class="py-2 pr-4">Status</th>
@@ -212,7 +212,7 @@
                         </thead>
                         <tbody>
                             @forelse ($topups as $t)
-                                <tr class="border-b border-gray-100">
+                                <tr class="border-b border-red-100">
                                     <td class="py-2 pr-4 whitespace-nowrap">{{ $t->created_at?->format('d.m.Y. H:i') ?? '—' }}</td>
                                     <td class="py-2 pr-4 font-medium whitespace-nowrap">{{ number_format((float) $t->amount, 2, '.', '') }} EUR</td>
                                     <td class="py-2 pr-4 whitespace-nowrap">{{ $t->status }}</td>
@@ -223,7 +223,7 @@
                                             <form method="POST" action="{{ route('panel_admin.agencies.advance.topups.confirmation.resend', ['user' => $user->id, 'topup' => $t->id], false) }}">
                                                 @csrf
                                                 <button type="submit"
-                                                        class="inline-flex items-center rounded-md bg-indigo-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-indigo-600">
+                                                        class="inline-flex items-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-600">
                                                     Pošalji potvrdu ponovo
                                                 </button>
                                             </form>

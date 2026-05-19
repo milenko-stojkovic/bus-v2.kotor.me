@@ -30,7 +30,7 @@
     <div class="py-6" x-data="fzbrForm()">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if (session('status'))
-                <div class="rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('status') }}</div>
+                <div class="rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('status') }}</div>
             @endif
             @if ($errors->any())
                 <div class="rounded-md bg-red-50 p-4 text-sm text-red-800 space-y-1">
@@ -86,7 +86,7 @@
                 </div>
 
                 @if ($instruction !== '')
-                    <div class="rounded-md bg-gray-50 border border-gray-200 p-3 text-sm text-gray-700">
+                    <div class="rounded-md bg-red-50 border border-red-100 p-3 text-sm text-gray-700">
                         {{ $instruction }}
                     </div>
                 @endif
@@ -105,7 +105,7 @@
                             max="{{ $maxDate }}"
                             x-model="selectedDate"
                             x-on:change="onDateChange()"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                             form="fzbrPostForm"
                             required
                         />
@@ -113,7 +113,7 @@
                     <div class="sm:col-span-2 flex sm:justify-end pt-6">
                         <button
                             type="button"
-                            class="inline-flex items-center justify-center rounded-md bg-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                             :disabled="segments.length >= 5"
                             @click="addSegment()"
                         >
@@ -123,7 +123,7 @@
                 </div>
 
                 <template x-for="(seg, sIdx) in segments" :key="seg.key">
-                    <div class="rounded-md border border-gray-200 p-4 space-y-3">
+                    <div class="rounded-md border border-red-100 p-4 space-y-3">
                         <div class="flex items-start justify-between gap-3">
                             <div class="text-sm font-semibold text-gray-900">
                                 {{ $ui('segment_title', 'Dolazak i odlazak') }} <span x-text="sIdx + 1"></span>
@@ -144,7 +144,7 @@
                                     {{ \App\Support\UiText::t('reservation', 'arrival_time') }}
                                 </label>
                                 <select
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                     :id="'seg_' + sIdx + '_drop'"
                                     :name="'segments[' + sIdx + '][drop_off_time_slot_id]'"
                                     x-model="seg.drop"
@@ -165,7 +165,7 @@
                                     {{ \App\Support\UiText::t('reservation', 'departure_time') }}
                                 </label>
                                 <select
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                     :id="'seg_' + sIdx + '_pick'"
                                     :name="'segments[' + sIdx + '][pick_up_time_slot_id]'"
                                     x-model="seg.pick"
@@ -188,7 +188,7 @@
                                 <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
                                     <div class="md:col-span-10 min-w-0">
                                         <select
-                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                            class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                             :name="'segments[' + sIdx + '][vehicles][' + vIdx + ']'"
                                             form="fzbrPostForm"
                                             x-model="row.vehicle_id"
@@ -204,7 +204,7 @@
                                     <div class="md:col-span-2 flex gap-2 md:justify-end pt-6 min-w-0">
                                         <button
                                             type="button"
-                                            class="inline-flex items-center justify-center rounded-md bg-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            class="inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                                             x-show="vIdx === seg.rows.length - 1"
                                             :disabled="!canAddVehicle(sIdx, vIdx)"
                                             @click="addVehicleRow(sIdx)"
@@ -213,7 +213,7 @@
                                         </button>
                                         <button
                                             type="button"
-                                            class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-gray-50"
+                                            class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50"
                                             x-show="vIdx !== seg.rows.length - 1"
                                             @click="confirmRemoveVehicle(sIdx, vIdx)"
                                         >
@@ -242,7 +242,7 @@
                 <div class="relative w-[92%] max-w-md rounded-lg bg-white shadow-lg p-4 space-y-3" @click.stop>
                     <div class="font-semibold">{{ $ui('remove_vehicle_confirm', 'Da li si siguran da želiš da ukloniš ovo vozilo?') }}</div>
                     <div class="flex justify-end gap-2">
-                        <button type="button" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-gray-50" @click="cancelRemove()">
+                        <button type="button" class="rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50" @click="cancelRemove()">
                             {{ $ui('remove_vehicle_no', 'Ne') }}
                         </button>
                         <button type="button" class="rounded-md bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-700" @click="applyRemove()">
@@ -264,7 +264,7 @@
                         type="file"
                         multiple
                         accept="image/*,application/pdf"
-                        class="block w-full text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-gray-800 file:px-3 file:py-2 file:text-xs file:font-semibold file:uppercase file:tracking-widest file:text-white hover:file:bg-gray-700"
+                        class="block w-full text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-red-700 file:px-3 file:py-2 file:text-xs file:font-semibold file:uppercase file:tracking-widest file:text-white hover:file:bg-red-800"
                         required
                     />
                     <p class="text-xs text-gray-600 whitespace-pre-line">{{ $uploadHint }}</p>
@@ -274,7 +274,7 @@
 
                 <div class="space-y-2">
                     <label class="flex items-start gap-2 text-sm">
-                        <input type="checkbox" name="accept_privacy" value="1" class="mt-1 rounded border-gray-300" {{ old('accept_privacy') ? 'checked' : '' }} required>
+                        <input type="checkbox" name="accept_privacy" value="1" class="mt-1 rounded border-red-200" {{ old('accept_privacy') ? 'checked' : '' }} required>
                         <span>{{ \App\Support\UiText::t('reservation', 'accept_privacy') }}</span>
                     </label>
                     <x-input-error class="mt-2" :messages="$errors->get('accept_privacy')" />
@@ -282,7 +282,7 @@
 
                 <button
                     type="submit"
-                    class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                     :disabled="!canSubmit"
                 >
                     {{ $ui('submit', 'Podnesi zahtjev') }}

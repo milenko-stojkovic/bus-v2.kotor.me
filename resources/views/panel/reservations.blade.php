@@ -37,7 +37,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if ($advanceEnabled && !is_null($advanceBalance))
-                <div class="rounded-md border border-gray-200 bg-gray-50 p-3">
+                <div class="rounded-md border border-red-100 bg-red-50 p-3">
                     <span class="text-sm text-gray-600">Ukupan iznos avansa:</span>
                     <span class="ml-2 font-semibold text-gray-900">{{ number_format((float) $advanceBalance, 2, '.', '') }} EUR</span>
                 </div>
@@ -54,7 +54,7 @@
             @include('partials.checkout-result-banner')
 
             @if (session('message'))
-                <div class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('message') }}</div>
+                <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('message') }}</div>
             @endif
             @if (session('error'))
                 <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ session('error') }}</div>
@@ -67,9 +67,9 @@
                     <p class="text-sm text-gray-600">{{ $ui('step_hint') }}</p>
 
                     @if ($vehicles->isEmpty())
-                        <div class="rounded-md bg-amber-50 p-4 text-sm text-amber-900 space-y-2">
+                        <div class="rounded-md bg-red-50 p-4 text-sm text-red-900 space-y-2">
                             <p>{{ $noVehiclesHint }}</p>
-                            <a href="{{ route('panel.vehicles') }}" class="inline-flex text-indigo-700 font-medium underline">{{ $openVehiclesLabel }}</a>
+                            <a href="{{ route('panel.vehicles') }}" class="inline-flex text-red-700 font-medium underline">{{ $openVehiclesLabel }}</a>
                         </div>
                     @endif
 
@@ -83,7 +83,7 @@
                                     min="{{ $minDate }}"
                                     max="{{ $maxDate }}"
                                     value="{{ $selected_date ?? '' }}"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                 />
                             </div>
 
@@ -92,7 +92,7 @@
                                 <select
                                     id="drop_off_time_slot_id"
                                     name="drop_off_time_slot_id"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                     @disabled(empty($selected_date))
                                 >
                                     <option value="">{{ $ui('select_time_slot') }}</option>
@@ -109,7 +109,7 @@
                                 <select
                                     id="pick_up_time_slot_id"
                                     name="pick_up_time_slot_id"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                     @disabled($departure_disabled ?? true)
                                 >
                                     <option value="">{{ $ui('select_time_slot') }}</option>
@@ -127,7 +127,7 @@
                                 <select
                                     id="vehicle_id_panel"
                                     name="vehicle_id"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                     @disabled($vehicles->isEmpty() || empty($selected_date) || empty($arrival_id) || empty($departure_id))
                                 >
                                     <option value="">{{ $pn('select_vehicle_option', 'Select vehicle') }}</option>
@@ -149,7 +149,7 @@
                             <input type="hidden" name="pick_up_time_slot_id" value="{{ $departure_id ?? '' }}">
                             <input type="hidden" name="vehicle_id" value="{{ $vehicle_id ?? '' }}">
 
-                            <div class="rounded-md bg-gray-50 p-3 text-sm text-gray-800">
+                            <div class="rounded-md bg-red-50 p-3 text-sm text-gray-800">
                                 @if (!empty($arrival_id) && !empty($departure_id))
                                     @if ($is_free_reservation ?? false)
                                         <strong>{{ $ui('free_reservation') }}</strong>
@@ -179,22 +179,22 @@
 
                             <div class="space-y-2">
                                 <label class="flex items-start gap-2 text-sm">
-                                    <input type="checkbox" name="accept_terms" value="1" class="mt-1 rounded border-gray-300" {{ old('accept_terms') ? 'checked' : '' }} required>
+                                    <input type="checkbox" name="accept_terms" value="1" class="mt-1 rounded border-red-200" {{ old('accept_terms') ? 'checked' : '' }} required>
                                     <span>
                                         {{ $termsPrefix }}
-                                        <button type="button" id="openTermsModalPanel" class="underline text-blue-700 hover:text-blue-900">
+                                        <button type="button" id="openTermsModalPanel" class="underline text-red-700 hover:text-red-900">
                                             {{ $termsLinkLabel }}
                                         </button>
                                     </span>
                                 </label>
                                 <label class="flex items-start gap-2 text-sm">
-                                    <input type="checkbox" name="accept_privacy" value="1" class="mt-1 rounded border-gray-300" {{ old('accept_privacy') ? 'checked' : '' }} required>
+                                    <input type="checkbox" name="accept_privacy" value="1" class="mt-1 rounded border-red-200" {{ old('accept_privacy') ? 'checked' : '' }} required>
                                     <span>{{ $ui('accept_privacy') }}</span>
                                 </label>
                             </div>
 
                             @if ($advanceEnabled && !($is_free_reservation ?? false) && !empty($arrival_id) && !empty($departure_id) && !empty($vehicle_id))
-                                <div class="rounded-md bg-slate-50 border border-slate-200 p-3 text-sm space-y-2">
+                                <div class="rounded-md bg-red-50 border border-red-100 p-3 text-sm space-y-2">
                                     <div class="text-gray-800">
                                         <strong>{{ $pn('advance_available', $locale === 'cg' ? 'Raspoloživi avans' : 'Available advance') }}:</strong>
                                         {{ number_format((float) $advanceBalance, 2, '.', '') }} EUR
@@ -202,11 +202,11 @@
                                     <div class="space-y-1">
                                         <div class="font-medium text-gray-800">{{ $pn('payment_method_title', $locale === 'cg' ? 'Način plaćanja' : 'Payment method') }}</div>
                                         <label class="flex items-center gap-2">
-                                            <input type="radio" name="payment_method" value="card" class="rounded border-gray-300" {{ old('payment_method', 'card') === 'card' ? 'checked' : '' }}>
+                                            <input type="radio" name="payment_method" value="card" class="rounded border-red-200" {{ old('payment_method', 'card') === 'card' ? 'checked' : '' }}>
                                             <span>{{ $pn('pay_by_card', $locale === 'cg' ? 'Plati karticom' : 'Pay by card') }}</span>
                                         </label>
                                         <label class="flex items-center gap-2">
-                                            <input type="radio" name="payment_method" value="advance" class="rounded border-gray-300" {{ old('payment_method') === 'advance' ? 'checked' : '' }} {{ $advanceCanPay ? '' : 'disabled' }}>
+                                            <input type="radio" name="payment_method" value="advance" class="rounded border-red-200" {{ old('payment_method') === 'advance' ? 'checked' : '' }} {{ $advanceCanPay ? '' : 'disabled' }}>
                                             <span class="{{ $advanceCanPay ? '' : 'text-gray-400' }}">{{ $pn('pay_from_advance', $locale === 'cg' ? 'Plati iz avansa' : 'Pay from advance') }}</span>
                                         </label>
                                         @if (! $advanceCanPay)
@@ -219,15 +219,15 @@
                             <div class="text-sm text-gray-700 space-y-1">
                                 <div class="font-medium">{{ $locationLabel }}</div>
                                 <div class="flex flex-col gap-1">
-                                    <a href="https://maps.app.goo.gl/oXD6SEzjyXtm4c586" target="_blank" rel="noopener" class="underline text-blue-700 hover:text-blue-900">Autoboka</a>
-                                    <a href="https://maps.app.goo.gl/kPAD6mipzZTjCCYE7" target="_blank" rel="noopener" class="underline text-blue-700 hover:text-blue-900">Puč</a>
+                                    <a href="https://maps.app.goo.gl/oXD6SEzjyXtm4c586" target="_blank" rel="noopener" class="underline text-red-700 hover:text-red-900">Autoboka</a>
+                                    <a href="https://maps.app.goo.gl/kPAD6mipzZTjCCYE7" target="_blank" rel="noopener" class="underline text-red-700 hover:text-red-900">Puč</a>
                                 </div>
                             </div>
 
                             <button
                                 type="submit"
                                 id="panelReserveBtn"
-                                class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled
                             >
                                 {{ $ui('reserve') }}
@@ -241,7 +241,7 @@
                 <div class="relative mx-auto mt-10 w-[92%] max-w-2xl rounded-lg bg-white shadow-lg">
                     <div class="flex items-center justify-between border-b px-4 py-3">
                         <h2 class="text-base font-semibold">{{ $termsTitle }}</h2>
-                        <button type="button" id="closeTermsModalPanel" class="rounded px-2 py-1 text-sm text-gray-600 hover:bg-gray-100">
+                        <button type="button" id="closeTermsModalPanel" class="rounded px-2 py-1 text-sm text-gray-600 hover:bg-red-50">
                             {{ $pn('action_close', $locale === 'cg' ? 'Zatvori' : 'Close') }}
                         </button>
                     </div>

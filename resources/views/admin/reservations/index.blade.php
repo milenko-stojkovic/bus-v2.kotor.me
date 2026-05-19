@@ -8,7 +8,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @if(session('message'))
-                <div class="mb-4 rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('message') }}</div>
+                <div class="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('message') }}</div>
             @endif
             @if(session('error'))
                 <div class="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
@@ -19,14 +19,14 @@
                         <div class="flex-1 min-w-[200px]">
                             <label for="q" class="block text-sm font-medium text-gray-700 mb-1">Pretraga (email, tablica, ime, ID transakcije)</label>
                             <input type="text" name="q" id="q" value="{{ old('q', $search) }}"
-                                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                   class="block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
                                    placeholder="Pretraži...">
                         </div>
-                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800 focus:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150">
                             Pretraži
                         </button>
                         @if($search !== '')
-                            <a href="{{ route('staff.reservations.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 focus:outline-none transition">
+                            <a href="{{ route('staff.reservations.index') }}" class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50 focus:outline-none transition">
                                 Prikaži naredna 3h
                             </a>
                         @endif
@@ -38,7 +38,7 @@
 
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50">
+                            <thead class="bg-red-50">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Datum</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Drop-off</th>
@@ -62,17 +62,17 @@
                                         <td class="px-4 py-2 text-gray-600">{{ $r->email }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-gray-900">{{ $r->license_plate }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap">
-                                            <span class="px-2 py-0.5 rounded text-xs {{ $r->status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">{{ $r->status }}</span>
+                                            <span class="px-2 py-0.5 rounded text-xs {{ $r->status === 'paid' ? 'bg-red-100 text-red-900' : 'bg-red-50 text-gray-800' }}">{{ $r->status }}</span>
                                         </td>
                                         <td class="px-4 py-2 whitespace-nowrap">
                                             @if($r->fiscalizationStatus() === 'completed')
-                                                <span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800">OK</span>
+                                                <span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-900">OK</span>
                                             @elseif($r->fiscalizationStatus() === 'failed')
-                                                <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Ponovi</span>
+                                                <span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">Ponovi</span>
                                             @elseif($r->fiscalizationStatus() === 'not_applicable')
-                                                <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">—</span>
+                                                <span class="px-2 py-0.5 rounded text-xs bg-red-50 text-red-800">—</span>
                                             @else
-                                                <span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">Na čekanju</span>
+                                                <span class="px-2 py-0.5 rounded text-xs bg-red-50 text-gray-600">Na čekanju</span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-2 text-gray-500 font-mono text-xs">{{ $r->merchant_transaction_id }}</td>
@@ -81,16 +81,16 @@
                                                 @if($r->postFiscalizationDataUnresolved)
                                                     <form action="{{ route('staff.reservations.retry-fiscalization', $r->id) }}" method="post" class="inline">
                                                         @csrf
-                                                        <button type="submit" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-amber-100 text-amber-800 hover:bg-amber-200">Retry fiskalizaciju</button>
+                                                        <button type="submit" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200">Retry fiskalizaciju</button>
                                                     </form>
                                                     <form action="{{ route('staff.reservations.mark-resolved', $r->id) }}" method="post" class="inline">
                                                         @csrf
-                                                        <button type="submit" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">Označi rešeno</button>
+                                                        <button type="submit" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-50 text-gray-700 hover:bg-red-100">Označi rešeno</button>
                                                     </form>
                                                 @endif
                                                 <form action="{{ route('staff.reservations.resend-invoice', $r->id) }}" method="post" class="inline">
                                                     @csrf
-                                                    <button type="submit" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">Pošalji račun ponovo</button>
+                                                    <button type="submit" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200">Pošalji račun ponovo</button>
                                                 </form>
                                             </div>
                                         </td>

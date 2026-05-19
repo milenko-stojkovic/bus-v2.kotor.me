@@ -21,7 +21,7 @@
             @endif
 
             @if (session('message'))
-                <div class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('message') }}</div>
+                <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('message') }}</div>
             @endif
             @if (session('error'))
                 <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ session('error') }}</div>
@@ -46,7 +46,7 @@
                     @else
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead class="bg-gray-50">
+                                <thead class="bg-red-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $ui('date', 'Date') }}</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $ui('arrival_time', 'Arrival') }}</th>
@@ -75,7 +75,7 @@
                                                         x-show="editing"
                                                         name="vehicle_id"
                                                         form="{{ $formId }}"
-                                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                                        class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm"
                                                         required
                                                     >
                                                         @foreach ($allowed as $v)
@@ -85,7 +85,7 @@
                                                         @endforeach
                                                     </select>
                                                 @else
-                                                    <span x-show="editing" class="text-amber-700 text-xs">{{ $p('upcoming_no_eligible_vehicle', 'No eligible vehicle in your fleet.') }}</span>
+                                                    <span x-show="editing" class="text-red-700 text-xs">{{ $p('upcoming_no_eligible_vehicle', 'No eligible vehicle in your fleet.') }}</span>
                                                 @endif
                                             </td>
                                             <td class="px-3 py-2 text-gray-700">{{ $r->vehicleType?->formatLabel($locale, 'EUR') ?? '—' }}</td>
@@ -94,7 +94,7 @@
                                                     @if ($allowed->isNotEmpty())
                                                         <button
                                                             type="button"
-                                                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                                            class="inline-flex items-center px-3 py-1.5 border border-red-200 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-red-50"
                                                             @click="editing = true"
                                                         >
                                                             {{ $p('change_vehicle', 'Change vehicle') }}
@@ -110,7 +110,7 @@
                                                             @method('PATCH')
                                                             <button
                                                                 type="submit"
-                                                                class="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium text-white bg-gray-800 hover:bg-gray-700"
+                                                                class="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium text-white bg-red-700 hover:bg-red-800"
                                                             >
                                                                 {{ $p('change_vehicle_confirm', 'Confirm') }}
                                                             </button>
@@ -118,7 +118,7 @@
                                                     @endif
                                                     <button
                                                         type="button"
-                                                        class="inline-flex items-center justify-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                                        class="inline-flex items-center justify-center px-3 py-1.5 border border-red-200 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-red-50"
                                                         @click="editing = false; (function(){ var el = document.getElementById('upcoming-sel-{{ $r->id }}'); if (el) el.value = '{{ $initialVehicleId }}'; })()"
                                                     >
                                                         {{ $p('action_cancel', 'Cancel') }}

@@ -11,7 +11,7 @@
     <div class="py-6" x-data="{ deleteOpen: false, deleteUrl: '' }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if(session('message'))
-                <div class="rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('message') }}</div>
+                <div class="rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('message') }}</div>
             @endif
             @if(session('error'))
                 <div class="rounded-md bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
@@ -45,7 +45,7 @@
                             </div>
                             <div class="flex-none w-72">
                                 <x-input-label for="add_vehicle_type_id" :value="$ui('vehicle_category')" />
-                                <select id="add_vehicle_type_id" name="vehicle_type_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <select id="add_vehicle_type_id" name="vehicle_type_id" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500">
                                     <option value="">{{ $ui('select_vehicle_category') }}</option>
                                     @foreach($vehicleTypes as $type)
                                         <option value="{{ $type->id }}" @selected((string) old('vehicle_type_id') === (string) $type->id)>
@@ -67,11 +67,11 @@
                     @endphp
 
                     @if ($needsChange)
-                        <div class="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 space-y-3">
-                            <div class="text-sm text-amber-900 font-semibold">
+                        <div class="mt-6 rounded-md border border-red-200 bg-red-50 p-4 space-y-3">
+                            <div class="text-sm text-red-900 font-semibold">
                                 {{ $pn('vehicle_category_change_title', 'Zahtjev za promjenu kategorije') }}
                             </div>
-                            <div class="text-sm text-amber-900">
+                            <div class="text-sm text-red-900">
                                 {{ $pn('vehicle_category_change_help', 'Molimo priložite fotografiju ili PDF dokumenta.') }}
                             </div>
 
@@ -91,7 +91,7 @@
 
                                 <div class="flex flex-wrap gap-3">
                                     <x-primary-button type="submit">{{ $pn('vehicle_category_change_send', 'Pošalji zahtjev') }}</x-primary-button>
-                                    <a href="{{ route('panel.vehicles', [], false) }}" class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-gray-50">
+                                    <a href="{{ route('panel.vehicles', [], false) }}" class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50">
                                         {{ $pn('vehicle_category_change_cancel', 'Odustani') }}
                                     </a>
                                 </div>
@@ -106,7 +106,7 @@
                     <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $pn('vehicles_list_title') }}</h3>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50">
+                            <thead class="bg-red-50">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ $ui('registration_plates') }}</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ $ui('vehicle_category') }}</th>

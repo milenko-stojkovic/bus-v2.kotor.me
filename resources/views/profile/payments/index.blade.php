@@ -14,7 +14,7 @@
                             ? 'Ova sekcija je trenutno minimalan prikaz. Za sada, pregled plaćanja možete posmatrati kroz listu rezervacija.'
                             : 'This section is currently a minimal placeholder. For now, you can use the reservations list as a payment overview.' }}
                     </p>
-                    <a href="{{ route('panel.reservations') }}" class="underline text-blue-700 hover:text-blue-900">
+                    <a href="{{ route('panel.reservations') }}" class="underline text-red-700 hover:text-red-900">
                         {{ app()->getLocale() === 'cg' ? 'Otvori rezervacije' : 'Open reservations' }}
                     </a>
                 </div>

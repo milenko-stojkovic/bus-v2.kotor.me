@@ -40,7 +40,7 @@
                 </div>
             @else
                 @if ($missingAnyCandidate)
-                    <div class="rounded-md bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+                    <div class="rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-900">
                         {{ $p('vehicles_remove_no_solution', 'This vehicle cannot be removed because at least one upcoming reservation has no eligible replacement. Please add another vehicle of the same category to your fleet.') }}
                     </div>
                 @endif
@@ -59,7 +59,7 @@
                                     $cands = $candidateVehiclesByReservationId[$r->id] ?? collect();
                                     $onlyOne = $cands instanceof \Illuminate\Support\Collection ? $cands->count() === 1 : false;
                                 @endphp
-                                <div class="rounded-md border border-gray-200 p-4 space-y-2">
+                                <div class="rounded-md border border-red-100 p-4 space-y-2">
                                     <div class="flex flex-wrap items-start justify-between gap-2 text-sm">
                                         <div class="text-gray-900 font-semibold">#{{ $r->id }}</div>
                                         <div class="text-gray-700">
@@ -72,7 +72,7 @@
                                     </div>
 
                                     @if ($onlyOne)
-                                        <div class="text-xs text-amber-800">
+                                        <div class="text-xs text-red-800">
                                             {{ $p('vehicles_remove_only_one', 'Only one eligible replacement exists for this reservation.') }}
                                         </div>
                                     @endif
@@ -82,7 +82,7 @@
                                             <label class="block text-xs font-medium text-gray-600">{{ $p('vehicles_remove_select_label', 'Replacement vehicle') }}</label>
                                             <select
                                                 name="replacements[{{ $r->id }}]"
-                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                                class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm"
                                                 @disabled($cands->isEmpty())
                                                 required
                                             >
@@ -98,7 +98,7 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <a href="{{ route('panel.vehicles', [], false) }}" class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-gray-50">
+                            <a href="{{ route('panel.vehicles', [], false) }}" class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50">
                                 {{ $p('action_cancel', 'Cancel') }}
                             </a>
                             <button

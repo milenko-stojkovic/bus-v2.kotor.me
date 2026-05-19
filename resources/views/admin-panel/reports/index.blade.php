@@ -18,25 +18,25 @@
             </div>
         @endif
 
-        <div class="bg-white shadow rounded-lg p-6 border border-gray-100">
+        <div class="bg-white shadow rounded-lg p-6 border border-red-100">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <div class="text-sm font-semibold text-gray-900 mb-3">Kada</div>
                     <div class="space-y-2 text-sm text-gray-700">
                         <label class="flex items-center gap-2">
-                            <input type="radio" name="when" value="daily" class="rounded border-gray-300" x-model="when">
+                            <input type="radio" name="when" value="daily" class="rounded border-red-200" x-model="when">
                             <span>Dnevni</span>
                         </label>
                         <label class="flex items-center gap-2">
-                            <input type="radio" name="when" value="monthly" class="rounded border-gray-300" x-model="when" :disabled="kind === 'advance_obligations'">
+                            <input type="radio" name="when" value="monthly" class="rounded border-red-200" x-model="when" :disabled="kind === 'advance_obligations'">
                             <span>Mjesečni</span>
                         </label>
                         <label class="flex items-center gap-2">
-                            <input type="radio" name="when" value="yearly" class="rounded border-gray-300" x-model="when" :disabled="kind === 'advance_obligations'">
+                            <input type="radio" name="when" value="yearly" class="rounded border-red-200" x-model="when" :disabled="kind === 'advance_obligations'">
                             <span>Godišnji</span>
                         </label>
                         <label class="flex items-center gap-2">
-                            <input type="radio" name="when" value="period" class="rounded border-gray-300" x-model="when" :disabled="kind === 'advance_obligations'">
+                            <input type="radio" name="when" value="period" class="rounded border-red-200" x-model="when" :disabled="kind === 'advance_obligations'">
                             <span>Period</span>
                         </label>
                     </div>
@@ -51,20 +51,20 @@
                     <div class="text-sm font-semibold text-gray-900 mb-3">Kakav</div>
                     <div class="space-y-2 text-sm text-gray-700">
                         <label class="flex items-center gap-2">
-                            <input type="radio" name="kind" value="by_payment" class="rounded border-gray-300" x-model="kind">
+                            <input type="radio" name="kind" value="by_payment" class="rounded border-red-200" x-model="kind">
                             <span>Po uplati</span>
                         </label>
                         <label class="flex items-center gap-2">
-                            <input type="radio" name="kind" value="by_realization" class="rounded border-gray-300" x-model="kind">
+                            <input type="radio" name="kind" value="by_realization" class="rounded border-red-200" x-model="kind">
                             <span>Po realizaciji</span>
                         </label>
                         <label class="flex items-center gap-2">
-                            <input type="radio" name="kind" value="by_vehicle_type" class="rounded border-gray-300" x-model="kind">
+                            <input type="radio" name="kind" value="by_vehicle_type" class="rounded border-red-200" x-model="kind">
                             <span>Po tipu vozila</span>
                         </label>
                         @if ((bool) config('features.advance_payments'))
                             <label class="flex items-center gap-2">
-                                <input type="radio" name="kind" value="advance_obligations" class="rounded border-gray-300" x-model="kind" @change="when = 'daily'">
+                                <input type="radio" name="kind" value="advance_obligations" class="rounded border-red-200" x-model="kind" @change="when = 'daily'">
                                 <span>Obaveze po avansima</span>
                             </label>
                         @endif
@@ -74,7 +74,7 @@
 
             <div class="mt-6 flex justify-end">
                 <button type="button"
-                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-700"
+                        class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed hover:bg-red-800"
                         :disabled="!canProceed()"
                         @click="step = 2">
                     Izvještaj
@@ -82,7 +82,7 @@
             </div>
         </div>
 
-        <div class="bg-white shadow rounded-lg p-6 border border-gray-100" x-show="step === 2" x-cloak>
+        <div class="bg-white shadow rounded-lg p-6 border border-red-100" x-show="step === 2" x-cloak>
             <div class="text-sm font-semibold text-gray-900">Izbor opsega</div>
             <p class="text-sm text-gray-600 mt-1" x-show="kind !== 'advance_obligations'">Opseg je ograničen na datume kreiranja rezervacija (created_at).</p>
             <p class="text-sm text-gray-600 mt-1" x-show="kind === 'advance_obligations'">Snapshot izvještaj: stanje se računa po ledger transakcijama (created_at) zaključno sa krajem izabranog dana.</p>
@@ -104,7 +104,7 @@
                                min="{{ $minDate }}"
                                max="{{ $maxDate }}"
                                x-model="dailyDate"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                               class="mt-1 block w-full rounded-md border-red-200 shadow-sm" />
                     </div>
                 </template>
 
@@ -115,7 +115,7 @@
                             <select id="year" name="year"
                                     x-model="monthYear"
                                     @change="month = ''"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm">
                                 <option value="">—</option>
                                 @for ($y = $minYear; $y <= $maxYear; $y++)
                                     <option value="{{ $y }}">{{ $y }}</option>
@@ -127,7 +127,7 @@
                             <select id="month" name="month"
                                     x-model="month"
                                     :disabled="!monthYear"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm disabled:bg-gray-100 disabled:text-gray-400">
+                                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm disabled:bg-red-50 disabled:text-gray-400">
                                 <option value="">—</option>
                                 @for ($m = 1; $m <= 12; $m++)
                                     <option value="{{ $m }}" :disabled="!isMonthlyMonthAllowed({{ $m }})">
@@ -144,7 +144,7 @@
                         <x-input-label for="year2" value="Godina" />
                         <select id="year2" name="year"
                                 x-model="yearlyYear"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                class="mt-1 block w-full rounded-md border-red-200 shadow-sm">
                             <option value="">—</option>
                             @for ($y = $minYear; $y <= $maxYear; $y++)
                                 <option value="{{ $y }}">{{ $y }}</option>
@@ -163,7 +163,7 @@
                                    min="{{ $minDate }}"
                                    max="{{ $maxDate }}"
                                    x-model="dateFrom"
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                                   class="mt-1 block w-full rounded-md border-red-200 shadow-sm" />
                         </div>
                         <div>
                             <x-input-label for="date_to" value="Do" />
@@ -173,20 +173,20 @@
                                    :min="dateFrom || '{{ $minDate }}'"
                                    max="{{ $maxDate }}"
                                    x-model="dateTo"
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                                   class="mt-1 block w-full rounded-md border-red-200 shadow-sm" />
                         </div>
                     </div>
                 </template>
 
                 <div class="flex justify-end gap-2 pt-2">
                     <a href="{{ route('panel_admin.reports', [], false) }}"
-                       class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50"
+                       class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50"
                        @click.prevent="resetAll()">
                         Odkaži
                     </a>
                     <button type="submit"
                             :disabled="!canGeneratePdf()"
-                            class="inline-flex items-center px-4 py-2 bg-indigo-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest shadow-sm hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-indigo-700">
+                            class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-700">
                         PDF
                     </button>
                 </div>

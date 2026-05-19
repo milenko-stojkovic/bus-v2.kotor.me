@@ -21,33 +21,33 @@
             </div>
         @endif
 
-        <form method="get" action="{{ route('panel_admin.analytics', [], false) }}" class="bg-white shadow rounded-lg p-5 border border-gray-100 space-y-4">
+        <form method="get" action="{{ route('panel_admin.analytics', [], false) }}" class="bg-white shadow rounded-lg p-5 border border-red-100 space-y-4">
             <input type="hidden" name="show" value="1">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
                     <x-input-label for="date_from" value="Datum od" />
                     <input type="date" id="date_from" name="date_from" min="{{ $minDate }}" max="{{ $maxDate }}"
                            value="{{ $dateFrom }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                           class="mt-1 block w-full rounded-md border-red-200 shadow-sm" />
                 </div>
                 <div>
                     <x-input-label for="date_to" value="Datum do" />
                     <input type="date" id="date_to" name="date_to" min="{{ $minDate }}" max="{{ $maxDate }}"
                            value="{{ $dateTo }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                           class="mt-1 block w-full rounded-md border-red-200 shadow-sm" />
                 </div>
                 <div class="flex items-center gap-2">
-                    <input type="checkbox" id="include_free" name="include_free" value="1" class="rounded border-gray-300"
+                    <input type="checkbox" id="include_free" name="include_free" value="1" class="rounded border-red-200"
                         @checked($includeFree) />
                     <label for="include_free" class="text-sm text-gray-700">Uključi besplatne rezervacije</label>
                 </div>
                 <div class="flex gap-2 justify-end">
                     <button type="submit"
-                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                        class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800">
                         Prikaži
                     </button>
                     <a href="{{ route('panel_admin.analytics.pdf', ['date_from' => $dateFrom, 'date_to' => $dateTo, 'include_free' => $includeFree ? 1 : 0], false) }}"
-                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+                        class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50">
                         Generiši PDF
                     </a>
                 </div>
@@ -61,84 +61,84 @@
             @endphp
             <p class="text-sm text-gray-600">{{ $st['kpi'] ?? '' }}</p>
             <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Prihod od rezervacija (paid)</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $fmtMoney($k['revenue_reservations']) }}</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Prihod od Limo servisa</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $fmtMoney((float) ($lm['revenue_total'] ?? 0)) }}</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100 ring-1 ring-indigo-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100 ring-1 ring-red-100">
                     <div class="text-xs text-gray-500">Ukupan prihod (rezervacije + Limo)</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $fmtMoney($k['revenue_grand_total']) }}</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Broj rezervacija</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $k['reservations_total'] }}</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Paid / Free</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $k['paid_reservations'] }} / {{ $k['free_reservations'] }}</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Prosječan prihod po paid</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $fmtMoney($k['avg_revenue_per_paid']) }}</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Ukupan broj zauzetih slotova</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $k['occupied_slots_total'] }}</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Prosječna popunjenost (slot-level)</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $fmtPct($k['avg_occupancy_slot_level']) }}</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Broj blokiranih slotova</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $k['blocked_slot_rows'] }}</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-gray-100">
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Izgubljeni kapacitet (blokiranje)</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $fmtPct($k['blocked_capacity_pct']) }}</div>
                 </div>
             </section>
 
-            <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+            <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                 <h2 class="text-base font-semibold text-gray-900">Limo servis</h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $st['limo'] ?? '' }}</p>
                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div class="rounded-lg border border-gray-100 bg-slate-50 p-4">
+                    <div class="rounded-lg border border-red-100 bg-red-50 p-4">
                         <div class="text-xs text-gray-500">Ukupan prihod od Limo servisa</div>
                         <div class="text-lg font-semibold text-gray-900">{{ $fmtMoney((float) ($lm['revenue_total'] ?? 0)) }}</div>
                     </div>
-                    <div class="rounded-lg border border-gray-100 bg-slate-50 p-4">
+                    <div class="rounded-lg border border-red-100 bg-red-50 p-4">
                         <div class="text-xs text-gray-500">Broj evidentiranih Limo pickup-a</div>
                         <div class="text-lg font-semibold text-gray-900">{{ (int) ($lm['pickup_count'] ?? 0) }}</div>
                     </div>
-                    <div class="rounded-lg border border-gray-100 bg-slate-50 p-4">
+                    <div class="rounded-lg border border-red-100 bg-red-50 p-4">
                         <div class="text-xs text-gray-500">QR pickup</div>
                         <div class="text-lg font-semibold text-gray-900">{{ (int) ($lm['qr_count'] ?? 0) }}</div>
                     </div>
-                    <div class="rounded-lg border border-gray-100 bg-slate-50 p-4">
+                    <div class="rounded-lg border border-red-100 bg-red-50 p-4">
                         <div class="text-xs text-gray-500">Pickup preko tablice</div>
                         <div class="text-lg font-semibold text-gray-900">{{ (int) ($lm['plate_count'] ?? 0) }}</div>
                     </div>
-                    <div class="rounded-lg border border-gray-100 bg-slate-50 p-4">
+                    <div class="rounded-lg border border-red-100 bg-red-50 p-4">
                         <div class="text-xs text-gray-500">Fiskalizovano</div>
                         <div class="text-lg font-semibold text-gray-900">{{ (int) ($lm['fiscalized_count'] ?? 0) }}</div>
                     </div>
-                    <div class="rounded-lg border border-gray-100 bg-slate-50 p-4">
+                    <div class="rounded-lg border border-red-100 bg-red-50 p-4">
                         <div class="text-xs text-gray-500">U obradi</div>
                         <div class="text-lg font-semibold text-gray-900">{{ (int) ($lm['pending_fiscal_count'] ?? 0) }}</div>
                     </div>
-                    <div class="rounded-lg border border-gray-100 bg-slate-50 p-4">
+                    <div class="rounded-lg border border-red-100 bg-red-50 p-4">
                         <div class="text-xs text-gray-500">Greška fiskalizacije</div>
                         <div class="text-lg font-semibold text-gray-900">{{ (int) ($lm['fiscal_failed_count'] ?? 0) }}</div>
                     </div>
                 </div>
             </section>
 
-            <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+            <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                 <h2 class="text-base font-semibold text-gray-900">Trend po danima</h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $st['trend'] ?? '' }}</p>
                 <div class="mt-4 overflow-x-auto">
@@ -170,7 +170,7 @@
             </section>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+                <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                     <h2 class="text-base font-semibold text-gray-900">Analiza po delovima dana</h2>
                     <p class="text-sm text-gray-600 mt-1">{{ $st['day_parts'] ?? '' }}</p>
                     <div class="mt-4 overflow-x-auto">
@@ -199,7 +199,7 @@
                     </div>
                 </section>
 
-                <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+                <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                     <h2 class="text-base font-semibold text-gray-900">Paid vs Free</h2>
                     <p class="text-sm text-gray-600 mt-1">{{ $st['paid_vs_free'] ?? '' }}</p>
                     @php
@@ -220,7 +220,7 @@
                 </section>
             </div>
 
-            <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+            <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                 <h2 class="text-base font-semibold text-gray-900">Analiza po tipovima vozila</h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $st['vehicle_types'] ?? '' }}</p>
                 <div class="mt-4 overflow-x-auto">
@@ -249,7 +249,7 @@
                 </div>
             </section>
 
-            <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+            <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                 <h2 class="text-base font-semibold text-gray-900">Analiza po agencijama</h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $st['agencies'] ?? '' }}</p>
                 <div class="mt-4 overflow-x-auto">
@@ -302,7 +302,7 @@
                 </div>
             </section>
 
-            <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+            <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                 <h2 class="text-base font-semibold text-gray-900">Admin free (FZBR) po agencijama</h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $st['admin_free_agencies'] ?? '' }}</p>
                 <div class="mt-4 overflow-x-auto">
@@ -343,7 +343,7 @@
                 </div>
             </section>
 
-            <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+            <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                 <h2 class="text-base font-semibold text-gray-900">Analiza po državama</h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $st['countries'] ?? '' }}</p>
                 <div class="mt-4 overflow-x-auto">
@@ -373,7 +373,7 @@
             </section>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+                <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                     <h2 class="text-base font-semibold text-gray-900">Blokiranje i izgubljeni kapacitet</h2>
                     <p class="text-sm text-gray-600 mt-1">{{ $st['blocking'] ?? '' }}</p>
                     @php
@@ -409,7 +409,7 @@
                     @endif
                 </section>
 
-                <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+                <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                     <h2 class="text-base font-semibold text-gray-900">Operativni problemi / recovery</h2>
                     <p class="text-sm text-gray-600 mt-1">{{ $st['ops'] ?? '' }}</p>
                     @php
@@ -453,7 +453,7 @@
             </div>
 
             @if ((bool) config('features.advance_payments'))
-                <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+                <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                     <h2 class="text-base font-semibold text-gray-900">Stanje avansa po agencijama</h2>
                     <p class="text-sm text-gray-600 mt-1">{{ $st['advance_balances'] ?? '' }}</p>
 
@@ -502,7 +502,7 @@
                                             @endif
                                         </td>
                                         <td class="py-2 pr-4 text-right whitespace-nowrap">
-                                            <a class="text-indigo-700 underline font-medium" href="{{ route('panel_admin.agencies.show', ['user' => $row['agency_user_id']], false) }}">Detalji</a>
+                                            <a class="text-red-700 underline font-medium" href="{{ route('panel_admin.agencies.show', ['user' => $row['agency_user_id']], false) }}">Detalji</a>
                                         </td>
                                     </tr>
                                 @empty

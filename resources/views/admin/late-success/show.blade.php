@@ -8,7 +8,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
             @if(session('message'))
-                <div class="rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('message') }}</div>
+                <div class="rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('message') }}</div>
             @endif
             @if(session('error'))
                 <div class="rounded-md bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
@@ -17,7 +17,7 @@
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Privremeni podaci (temp_data) #{{ $row->id }}</h3>
-                    <a href="{{ route('staff.late-success.index') }}" class="text-sm text-indigo-600 hover:text-indigo-800">Nazad na listu</a>
+                    <a href="{{ route('staff.late-success.index') }}" class="text-sm text-red-600 hover:text-red-800">Nazad na listu</a>
                 </div>
 
                 <dl class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -40,7 +40,7 @@
 
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-3">Sirovi callback payload</h3>
-                <pre class="text-xs bg-gray-50 border border-gray-200 rounded p-3 overflow-x-auto">{{ json_encode($row->raw_callback_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}' }}</pre>
+                <pre class="text-xs bg-red-50 border border-red-100 rounded p-3 overflow-x-auto">{{ json_encode($row->raw_callback_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}' }}</pre>
             </div>
 
             @if($row->status === \App\Models\TempData::STATUS_LATE_MANUAL_REVIEW)
@@ -49,13 +49,13 @@
                     <div class="flex flex-wrap gap-2">
                         <form method="post" action="{{ route('staff.late-success.force', $row->id) }}">
                             @csrf
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-amber-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-amber-500">
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700">
                                 Prisilno kreiraj rezervaciju
                             </button>
                         </form>
                         <form method="post" action="{{ route('staff.late-success.reject', $row->id) }}">
                             @csrf
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500">
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700">
                                 Odbij
                             </button>
                         </form>

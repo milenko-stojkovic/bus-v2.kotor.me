@@ -1,4 +1,4 @@
-<x-guest-layout>
+<x-guest-layout :landing-background="true">
     @php
         $minDate = now()->toDateString();
         $maxDate = now()->addDays(90)->toDateString();
@@ -18,7 +18,7 @@
         @include('partials.checkout-result-banner')
 
         @if (session('message'))
-            <div class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('message') }}</div>
+            <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('message') }}</div>
         @endif
         @if (session('error'))
             <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ session('error') }}</div>
@@ -34,7 +34,7 @@
                     min="{{ $minDate }}"
                     max="{{ $maxDate }}"
                     value="{{ $selected_date ?? '' }}"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                 />
                 <x-input-error class="mt-2" :messages="$errors->get('reservation_date')" />
             </div>
@@ -44,7 +44,7 @@
                 <select
                     id="drop_off_time_slot_id"
                     name="drop_off_time_slot_id"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                     @disabled(empty($selected_date))
                 >
                     <option value="">{{ $ui('select_time_slot') }}</option>
@@ -62,7 +62,7 @@
                 <select
                     id="pick_up_time_slot_id"
                     name="pick_up_time_slot_id"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                     @disabled($departure_disabled ?? true)
                 >
                     <option value="">{{ $ui('select_time_slot') }}</option>
@@ -83,7 +83,7 @@
                 <select
                     id="vehicle_type_id_step"
                     name="vehicle_type_id"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                     @disabled(empty($selected_date) || empty($arrival_id) || empty($departure_id))
                 >
                     <option value="">{{ $ui('select_vehicle_category') }}</option>
@@ -105,7 +105,7 @@
             <input type="hidden" name="pick_up_time_slot_id" value="{{ $departure_id ?? '' }}">
             <input type="hidden" name="vehicle_type_id" value="{{ request('vehicle_type_id') }}">
 
-            <div class="rounded-md bg-gray-50 p-3 text-sm text-gray-800">
+            <div class="rounded-md bg-red-50 p-3 text-sm text-gray-800">
                 @if (!empty($arrival_id) && !empty($departure_id))
                     @if ($is_free_reservation ?? false)
                         <strong>{{ $ui('free_reservation') }}</strong>
@@ -126,7 +126,7 @@
 
             <div>
                 <x-input-label for="country" :value="$ui('country')" />
-                <select id="country" name="country" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                <select id="country" name="country" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                     <option value="">{{ $ui('select_country') }}</option>
                     @foreach (($countries ?? []) as $code => $labels)
                         @php
@@ -162,10 +162,10 @@
 
             <div class="space-y-2">
                 <label class="flex items-start gap-2 text-sm">
-                    <input type="checkbox" name="accept_terms" value="1" class="mt-1 rounded border-gray-300" {{ old('accept_terms') ? 'checked' : '' }} required>
+                    <input type="checkbox" name="accept_terms" value="1" class="mt-1 rounded border-red-200" {{ old('accept_terms') ? 'checked' : '' }} required>
                     <span>
                         {{ $locale === 'cg' ? 'Saglasan/a sam sa' : 'I agree to the' }}
-                        <button type="button" id="openTermsModal" class="underline text-blue-700 hover:text-blue-900">
+                        <button type="button" id="openTermsModal" class="underline text-red-700 hover:text-red-900">
                             {{ $termsLinkLabel }}
                         </button>
                     </span>
@@ -173,7 +173,7 @@
                 <x-input-error class="mt-2" :messages="$errors->get('accept_terms')" />
 
                 <label class="flex items-start gap-2 text-sm">
-                    <input type="checkbox" name="accept_privacy" value="1" class="mt-1 rounded border-gray-300" {{ old('accept_privacy') ? 'checked' : '' }} required>
+                    <input type="checkbox" name="accept_privacy" value="1" class="mt-1 rounded border-red-200" {{ old('accept_privacy') ? 'checked' : '' }} required>
                     <span>{{ $ui('accept_privacy') }}</span>
                 </label>
                 <x-input-error class="mt-2" :messages="$errors->get('accept_privacy')" />
@@ -182,15 +182,15 @@
             <div class="text-sm text-gray-700 space-y-1">
                 <div class="font-medium">{{ $locationLabel }}</div>
                 <div class="flex flex-col gap-1">
-                    <a href="https://maps.app.goo.gl/oXD6SEzjyXtm4c586" target="_blank" rel="noopener" class="underline text-blue-700 hover:text-blue-900">Autoboka</a>
-                    <a href="https://maps.app.goo.gl/kPAD6mipzZTjCCYE7" target="_blank" rel="noopener" class="underline text-blue-700 hover:text-blue-900">Puč</a>
+                    <a href="https://maps.app.goo.gl/oXD6SEzjyXtm4c586" target="_blank" rel="noopener" class="underline text-red-700 hover:text-red-900">Autoboka</a>
+                    <a href="https://maps.app.goo.gl/kPAD6mipzZTjCCYE7" target="_blank" rel="noopener" class="underline text-red-700 hover:text-red-900">Puč</a>
                 </div>
             </div>
 
             <button
                 type="submit"
                 id="reserveBtn"
-                class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800 focus:bg-red-800 active:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled
             >
                 {{ $ui('reserve') }}
@@ -203,7 +203,7 @@
         <div class="relative mx-auto mt-10 w-[92%] max-w-2xl rounded-lg bg-white shadow-lg">
             <div class="flex items-center justify-between border-b px-4 py-3">
                 <h2 class="text-base font-semibold">{{ $termsTitle }}</h2>
-                <button type="button" id="closeTermsModal" class="rounded px-2 py-1 text-sm text-gray-600 hover:bg-gray-100">
+                <button type="button" id="closeTermsModal" class="rounded px-2 py-1 text-sm text-gray-600 hover:bg-red-50">
                     {{ $locale === 'cg' ? 'Zatvori' : 'Close' }}
                 </button>
             </div>

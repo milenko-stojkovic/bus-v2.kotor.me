@@ -15,7 +15,7 @@
 
             <a
                 href="{{ route('panel.statistics.pdf', $pdfParams) }}"
-                class="inline-flex items-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800"
+                class="inline-flex items-center rounded-md bg-red-900 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
             >
                 PDF
             </a>
@@ -35,7 +35,7 @@
                             min="{{ $minDate }}"
                             max="{{ $maxDate }}"
                             value="{{ request('date_from', $date_from) }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
                         />
                     </div>
                     <div>
@@ -47,19 +47,19 @@
                             min="{{ $minDate }}"
                             max="{{ $maxDate }}"
                             value="{{ request('date_to', $date_to) }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
                         />
                     </div>
                     <div class="flex gap-2">
                         <button
                             type="submit"
-                            class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+                            class="inline-flex items-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
                         >
                             {{ $s('apply_filters', 'Primijeni') }}
                         </button>
                         <a
                             href="{{ route('panel.statistics') }}"
-                            class="inline-flex items-center rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-200"
+                            class="inline-flex items-center rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-red-100"
                         >
                             {{ $s('reset_filters', 'Reset') }}
                         </a>
@@ -89,7 +89,7 @@
                     @else
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead class="bg-gray-50">
+                                <thead class="bg-red-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $s('registration_plates', 'Registration plates') }}</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $s('vehicle_category', 'Vehicle category') }}</th>

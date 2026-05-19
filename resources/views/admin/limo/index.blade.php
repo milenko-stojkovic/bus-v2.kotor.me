@@ -27,7 +27,7 @@
     <div class="space-y-6">
         <div>
             <h1 class="text-lg font-semibold text-gray-900">Limo događaji</h1>
-            <p class="text-sm text-gray-600 mt-1">Samo pregled (bez akcija). Filtar po datumu važi za vrijeme događaja (<code class="text-xs bg-gray-100 px-1 rounded">occurred_at</code>), zona Europe/Podgorica.</p>
+            <p class="text-sm text-gray-600 mt-1">Samo pregled (bez akcija). Filtar po datumu važi za vrijeme događaja (<code class="text-xs bg-red-50 px-1 rounded">occurred_at</code>), zona Europe/Podgorica.</p>
         </div>
 
         @if ($errors->any())
@@ -38,16 +38,16 @@
             </div>
         @endif
 
-        <form method="get" action="{{ route('admin.limo.index', [], false) }}" class="bg-white shadow rounded-lg p-5 border border-gray-100 space-y-4">
+        <form method="get" action="{{ route('admin.limo.index', [], false) }}" class="bg-white shadow rounded-lg p-5 border border-red-100 space-y-4">
             <fieldset class="space-y-2">
                 <legend class="text-sm font-medium text-gray-700">Vrsta pregleda</legend>
                 <div class="flex flex-wrap gap-4 text-sm">
                     <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="type" value="pickup" @checked($listType === 'pickup') class="rounded-full border-gray-300 text-indigo-600 shadow-sm" />
+                        <input type="radio" name="type" value="pickup" @checked($listType === 'pickup') class="rounded-full border-red-200 text-red-600 shadow-sm" />
                         <span>Limo pickup</span>
                     </label>
                     <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="type" value="incident" @checked($listType === 'incident') class="rounded-full border-gray-300 text-indigo-600 shadow-sm" />
+                        <input type="radio" name="type" value="incident" @checked($listType === 'incident') class="rounded-full border-red-200 text-red-600 shadow-sm" />
                         <span>Limo incident</span>
                     </label>
                 </div>
@@ -57,17 +57,17 @@
                     <x-input-label for="date_from" value="Datum od" />
                     <input type="date" id="date_from" name="date_from"
                            value="{{ old('date_from', $dateFrom) }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                           class="mt-1 block w-full rounded-md border-red-200 shadow-sm" />
                 </div>
                 <div>
                     <x-input-label for="date_to" value="Datum do" />
                     <input type="date" id="date_to" name="date_to"
                            value="{{ old('date_to', $dateTo) }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                           class="mt-1 block w-full rounded-md border-red-200 shadow-sm" />
                 </div>
                 <div class="flex gap-2 justify-start md:justify-end">
                     <button type="submit"
-                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                        class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800">
                         Filtriraj
                     </button>
                 </div>
@@ -75,9 +75,9 @@
         </form>
 
         @if ($listType === 'pickup')
-            <div class="bg-white shadow rounded-lg border border-gray-100 overflow-x-auto">
+            <div class="bg-white shadow rounded-lg border border-red-100 overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-red-50">
                         <tr>
                             <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">Datum i vrijeme</th>
                             <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">Agencija</th>
@@ -91,7 +91,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @forelse ($events as $event)
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-red-50">
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-900">{{ $fmtWhen($event->occurred_at) }}</td>
                                 <td class="px-4 py-3 text-gray-900">{{ $event->agency_name_snapshot }}</td>
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-900">{{ $event->license_plate_snapshot }}</td>
@@ -104,7 +104,7 @@
                                         <a href="{{ route('admin.limo.pickups.plate-photo-preview', $event, false) }}"
                                            target="_blank"
                                            rel="noopener noreferrer"
-                                           class="text-indigo-600 hover:text-indigo-800 underline text-xs"
+                                           class="text-red-600 hover:text-red-800 underline text-xs"
                                            title="Otvara sliku tablice (ako je arhiva na MEGA-u, učitavanje može potrajati)">Slika tablice</a>
                                     @else
                                         <span class="text-gray-400 text-xs">—</span>
@@ -120,9 +120,9 @@
                 </table>
             </div>
         @else
-            <div class="bg-white shadow rounded-lg border border-gray-100 overflow-x-auto">
+            <div class="bg-white shadow rounded-lg border border-red-100 overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-red-50">
                         <tr>
                             <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">occurred_at</th>
                             <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700">created_at</th>
@@ -138,7 +138,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @forelse ($incidents as $incident)
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-red-50">
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-900">{{ $fmtWhen($incident->occurred_at) }}</td>
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ $fmtWhen($incident->created_at) }}</td>
                                 <td class="px-4 py-3 text-gray-900" title="{{ $incident->type }}">{{ $labelIncidentType($incident->type) }}</td>
@@ -165,7 +165,7 @@
                                         <a href="{{ route('admin.limo.incidents.plate-photo-preview', $incident, false) }}"
                                            target="_blank"
                                            rel="noopener noreferrer"
-                                           class="text-indigo-600 hover:text-indigo-800 underline text-xs"
+                                           class="text-red-600 hover:text-red-800 underline text-xs"
                                            title="Otvara sliku tablice">Slika tablice</a>
                                     @else
                                         <span class="text-gray-400 text-xs">—</span>
@@ -174,7 +174,7 @@
                                         <a href="{{ route('admin.limo.incidents.branding-photo-preview', $incident, false) }}"
                                            target="_blank"
                                            rel="noopener noreferrer"
-                                           class="text-indigo-600 hover:text-indigo-800 underline text-xs"
+                                           class="text-red-600 hover:text-red-800 underline text-xs"
                                            title="Otvara sliku brendinga">Slika brendinga</a>
                                     @endif
                                 </td>

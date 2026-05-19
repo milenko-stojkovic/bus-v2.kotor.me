@@ -13,7 +13,7 @@
         </div>
 
         @if (session('status'))
-            <div class="rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('status') }}</div>
+            <div class="rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('status') }}</div>
         @endif
         @if (session('error'))
             <div class="rounded-md bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
@@ -29,7 +29,7 @@
                     min="{{ $minDate }}"
                     max="{{ $maxDate }}"
                     value="{{ $selected_date ?? '' }}"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                 />
                 <x-input-error class="mt-2" :messages="$errors->get('reservation_date')" />
             </div>
@@ -39,7 +39,7 @@
                 <select
                     id="drop_off_time_slot_id"
                     name="drop_off_time_slot_id"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                     @disabled(empty($selected_date))
                 >
                     <option value="">{{ $ui('select_time_slot') }}</option>
@@ -57,7 +57,7 @@
                 <select
                     id="pick_up_time_slot_id"
                     name="pick_up_time_slot_id"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                     @disabled($departure_disabled ?? true)
                 >
                     <option value="">{{ $ui('select_time_slot') }}</option>
@@ -76,7 +76,7 @@
                 <select
                     id="vehicle_type_id_step"
                     name="vehicle_type_id"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                     @disabled(empty($selected_date) || empty($arrival_id) || empty($departure_id))
                 >
                     <option value="">{{ $ui('select_vehicle_category') }}</option>
@@ -90,7 +90,7 @@
             </div>
         </form>
 
-        <form method="POST" action="{{ route('panel_admin.free-reservations.store', [], false) }}" class="space-y-4 bg-white shadow rounded-lg p-5 border border-gray-200">
+        <form method="POST" action="{{ route('panel_admin.free-reservations.store', [], false) }}" class="space-y-4 bg-white shadow rounded-lg p-5 border border-red-100">
             @csrf
 
             <input type="hidden" name="reservation_date" value="{{ $selected_date ?? '' }}">
@@ -106,7 +106,7 @@
 
             <div>
                 <x-input-label for="country" :value="$ui('country')" />
-                <select id="country" name="country" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                <select id="country" name="country" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                     <option value="">{{ $ui('select_country') }}</option>
                     @foreach (($countries ?? []) as $code => $labels)
                         @php
@@ -158,9 +158,9 @@
             @endphp
 
             @forelse ($freeReservationRequests as $req)
-                <div class="bg-white shadow rounded-lg p-5 border border-gray-200 space-y-3">
+                <div class="bg-white shadow rounded-lg p-5 border border-red-100 space-y-3">
                     @if (! (bool) ($req->can_fulfill ?? false))
-                        <div class="rounded-md bg-amber-50 p-3 text-sm text-amber-900 border border-amber-200">
+                        <div class="rounded-md bg-red-50 p-3 text-sm text-red-900 border border-red-200">
                             Za traženi datum i termine nema dovoljno slobodnih kapaciteta za ovaj zahtjev.
                         </div>
                     @endif
@@ -198,7 +198,7 @@
                                 @php
                                     $segVehicles = $seg->vehicles ?? collect();
                                 @endphp
-                                <div class="rounded-md border border-gray-200 p-3 bg-gray-50 space-y-2">
+                                <div class="rounded-md border border-red-100 p-3 bg-red-50 space-y-2">
                                     <div class="flex flex-wrap items-center justify-between gap-2">
                                         <div class="font-semibold text-gray-900">Dolazak i odlazak {{ $i + 1 }}</div>
                                         <div class="text-xs text-gray-600">
@@ -266,7 +266,7 @@
                                             href="{{ route('panel_admin.free-reservation-requests.attachments.preview', ['freeReservationRequest' => $req->id, 'attachment' => $a->id], false) }}"
                                             target="_blank"
                                             rel="noopener"
-                                            class="text-xs font-semibold uppercase tracking-widest text-indigo-700 hover:text-indigo-900 underline"
+                                            class="text-xs font-semibold uppercase tracking-widest text-red-700 hover:text-red-900 underline"
                                         >
                                             Pregledaj
                                         </a>
@@ -282,7 +282,7 @@
                             <input type="hidden" name="confirm" value="1">
                             <button
                                 type="submit"
-                                class="inline-flex items-center justify-center rounded-md bg-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                                 @disabled(! (bool) ($req->can_fulfill ?? false))
                                 onclick="return confirm('Da li si siguran da želiš da napraviš ovu/e admin free rezervaciju/e?');"
                             >
@@ -291,16 +291,16 @@
                         </form>
 
                         <details class="w-full">
-                            <summary class="inline-flex cursor-pointer select-none items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-gray-50">
+                            <summary class="inline-flex cursor-pointer select-none items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50">
                                 Izmijeni zahtjev
                             </summary>
-                            <div class="mt-3 rounded-md border border-gray-200 p-3 bg-gray-50 space-y-2">
+                            <div class="mt-3 rounded-md border border-red-100 p-3 bg-red-50 space-y-2">
                                 <form method="POST" action="{{ route('panel_admin.free-reservation-requests.update', ['freeReservationRequest' => $req->id], false) }}" class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                                     @csrf
                                     @method('PUT')
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600">Datum</label>
-                                        <input type="date" name="reservation_date" value="{{ $req->reservation_date?->toDateString() }}" min="{{ now()->toDateString() }}" max="{{ now()->addDays(90)->toDateString() }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                                        <input type="date" name="reservation_date" value="{{ $req->reservation_date?->toDateString() }}" min="{{ now()->toDateString() }}" max="{{ now()->addDays(90)->toDateString() }}" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                     </div>
                                     <div class="sm:col-span-2">
                                         <div class="text-xs font-medium text-gray-600">Segmenti</div>
@@ -310,7 +310,7 @@
                                                     <input type="hidden" name="segments[{{ $i }}][id]" value="{{ $seg->id }}">
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-600">Dolazak {{ $i + 1 }}</label>
-                                                        <select name="segments[{{ $i }}][drop_off_time_slot_id]" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                                                        <select name="segments[{{ $i }}][drop_off_time_slot_id]" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                                             @foreach (\App\Models\ListOfTimeSlot::query()->orderBy('id')->get() as $s)
                                                                 <option value="{{ $s->id }}" @selected((int)$seg->drop_off_time_slot_id === (int)$s->id)>{{ $s->time_slot }}</option>
                                                             @endforeach
@@ -318,7 +318,7 @@
                                                     </div>
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-600">Odlazak {{ $i + 1 }}</label>
-                                                        <select name="segments[{{ $i }}][pick_up_time_slot_id]" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                                                        <select name="segments[{{ $i }}][pick_up_time_slot_id]" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                                             @foreach (\App\Models\ListOfTimeSlot::query()->orderBy('id')->get() as $s)
                                                                 <option value="{{ $s->id }}" @selected((int)$seg->pick_up_time_slot_id === (int)$s->id)>{{ $s->time_slot }}</option>
                                                             @endforeach
@@ -331,12 +331,12 @@
                                     <div class="flex flex-wrap gap-2 justify-end sm:col-span-2">
                                         <button
                                             type="button"
-                                            class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-gray-100"
+                                            class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50"
                                             onclick="this.closest('details').open = false"
                                         >
                                             Otkaži
                                         </button>
-                                        <button type="submit" class="inline-flex items-center justify-center rounded-md bg-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700">Izmijeni</button>
+                                        <button type="submit" class="inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-800">Izmijeni</button>
                                     </div>
                                 </form>
                             </div>
@@ -357,7 +357,7 @@
                     </div>
                 </div>
             @empty
-                <div class="rounded-md bg-gray-50 p-4 text-sm text-gray-700 border border-gray-200">
+                <div class="rounded-md bg-red-50 p-4 text-sm text-gray-700 border border-red-100">
                     Trenutno nema aktivnih zahtjeva.
                 </div>
             @endforelse
@@ -375,10 +375,10 @@
             };
         @endphp
 
-        <div class="border-t border-gray-200 pt-8 mt-8 space-y-4">
+        <div class="border-t border-red-100 pt-8 mt-8 space-y-4">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">Pregled besplatnih rezervacija po FZBR</h2>
-                <p class="text-sm text-gray-600 mt-1">Zahtjevi u terminalnom statusu; filtar po <code class="text-xs bg-gray-100 px-1 rounded">updated_at</code> (Europe/Podgorica). Dokumenti: lokalno ili privremeni restore sa MEGA (bez javnog linka).</p>
+                <p class="text-sm text-gray-600 mt-1">Zahtjevi u terminalnom statusu; filtar po <code class="text-xs bg-red-50 px-1 rounded">updated_at</code> (Europe/Podgorica). Dokumenti: lokalno ili privremeni restore sa MEGA (bez javnog linka).</p>
             </div>
 
             @if ($errors->has('fzbr_date_from') || $errors->has('fzbr_date_to'))
@@ -391,16 +391,16 @@
                 </div>
             @endif
 
-            <form method="get" action="{{ route('panel_admin.free-reservations', [], false) }}" class="bg-white shadow rounded-lg p-5 border border-gray-100 space-y-4">
+            <form method="get" action="{{ route('panel_admin.free-reservations', [], false) }}" class="bg-white shadow rounded-lg p-5 border border-red-100 space-y-4">
                 <fieldset class="space-y-2">
                     <legend class="text-sm font-medium text-gray-700">Vrsta pregleda</legend>
                     <div class="flex flex-wrap gap-4 text-sm">
                         <label class="inline-flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="fzbr_review" value="approved" @checked(old('fzbr_review', $fzbrReview) === 'approved') class="rounded-full border-gray-300 text-indigo-600 shadow-sm" />
+                            <input type="radio" name="fzbr_review" value="approved" @checked(old('fzbr_review', $fzbrReview) === 'approved') class="rounded-full border-red-200 text-red-600 shadow-sm" />
                             <span>Odobreni</span>
                         </label>
                         <label class="inline-flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="fzbr_review" value="rejected" @checked(old('fzbr_review', $fzbrReview) === 'rejected') class="rounded-full border-gray-300 text-indigo-600 shadow-sm" />
+                            <input type="radio" name="fzbr_review" value="rejected" @checked(old('fzbr_review', $fzbrReview) === 'rejected') class="rounded-full border-red-200 text-red-600 shadow-sm" />
                             <span>Odbijeni</span>
                         </label>
                     </div>
@@ -410,25 +410,25 @@
                         <x-input-label for="fzbr_date_from" value="Datum od" />
                         <input type="date" id="fzbr_date_from" name="fzbr_date_from"
                                value="{{ old('fzbr_date_from', $fzbrDateFrom) }}"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                               class="mt-1 block w-full rounded-md border-red-200 shadow-sm" />
                     </div>
                     <div>
                         <x-input-label for="fzbr_date_to" value="Datum do" />
                         <input type="date" id="fzbr_date_to" name="fzbr_date_to"
                                value="{{ old('fzbr_date_to', $fzbrDateTo) }}"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                               class="mt-1 block w-full rounded-md border-red-200 shadow-sm" />
                     </div>
                     <div class="flex gap-2 justify-start md:justify-end">
-                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800">
                             FILTRIRAJ
                         </button>
                     </div>
                 </div>
             </form>
 
-            <div class="bg-white shadow rounded-lg border border-gray-100 overflow-x-auto">
+            <div class="bg-white shadow rounded-lg border border-red-100 overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-red-50">
                         <tr>
                             <th class="px-3 py-2 text-left font-semibold text-gray-700">id</th>
                             <th class="px-3 py-2 text-left font-semibold text-gray-700">status</th>
@@ -451,7 +451,7 @@
                                 $agencyLine = $r->user?->name ? ($r->user->name.' / '.$r->institution_name) : $r->institution_name;
                                 $emailLine = $r->user?->email ? ($r->user->email.' / '.$r->institution_email) : $r->institution_email;
                             @endphp
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-red-50">
                                 <td class="px-3 py-2 whitespace-nowrap text-gray-900">{{ $r->id }}</td>
                                 <td class="px-3 py-2 whitespace-nowrap text-gray-900">{{ $fzbrStatusLabel($r->status) }}</td>
                                 <td class="px-3 py-2 text-gray-900 min-w-[14rem] sm:min-w-[18rem] align-top">{{ $agencyLine }}</td>
@@ -467,7 +467,7 @@
                                         <div class="mb-1">
                                             <a href="{{ route('panel_admin.fzbr-attachments.preview', ['freeReservationRequestAttachment' => $att->id], false) }}"
                                                target="_blank" rel="noopener noreferrer"
-                                               class="text-indigo-600 hover:text-indigo-800 underline text-xs"
+                                               class="text-red-600 hover:text-red-800 underline text-xs"
                                                title="{{ $att->original_name }}">
                                                 Dokument
                                                 <span class="text-gray-500">({{ $att->mime_type ?: 'fajl' }})</span>

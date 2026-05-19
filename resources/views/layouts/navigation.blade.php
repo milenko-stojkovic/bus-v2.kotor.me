@@ -3,13 +3,13 @@
     $advanceEnabled = (bool) config('features.advance_payments');
     $limoEnabled = $advanceEnabled && (bool) config('features.limo_service');
 @endphp
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
+<nav x-data="{ open: false }" class="border-b border-black/10 bg-[#9e1321] shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex min-w-0 flex-1">
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('panel.reservations') }}">
-                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
+                        <x-application-logo :white="true" class="block h-9 w-auto object-contain" />
                     </a>
                 </div>
 
@@ -26,12 +26,12 @@
                                 {{ $p('nav_limo', 'Limo QR') }}
                             </x-nav-link>
                         @else
-                            <span class="px-3 py-2 text-sm text-gray-400 cursor-not-allowed" title="{{ $p('limo_disabled_hint', 'Limo servis trenutno nije dostupan.') }}">
+                            <span class="px-3 py-2 text-sm text-white/40 cursor-not-allowed" title="{{ $p('limo_disabled_hint', 'Limo servis trenutno nije dostupan.') }}">
                                 {{ $p('nav_limo', 'Limo QR') }}
                             </span>
                         @endif
                     @else
-                        <span class="px-3 py-2 text-sm text-gray-400 cursor-not-allowed" title="{{ $p('advance_disabled_hint', 'Funkcionalnost trenutno nije dostupna') }}">
+                        <span class="px-3 py-2 text-sm text-white/40 cursor-not-allowed" title="{{ $p('advance_disabled_hint', 'Funkcionalnost trenutno nije dostupna') }}">
                             {{ $p('nav_advance', 'Avans') }}
                         </span>
                     @endif
@@ -64,7 +64,7 @@
             <div class="hidden sm:flex sm:items-center sm:shrink-0 sm:ms-2 lg:ms-4">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
+                        <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-transparent hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 transition ease-in-out duration-150">
                             <div>{{ Auth::user()->name }}</div>
                             <div class="ms-1">
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -93,7 +93,7 @@
             </div>
 
             <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
+                <button type="button" @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-white/10 focus:outline-none focus:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/50 transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -117,12 +117,12 @@
                         {{ $p('nav_limo', 'Limo QR') }}
                     </x-responsive-nav-link>
                 @else
-                    <span class="block px-3 py-2 text-sm text-gray-400 cursor-not-allowed" title="{{ $p('limo_disabled_hint', 'Limo servis trenutno nije dostupan.') }}">
+                    <span class="block px-3 py-2 text-sm text-white/40 cursor-not-allowed" title="{{ $p('limo_disabled_hint', 'Limo servis trenutno nije dostupan.') }}">
                         {{ $p('nav_limo', 'Limo QR') }}
                     </span>
                 @endif
             @else
-                <span class="block px-3 py-2 text-sm text-gray-400 cursor-not-allowed" title="{{ $p('advance_disabled_hint', 'Funkcionalnost trenutno nije dostupna') }}">
+                <span class="block px-3 py-2 text-sm text-white/40 cursor-not-allowed" title="{{ $p('advance_disabled_hint', 'Funkcionalnost trenutno nije dostupna') }}">
                     {{ $p('nav_advance', 'Avans') }}
                 </span>
             @endif
@@ -151,10 +151,10 @@
             @endif
         </div>
 
-        <div class="pt-4 pb-1 border-t border-gray-200">
+        <div class="pt-4 pb-1 border-t border-white/15">
             <div class="px-4">
-                <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
-                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
+                <div class="font-medium text-base text-white">{{ Auth::user()->name }}</div>
+                <div class="font-medium text-sm text-white/75">{{ Auth::user()->email }}</div>
             </div>
 
             <div class="mt-3 space-y-1 px-2">

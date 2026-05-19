@@ -17,5 +17,5 @@
 <p>The services provided by the Municipality of Kotor on the bus.kotor.me website do not include the costs incurred by using computer equipment and internet service providers' services to access our website.</p>
 <p>The Municipality of Kotor is not responsible for any costs, including, but not limited to, telephone bills, Internet traffic bills or any other kind of costs that may be incurred.</p>
 <p>The Buyer does not have the right to a refund.</p>
-<p>The Municipality of Kotor cannot guarantee that the service will be free of errors. If an error occurs, kindly report it to: <a href="mailto:bus@kotor.me" class="underline text-blue-700 hover:text-blue-900">bus@kotor.me</a> and we shall remove the error as soon as we possibly can.</p>
+<p>The Municipality of Kotor cannot guarantee that the service will be free of errors. If an error occurs, kindly report it to: <a href="mailto:bus@kotor.me" class="underline text-red-700 hover:text-red-900">bus@kotor.me</a> and we shall remove the error as soon as we possibly can.</p>
 

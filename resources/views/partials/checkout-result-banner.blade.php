@@ -6,8 +6,8 @@
         $group = $b['group'] ?? \App\Support\CheckoutResultFlash::GROUP;
         $level = $b['level'];
         $box = match ($level) {
-            'success' => 'bg-green-50 text-green-800 border border-green-100',
-            'info' => 'bg-amber-50 text-amber-900 border border-amber-100',
+            'success' => 'bg-red-50 text-red-900 border border-red-100',
+            'info' => 'bg-red-50 text-red-900 border border-red-100',
             default => 'bg-red-50 text-red-800 border border-red-100',
         };
         $title = \App\Support\UiText::t($group, $b['title_key']);

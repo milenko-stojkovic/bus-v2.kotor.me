@@ -13,7 +13,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if (session('message'))
-                <div class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('message') }}</div>
+                <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('message') }}</div>
             @endif
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -27,7 +27,7 @@
                     @else
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead class="bg-gray-50">
+                                <thead class="bg-red-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $ui('date', 'Date') }}</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $ui('arrival_time', 'Arrival') }}</th>
@@ -57,7 +57,7 @@
                                                         href="{{ route('panel.reservations.invoice.view', ['id' => $r->id], false) }}"
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-indigo-700 bg-white hover:bg-gray-50"
+                                                        class="inline-flex items-center px-3 py-1.5 border border-red-200 rounded-md text-xs font-medium text-red-700 bg-white hover:bg-red-50"
                                                     >
                                                         {{ $p('reservations_pdf', 'PDF') }}
                                                     </a>

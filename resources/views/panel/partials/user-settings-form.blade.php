@@ -63,7 +63,7 @@
             <select
                 id="user_lang"
                 name="lang"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                 x-model="lang"
                 required
             >
@@ -94,13 +94,13 @@
                     <p class="text-sm text-gray-800">
                         {{ $u('email_unverified', 'Your email address is unverified.') }}
 
-                        <button form="send-verification" type="submit" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <button form="send-verification" type="submit" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                             {{ $u('email_resend_verification', 'Click here to re-send the verification email.') }}
                         </button>
                     </p>
 
                     @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 font-medium text-sm text-green-600">
+                        <p class="mt-2 font-medium text-sm text-red-700">
                             {{ $u('email_verification_sent', 'A new verification link has been sent to your email address.') }}
                         </p>
                     @endif
@@ -108,7 +108,7 @@
             @endif
         </div>
 
-        <div class="border-t border-gray-200 pt-6 space-y-6">
+        <div class="border-t border-red-100 pt-6 space-y-6">
             <h3 class="text-base font-medium text-gray-900">{{ $u('password_section_title', 'Password') }}</h3>
 
             <div>
@@ -175,7 +175,7 @@
             </x-primary-button>
             <button
                 type="button"
-                class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+                class="inline-flex items-center px-4 py-2 bg-white border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
                 @click="cancel()"
                 x-bind:disabled="! isDirty()"
             >
@@ -188,7 +188,7 @@
                     x-show="show"
                     x-transition
                     x-init="setTimeout(() => show = false, 2500)"
-                    class="text-sm text-green-700"
+                    class="text-sm text-red-800"
                 >
                     {{ $u('profile_saved', 'Saved.') }}
                 </p>

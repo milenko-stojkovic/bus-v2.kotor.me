@@ -29,7 +29,7 @@
 
             <div class="block mt-4">
                 <label for="remember_me" class="inline-flex items-center">
-                    <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember" value="1">
+                    <input id="remember_me" type="checkbox" class="rounded border-red-200 text-red-600 shadow-sm focus:ring-red-500" name="remember" value="1">
                     <span class="ms-2 text-sm text-gray-600">Zapamti me</span>
                 </label>
             </div>

@@ -60,28 +60,28 @@
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ $backUrl }}"
-                   class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+                   class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50">
                     Nazad
                 </a>
                 <button type="button"
                         @click="navigator.clipboard.writeText(@js($copyText)).then(() => {copied=true; setTimeout(()=>copied=false,1500);})"
-                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                        class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800">
                     Copy details
                 </button>
             </div>
         </div>
 
-        <div x-show="copied" x-cloak class="rounded-md bg-green-50 p-3 text-sm text-green-800 border border-green-100">
+        <div x-show="copied" x-cloak class="rounded-md bg-red-50 p-3 text-sm text-red-900 border border-red-100">
             Kopirano.
         </div>
 
         @if ($isAdminFree && !$temp)
-            <div class="rounded-md bg-amber-50 p-4 text-sm text-amber-900 border border-amber-100">
+            <div class="rounded-md bg-red-50 p-4 text-sm text-red-900 border border-red-100">
                 Ovo je admin-free rezervacija i ne pripada payment lifecycle-u. Prikazani su samo rezervacioni podaci (bez payment timeline-a).
             </div>
         @endif
 
-        <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+        <section class="bg-white shadow rounded-lg p-6 border border-red-100">
             <h2 class="text-base font-semibold text-gray-900">A. Temp data (payment attempt)</h2>
             @if (!$temp)
                 <div class="text-sm text-gray-600 mt-2">Nema temp_data za ovaj MTID.</div>
@@ -104,7 +104,7 @@
             @endif
         </section>
 
-        <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+        <section class="bg-white shadow rounded-lg p-6 border border-red-100">
             <h2 class="text-base font-semibold text-gray-900">B. Povezana rezervacija</h2>
             @if (!$reservation)
                 <div class="text-sm text-gray-600 mt-2">Rezervacija ne postoji za ovaj MTID.</div>
@@ -123,14 +123,14 @@
             @endif
         </section>
 
-        <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+        <section class="bg-white shadow rounded-lg p-6 border border-red-100">
             <h2 class="text-base font-semibold text-gray-900">C. Timeline (payments log)</h2>
             @if (!$timelineAvailable)
                 <div class="text-sm text-gray-600 mt-2">{{ $timelineNote !== '' ? $timelineNote : 'Detaljni payment logovi nisu dostupni u retention periodu.' }}</div>
             @else
                 <div class="mt-3 space-y-2 text-sm">
                     @foreach ($timeline as $e)
-                        <div class="rounded border border-gray-200 p-3">
+                        <div class="rounded border border-red-100 p-3">
                             <div class="flex items-baseline justify-between gap-3">
                                 <div class="font-medium">{{ $e['label'] ?? 'payment' }}</div>
                                 <div class="text-xs text-gray-500 font-mono">{{ $e['ts'] ?? '' }}</div>

@@ -28,7 +28,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if (session('status'))
-                <div class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</div>
+                <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('status') }}</div>
             @endif
 
             @if ($errors->any())
@@ -64,7 +64,7 @@
                                 inputmode="numeric"
                                 placeholder="100"
                                 value="{{ old('amount') }}"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
                                 required
                             />
                             <p class="mt-1 text-xs text-gray-500">{{ $a('topup_amount_hint', 'Dozvoljeni su samo cijeli iznosi eura koji se završavaju na 0 ili 5 (npr. 15, 100, 105).') }}</p>
@@ -89,7 +89,7 @@
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-left text-sm">
                                 <thead>
-                                    <tr class="border-b border-gray-200 text-gray-600">
+                                    <tr class="border-b border-red-100 text-gray-600">
                                         <th class="py-2 pr-4">{{ $a('ledger_col_date', 'Datum') }}</th>
                                         <th class="py-2 pr-4">{{ $a('ledger_col_type', 'Tip') }}</th>
                                         <th class="py-2 pr-4">{{ $a('ledger_col_amount', 'Iznos') }}</th>
@@ -98,7 +98,7 @@
                                 </thead>
                                 <tbody>
                                     @foreach ($ledger as $tx)
-                                        <tr class="border-b border-gray-100">
+                                        <tr class="border-b border-red-100">
                                             <td class="py-2 pr-4 whitespace-nowrap">{{ $tx->created_at?->format('d.m.Y. H:i') ?? '—' }}</td>
                                             <td class="py-2 pr-4">{{ $typeLabel((string) $tx->type) }}</td>
                                             <td class="py-2 pr-4 font-medium">{{ $fmtAmount($tx->amount) }}</td>

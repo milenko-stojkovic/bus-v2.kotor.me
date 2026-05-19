@@ -38,13 +38,13 @@
                     <p class="text-sm mt-2 text-gray-800">
                         {{ __('Your email address is unverified.') }}
 
-                        <button form="send-verification" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <button form="send-verification" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                             {{ __('Click here to re-send the verification email.') }}
                         </button>
                     </p>
 
                     @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 font-medium text-sm text-green-600">
+                        <p class="mt-2 font-medium text-sm text-red-700">
                             {{ __('A new verification link has been sent to your email address.') }}
                         </p>
                     @endif
@@ -54,7 +54,7 @@
 
         <div>
             <x-input-label for="lang" :value="__('Language')" />
-            <select id="lang" name="lang" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <select id="lang" name="lang" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500">
                 <option value="cg" @selected(old('lang', $user->lang) === 'cg')>cg</option>
                 <option value="en" @selected(old('lang', $user->lang) === 'en')>en</option>
             </select>
@@ -64,7 +64,7 @@
         <div>
             <x-input-label for="country" :value="__('Country')" />
             @php($countries = (array) config('countries', []))
-            <select id="country" name="country" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+            <select id="country" name="country" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                 <option value="">{{ app()->getLocale() === 'cg' ? 'Izaberite državu' : 'Select country' }}</option>
                 @foreach ($countries as $code => $labels)
                     @php

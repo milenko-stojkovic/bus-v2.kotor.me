@@ -6,12 +6,12 @@
                 Posljednje osvježavanje:
                 <time id="last-refresh-time" datetime=""></time>
             </span>
-            <button type="button" id="btn-refresh-now" class="inline-flex justify-center rounded-md bg-slate-700 px-4 py-2 font-medium text-white hover:bg-slate-800">
+            <button type="button" id="btn-refresh-now" class="inline-flex justify-center rounded-md bg-red-700 px-4 py-2 font-medium text-white hover:bg-red-800">
                 Osvježi sada
             </button>
             <form method="POST" action="{{ route('control.logout', [], false) }}" class="inline">
                 @csrf
-                <button type="submit" class="text-indigo-700 underline font-medium">Odjava</button>
+                <button type="submit" class="text-red-700 underline font-medium">Odjava</button>
             </form>
         </div>
     </header>
@@ -26,18 +26,18 @@
             <div class="space-y-8">
                 @foreach($arrivalGroups as $group)
                     <div>
-                        <h3 class="text-base font-medium text-gray-800 mb-2 border-b border-gray-200 pb-1">{{ $group['label'] }}</h3>
+                        <h3 class="text-base font-medium text-gray-800 mb-2 border-b border-red-100 pb-1">{{ $group['label'] }}</h3>
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-left text-sm">
                                 <thead>
-                                    <tr class="border-b border-gray-200 text-gray-600">
+                                    <tr class="border-b border-red-100 text-gray-600">
                                         <th class="py-2 pr-4">Registarske oznake</th>
                                         <th class="py-2 pr-4">Tip vozila</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($group['reservations'] as $reservation)
-                                        <tr class="border-b border-gray-100">
+                                        <tr class="border-b border-red-100">
                                             <td class="py-2 pr-4 font-medium">{{ $reservation->license_plate }}</td>
                                             <td class="py-2 pr-4">{{ $reservation->vehicleType->formatLabel('cg', 'EUR') }}</td>
                                         </tr>
@@ -90,7 +90,7 @@
             </div>
             <div>
                 <x-input-label for="c_vehicle_type" value="Tip vozila" />
-                <select id="c_vehicle_type" name="vehicle_type_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <select id="c_vehicle_type" name="vehicle_type_id" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500">
                     <option value="">— Bilo koji —</option>
                     @foreach($vehicleTypes as $vt)
                         <option value="{{ $vt->id }}" @selected((string) old('vehicle_type_id', $searchInput['vehicle_type_id'] ?? '') === (string) $vt->id)>
@@ -119,7 +119,7 @@
                 @else
                     <table class="min-w-full text-left text-sm">
                         <thead>
-                            <tr class="border-b border-gray-200 text-gray-600">
+                            <tr class="border-b border-red-100 text-gray-600">
                                 <th class="py-2 pr-4">Datum</th>
                                 <th class="py-2 pr-4">Dolazak</th>
                                 <th class="py-2 pr-4">Odlazak</th>
@@ -131,7 +131,7 @@
                         </thead>
                         <tbody>
                             @foreach($searchResults as $r)
-                                <tr class="border-b border-gray-100">
+                                <tr class="border-b border-red-100">
                                     <td class="py-2 pr-4 whitespace-nowrap">{{ $r->reservation_date->format('Y-m-d') }}</td>
                                     <td class="py-2 pr-4">{{ $r->dropOffTimeSlot?->time_slot ?? '—' }}</td>
                                     <td class="py-2 pr-4">{{ $r->pickUpTimeSlot?->time_slot ?? '—' }}</td>

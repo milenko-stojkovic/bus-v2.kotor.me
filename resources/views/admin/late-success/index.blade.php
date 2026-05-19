@@ -8,7 +8,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @if(session('message'))
-                <div class="mb-4 rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('message') }}</div>
+                <div class="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('message') }}</div>
             @endif
             @if(session('error'))
                 <div class="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
@@ -20,11 +20,11 @@
                         <div>
                             <label for="date" class="block text-sm font-medium text-gray-700 mb-1">Datum</label>
                             <input id="date" name="date" type="date" value="{{ $filters['date'] }}"
-                                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                   class="block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
                         </div>
                         <div>
                             <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                            <select id="status" name="status" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <select id="status" name="status" class="block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
                                 <option value="">Svi</option>
                                 @foreach(['late_success', 'late_manual_review', 'processed', 'late_rejected'] as $s)
                                     <option value="{{ $s }}" @selected($filters['status'] === $s)>{{ $s }}</option>
@@ -33,7 +33,7 @@
                         </div>
                         <div>
                             <label for="resolution_reason" class="block text-sm font-medium text-gray-700 mb-1">Razlog rezolucije</label>
-                            <select id="resolution_reason" name="resolution_reason" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <select id="resolution_reason" name="resolution_reason" class="block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
                                 <option value="">Sve</option>
                                 @foreach(['admin_forced', 'admin_rejected'] as $reason)
                                     <option value="{{ $reason }}" @selected($filters['resolution_reason'] === $reason)>{{ $reason }}</option>
@@ -41,10 +41,10 @@
                             </select>
                         </div>
                         <div class="flex gap-2">
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800">
                                 Filtriraj
                             </button>
-                            <a href="{{ route('staff.late-success.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+                            <a href="{{ route('staff.late-success.index') }}" class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50">
                                 Reset
                             </a>
                         </div>
@@ -52,7 +52,7 @@
 
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50">
+                            <thead class="bg-red-50">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tx ID</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Datum rezervacije</th>
@@ -69,7 +69,7 @@
                                         <td class="px-4 py-2 text-gray-900">{{ $row->status }}</td>
                                         <td class="px-4 py-2 text-gray-600">{{ $row->resolution_reason ?? '-' }}</td>
                                         <td class="px-4 py-2">
-                                            <a href="{{ route('staff.late-success.show', $row->id) }}" class="text-indigo-600 hover:text-indigo-800">Detalji</a>
+                                            <a href="{{ route('staff.late-success.show', $row->id) }}" class="text-red-600 hover:text-red-800">Detalji</a>
                                         </td>
                                     </tr>
                                 @empty

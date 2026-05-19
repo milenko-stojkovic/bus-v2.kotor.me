@@ -2,15 +2,15 @@
 <div class="space-y-6">
     <div class="space-y-1">
         <h1 class="text-lg font-semibold">Fake QA (banka + fiskal)</h1>
-        <p class="text-sm text-gray-600">Jedan submit. Ako banka nije success, fiskal se ignoriše. Važi kada su <code class="bg-gray-100 px-1">BANK_DRIVER=fake</code> i <code class="bg-gray-100 px-1">FISCALIZATION_DRIVER=fake</code>.</p>
+        <p class="text-sm text-gray-600">Jedan submit. Ako banka nije success, fiskal se ignoriše. Važi kada su <code class="bg-red-50 px-1">BANK_DRIVER=fake</code> i <code class="bg-red-50 px-1">FISCALIZATION_DRIVER=fake</code>.</p>
     </div>
-    <p class="text-xs text-amber-700">Ne poziva se pravi bank callback — test endpoint.</p>
+    <p class="text-xs text-red-700">Ne poziva se pravi bank callback — test endpoint.</p>
 
     <form id="fake-qa-form" method="POST" action="{{ route('payment.fake-bank.complete', [], false) }}" class="space-y-6">
         @csrf
         <input type="hidden" name="merchant_transaction_id" value="{{ $merchant_transaction_id }}">
 
-        <fieldset class="space-y-2 rounded-md border border-gray-200 p-4">
+        <fieldset class="space-y-2 rounded-md border border-red-100 p-4">
             <legend class="text-sm font-semibold text-gray-900 px-1">A — Fake Bankart</legend>
             @php
                 $bankScenarios = [
@@ -25,14 +25,14 @@
             @endphp
             @foreach ($bankScenarios as $s)
                 <label class="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="radio" name="bank_scenario" value="{{ $s['id'] }}" class="rounded-full border-gray-300 text-indigo-600 focus:ring-indigo-500 js-bank-scenario"
+                    <input type="radio" name="bank_scenario" value="{{ $s['id'] }}" class="rounded-full border-red-200 text-red-600 focus:ring-red-500 js-bank-scenario"
                         {{ $loop->first ? 'checked' : '' }}>
                     <span>{{ $s['label'] }}</span>
                 </label>
             @endforeach
         </fieldset>
 
-        <fieldset id="fiscal-fieldset" class="space-y-2 rounded-md border border-gray-200 p-4">
+        <fieldset id="fiscal-fieldset" class="space-y-2 rounded-md border border-red-100 p-4">
             <legend class="text-sm font-semibold text-gray-900 px-1">B — Fake fiskalizacija</legend>
             <p id="fiscal-hint" class="text-xs text-gray-500 hidden">Dostupno samo kada je banka Success.</p>
             @php
@@ -50,14 +50,14 @@
             @endphp
             @foreach ($fiscalScenarios as $fs)
                 <label class="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="radio" name="fiscal_scenario" value="{{ $fs['id'] }}" class="rounded-full border-gray-300 text-indigo-600 focus:ring-indigo-500 js-fiscal-scenario"
+                    <input type="radio" name="fiscal_scenario" value="{{ $fs['id'] }}" class="rounded-full border-red-200 text-red-600 focus:ring-red-500 js-fiscal-scenario"
                         {{ $fs['id'] === 'success' ? 'checked' : '' }}>
                     <span>{{ $fs['label'] }}</span>
                 </label>
             @endforeach
         </fieldset>
 
-        <button type="submit" class="inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-900 uppercase tracking-widest shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        <button type="submit" class="inline-flex items-center justify-center px-4 py-2 bg-white border border-red-200 rounded-md font-semibold text-xs text-gray-900 uppercase tracking-widest shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
             Potvrdi (banka + fiskal)
         </button>
     </form>

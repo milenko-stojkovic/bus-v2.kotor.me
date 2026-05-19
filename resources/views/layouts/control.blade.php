@@ -13,7 +13,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @include('partials.password-field-overlay-styles')
     </head>
-    <body class="font-sans text-gray-900 antialiased bg-slate-100">
+    <body class="font-sans text-gray-900 antialiased bg-red-50">
         <div class="min-h-screen">
             <div class="max-w-6xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
                 {{ $slot }}

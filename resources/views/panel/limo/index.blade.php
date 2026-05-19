@@ -14,13 +14,13 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if (session('status'))
-                <div class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</div>
+                <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('status') }}</div>
             @endif
 
             @if (session('limo_new_qr_token'))
-                <div class="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-2" role="status">
+                <div class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-900 space-y-2" role="status">
                     <p class="font-medium">{{ $p('limo_new_qr_once', 'Novi QR – prikažite ga samo jednom; sačuvajte payload za štampu.') }}</p>
-                    <code class="block break-all text-xs bg-white/80 p-2 rounded border border-amber-100 select-all">{{ session('limo_new_qr_token') }}</code>
+                    <code class="block break-all text-xs bg-white/80 p-2 rounded border border-red-100 select-all">{{ session('limo_new_qr_token') }}</code>
                 </div>
             @endif
 
@@ -57,7 +57,7 @@
                                     <span class="text-sm text-gray-700">
                                         {{ $t->created_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') ?? '—' }}
                                     </span>
-                                    <a href="{{ route('panel.limo.qr.show', ['limoQrToken' => $t->id], false) }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                                    <a href="{{ route('panel.limo.qr.show', ['limoQrToken' => $t->id], false) }}" class="text-sm font-medium text-red-600 hover:text-red-500">
                                         {{ $p('limo_open_qr', 'Otvori QR') }}
                                     </a>
                                 </li>

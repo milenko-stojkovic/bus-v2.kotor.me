@@ -1,10 +1,10 @@
 @php
     /** @var array<string, mixed> $status */
     $badge = fn (string $state) => match ($state) {
-        'ok' => 'bg-green-100 text-green-900',
+        'ok' => 'bg-red-100 text-red-900',
         'warn' => 'bg-yellow-100 text-yellow-900',
         'bad' => 'bg-red-100 text-red-900',
-        default => 'bg-slate-200 text-slate-800',
+        default => 'bg-red-100 text-red-900',
     };
     $fmtTs = function (?string $iso): string {
         if ($iso === null || $iso === '') {
@@ -33,12 +33,12 @@
 <x-admin-panel-layout page-title="Sistem status" nav-active="system-status">
     <div class="space-y-8">
         <p class="text-sm text-gray-600 max-w-3xl">
-            Pregled stanja iz baze i operativnog heartbeat keša (<code class="text-xs bg-gray-100 px-1 rounded">alerts:system-health</code>,
-            <code class="text-xs bg-gray-100 px-1 rounded">files:archive-private</code>). Samo čitanje — nema akcija, restarta ni živog MEGA poziva na učitavanju stranice.
+            Pregled stanja iz baze i operativnog heartbeat keša (<code class="text-xs bg-red-50 px-1 rounded">alerts:system-health</code>,
+            <code class="text-xs bg-red-50 px-1 rounded">files:archive-private</code>). Samo čitanje — nema akcija, restarta ni živog MEGA poziva na učitavanju stranice.
         </p>
 
         @php $q = $status['queue']; @endphp
-        <section class="bg-white shadow rounded-lg border border-gray-100 p-5">
+        <section class="bg-white shadow rounded-lg border border-red-100 p-5">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h2 class="text-base font-semibold text-gray-900">Queue</h2>
                 <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($q['section_status']) }}">{{ $q['section_label'] }}</span>
@@ -50,7 +50,7 @@
                     <div><span class="text-gray-500">Stale (≥ {{ $q['stale_threshold_minutes'] }} min po <code class="text-xs">available_at</code>):</span> {{ $q['stale_count'] ?? '—' }}</div>
                     <div><span class="text-gray-500">Starost najstarijeg pending:</span> {{ $fmtAge($q['oldest_pending_age_seconds'] ?? null) }}</div>
                     @if (($q['stale_marker'] ?? null) !== null)
-                        <div class="mt-2 pt-2 border-t border-gray-100">
+                        <div class="mt-2 pt-2 border-t border-red-100">
                             <span class="text-gray-500">Marker „prvo zapažanje” (keš):</span>
                             <ul class="mt-1 list-disc list-inside text-xs text-gray-700 space-y-0.5">
                                 <li>Prvi put: {{ $fmtTs($q['stale_marker']['first_seen_at'] ?? null) }}</li>
@@ -69,7 +69,7 @@
         </section>
 
         @php $m = $status['mega']; @endphp
-        <section class="bg-white shadow rounded-lg border border-gray-100 p-5">
+        <section class="bg-white shadow rounded-lg border border-red-100 p-5">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h2 class="text-base font-semibold text-gray-900">MEGA (zadnja dijagnostika iz keša)</h2>
                 <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($m['section_status']) }}">{{ $m['section_label'] }}</span>
@@ -81,7 +81,7 @@
                     <div><span class="text-gray-500">Zadnja dijagnostika:</span> {{ $fmtTs($m['last_diagnose_at']) }}</div>
                     <div><span class="text-gray-500">Rezultat:</span>
                         @if ($m['last_diagnose_ok'] === true)
-                            <span class="text-green-800 font-medium">OK</span>
+                            <span class="text-red-900 font-medium">OK</span>
                         @elseif ($m['last_diagnose_ok'] === false)
                             <span class="text-red-800 font-medium">Neuspješno</span>
                         @else
@@ -96,7 +96,7 @@
         </section>
 
         @php $a = $status['archive']; @endphp
-        <section class="bg-white shadow rounded-lg border border-gray-100 p-5">
+        <section class="bg-white shadow rounded-lg border border-red-100 p-5">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h2 class="text-base font-semibold text-gray-900">Privatna arhiva (heartbeat + DB)</h2>
                 <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($a['section_status']) }}">{{ $a['section_label'] }}</span>
@@ -107,7 +107,7 @@
                 <div><span class="text-gray-500">Neuspjelih u bazi:</span> {{ $a['failed_archives_count'] }}</div>
                 @if ($a['failed_archives_count'] > 0)
                     <div>
-                        <a href="{{ route('panel_admin.archive.failed', [], false) }}" class="text-indigo-700 hover:underline text-sm font-medium">Otvori listu neuspjelih arhiva →</a>
+                        <a href="{{ route('panel_admin.archive.failed', [], false) }}" class="text-red-700 hover:underline text-sm font-medium">Otvori listu neuspjelih arhiva →</a>
                     </div>
                 @endif
             </dl>
@@ -133,7 +133,7 @@
             @elseif (! $archHasKnown)
                 <p class="text-xs text-gray-500 mt-2">Sažetak u kešu nema poznata polja za prikaz.</p>
             @else
-                <div class="mt-3 pt-3 border-t border-gray-100">
+                <div class="mt-3 pt-3 border-t border-red-100">
                     <h3 class="text-xs font-semibold text-gray-600 mb-2">Poslednji sažetak arhive (keš)</h3>
                     <dl class="text-sm text-gray-800 space-y-1">
                         @if (array_key_exists('scanned', $archSum))
@@ -143,7 +143,7 @@
                             <div>
                                 <span class="text-gray-500">Archived:</span>
                                 @if ($archArchivedN > 0 && $archFailedN === 0)
-                                    <span class="text-green-800">{{ $archSum['archived'] }}</span>
+                                    <span class="text-red-900">{{ $archSum['archived'] }}</span>
                                 @else
                                     {{ $archSum['archived'] }}
                                 @endif
@@ -183,31 +183,31 @@
         </section>
 
         @php $f = $status['fiscalization']; @endphp
-        <section class="bg-white shadow rounded-lg border border-gray-100 p-5">
+        <section class="bg-white shadow rounded-lg border border-red-100 p-5">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h2 class="text-base font-semibold text-gray-900">Fiskalizacija (naknadno)</h2>
                 <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($f['section_status']) }}">{{ $f['section_label'] }}</span>
             </div>
             <p class="text-sm text-gray-800">
-                Nerešenih <code class="text-xs bg-gray-100 px-1 rounded">post_fiscalization_data</code> starijih od 2h:
+                Nerešenih <code class="text-xs bg-red-50 px-1 rounded">post_fiscalization_data</code> starijih od 2h:
                 <strong>{{ $f['unresolved_over_2h'] }}</strong>
             </p>
         </section>
 
         @php $fj = $status['failed_jobs']; @endphp
-        <section class="bg-white shadow rounded-lg border border-gray-100 p-5">
+        <section class="bg-white shadow rounded-lg border border-red-100 p-5">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h2 class="text-base font-semibold text-gray-900">Neuspjeli poslovi</h2>
                 <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($fj['section_status']) }}">{{ $fj['section_label'] }}</span>
             </div>
             <p class="text-sm text-gray-800">
-                Broj u <code class="text-xs bg-gray-100 px-1 rounded">failed_jobs</code> (zadnjih 24h):
+                Broj u <code class="text-xs bg-red-50 px-1 rounded">failed_jobs</code> (zadnjih 24h):
                 <strong>{{ $fj['failed_last_24h'] }}</strong>
             </p>
         </section>
 
         @php $al = $status['admin_alerts']; @endphp
-        <section class="bg-white shadow rounded-lg border border-gray-100 p-5">
+        <section class="bg-white shadow rounded-lg border border-red-100 p-5">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h2 class="text-base font-semibold text-gray-900">Admin upozorenja (kritična, otvorena)</h2>
                 <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($al['section_status']) }}">{{ $al['section_label'] }}</span>
@@ -226,12 +226,12 @@
                 </ul>
             @endif
             <p class="mt-3">
-                <a href="{{ route('panel_admin.dashboard', [], false) }}" class="text-indigo-700 hover:underline text-sm font-medium">Upozorenja / Informacije →</a>
+                <a href="{{ route('panel_admin.dashboard', [], false) }}" class="text-red-700 hover:underline text-sm font-medium">Upozorenja / Informacije →</a>
             </p>
         </section>
 
         @php $sh = $status['system_health']; @endphp
-        <section class="bg-white shadow rounded-lg border border-gray-100 p-5">
+        <section class="bg-white shadow rounded-lg border border-red-100 p-5">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h2 class="text-base font-semibold text-gray-900">Sistemsko zdravlje (heartbeat)</h2>
                 <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($sh['section_status']) }}">{{ $sh['section_label'] }}</span>

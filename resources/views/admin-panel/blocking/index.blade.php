@@ -5,7 +5,7 @@
 <x-admin-panel-layout page-title="Blokiranje" nav-active="blocking">
     <div class="space-y-10">
         @if (session('status'))
-            <div class="rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('status') }}</div>
+            <div class="rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('status') }}</div>
         @endif
         @if (session('error'))
             <div class="rounded-md bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
@@ -34,7 +34,7 @@
                                 @endif
                             </div>
                             <a href="{{ route('panel_admin.blocking.day', ['date' => $day['date']], false) }}"
-                               class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+                               class="inline-flex items-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50">
                                 Deblokiraj
                             </a>
                         </li>
@@ -62,7 +62,7 @@
                 <input type="hidden" name="date" value="{{ $selectedDate }}">
 
                 <div class="flex items-center gap-2">
-                    <input id="block_whole_day" type="checkbox" name="block_whole_day" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                    <input id="block_whole_day" type="checkbox" name="block_whole_day" value="1" class="rounded border-red-200 text-red-600 shadow-sm focus:ring-red-500" />
                     <label for="block_whole_day" class="text-sm text-gray-700">Blokiraj ceo dan</label>
                 </div>
 
@@ -77,25 +77,25 @@
                             $hasProblem = $reserved > 0 || $pending > 0;
                         @endphp
                         @if ($blocked)
-                            <div class="flex items-center gap-2 p-2 rounded border border-indigo-200 bg-indigo-50 opacity-90">
-                                <input type="checkbox" disabled checked class="rounded border-gray-300 text-indigo-600 opacity-60 cursor-not-allowed" aria-hidden="true">
+                            <div class="flex items-center gap-2 p-2 rounded border border-red-200 bg-red-50 opacity-90">
+                                <input type="checkbox" disabled checked class="rounded border-red-200 text-red-600 opacity-60 cursor-not-allowed" aria-hidden="true">
                                 <span class="text-sm text-gray-900">{{ $slot->time_slot }}</span>
-                                <span class="text-xs font-medium text-indigo-800 ms-auto">Već blokiran</span>
+                                <span class="text-xs font-medium text-red-800 ms-auto">Već blokiran</span>
                             </div>
                         @elseif (! $hasRow)
-                            <div class="flex items-center gap-2 p-2 rounded border border-gray-200 bg-gray-50 opacity-80">
-                                <input type="checkbox" disabled class="rounded border-gray-300 opacity-50 cursor-not-allowed" aria-hidden="true">
+                            <div class="flex items-center gap-2 p-2 rounded border border-red-100 bg-red-50 opacity-80">
+                                <input type="checkbox" disabled class="rounded border-red-200 opacity-50 cursor-not-allowed" aria-hidden="true">
                                 <span class="text-sm text-gray-700">{{ $slot->time_slot }}</span>
                                 <span class="text-xs text-gray-500 ms-auto">Nema podataka za dan</span>
                             </div>
                         @else
-                            <label class="flex items-center gap-2 p-2 rounded border border-gray-200 hover:border-gray-300 cursor-pointer">
-                                <input type="checkbox" name="slot_ids[]" value="{{ $slot->id }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                            <label class="flex items-center gap-2 p-2 rounded border border-red-100 hover:border-red-200 cursor-pointer">
+                                <input type="checkbox" name="slot_ids[]" value="{{ $slot->id }}" class="rounded border-red-200 text-red-600 shadow-sm focus:ring-red-500">
                                 <span class="text-sm text-gray-900">{{ $slot->time_slot }}</span>
                                 <span class="text-xs text-gray-500 ms-auto">
                                     r:{{ $reserved }} p:{{ $pending }}
                                     @if ($hasProblem)
-                                        <span class="text-amber-700 font-medium">— zahvaćeno</span>
+                                        <span class="text-red-700 font-medium">— zahvaćeno</span>
                                     @endif
                                 </span>
                             </label>
@@ -129,15 +129,15 @@
                                             Datum: {{ $fmtDate($row->old_date->toDateString()) }}
                                         </div>
                                         <div class="mt-1 text-sm text-gray-700">
-                                            Drop-off: <span class="{{ $row->affected_drop_off ? 'font-semibold text-amber-800' : '' }}">#{{ $row->old_drop_off }}</span>,
-                                            Pick-up: <span class="{{ $row->affected_pick_up ? 'font-semibold text-amber-800' : '' }}">#{{ $row->old_pick_up }}</span>
+                                            Drop-off: <span class="{{ $row->affected_drop_off ? 'font-semibold text-red-800' : '' }}">#{{ $row->old_drop_off }}</span>,
+                                            Pick-up: <span class="{{ $row->affected_pick_up ? 'font-semibold text-red-800' : '' }}">#{{ $row->old_pick_up }}</span>
                                         </div>
                                         <div class="mt-2 text-xs text-gray-500">
                                             Status: <span class="font-medium">{{ $row->status }}</span>
                                             · MTID: {{ $row->merchant_transaction_id }}
                                         </div>
                                         @if ($row->status === \App\Models\BlockZoneWorklist::STATUS_PENDING_PAYMENT)
-                                            <div class="mt-2 text-sm text-amber-800">
+                                            <div class="mt-2 text-sm text-red-800">
                                                 Plaćanje je u obradi. Ručno osvježite stranicu da provjerite promjenu statusa.
                                             </div>
                                         @endif
@@ -145,7 +145,7 @@
                                     <div class="shrink-0">
                                         @if ($row->status === \App\Models\BlockZoneWorklist::STATUS_READY_TO_ADJUST)
                                             <a href="{{ route('panel_admin.blocking.worklist.adjust', $row, false) }}"
-                                               class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+                                               class="inline-flex items-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50">
                                                 Prilagodi rezervaciju
                                             </a>
                                         @endif

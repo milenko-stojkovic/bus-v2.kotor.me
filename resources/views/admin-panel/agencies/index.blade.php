@@ -15,7 +15,7 @@
             <div class="overflow-x-auto">
                 <table class="min-w-full text-left text-sm">
                     <thead>
-                        <tr class="border-b border-gray-200 text-gray-600">
+                        <tr class="border-b border-red-100 text-gray-600">
                             <th class="py-2 pr-4">Naziv</th>
                             <th class="py-2 pr-4">Email</th>
                             <th class="py-2 pr-4">Registracija</th>
@@ -29,7 +29,7 @@
                             @php
                                 $bal = number_format((float) ($u->advance_balance ?? 0), 2, '.', '');
                             @endphp
-                            <tr class="border-b border-gray-100">
+                            <tr class="border-b border-red-100">
                                 <td class="py-2 pr-4 font-medium">{{ $u->name }}</td>
                                 <td class="py-2 pr-4">{{ $u->email }}</td>
                                 <td class="py-2 pr-4 whitespace-nowrap">{{ $u->created_at?->format('d.m.Y.') ?? '—' }}</td>
@@ -42,7 +42,7 @@
                                 </td>
                                 <td class="py-2 pr-4 whitespace-nowrap">{{ (int) ($u->reservations_count ?? 0) }}</td>
                                 <td class="py-2 pr-4">
-                                    <a class="text-indigo-700 underline font-medium" href="{{ route('panel_admin.agencies.show', $u, false) }}">
+                                    <a class="text-red-700 underline font-medium" href="{{ route('panel_admin.agencies.show', $u, false) }}">
                                         Detalji
                                     </a>
                                 </td>

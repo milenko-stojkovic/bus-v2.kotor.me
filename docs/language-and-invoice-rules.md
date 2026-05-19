@@ -4,11 +4,11 @@
 
 ## 1. UI language
 
-- **Authenticated users:** use **users.lang** (column: `lang`, values: `en`, `cg`). SetLocale middleware applies it.
+- **Authenticated users:** use **users.lang** (column: `lang`, values: `en`, `cg`) **unless** the visitor used the **CG/EN** switcher — then **`session('locale')`** wins until the session ends or they switch again.
 - **Guests:** detect from browser **Accept-Language** header. Mapping:
   - **cg, hr, sr, bs** → **cg** (Crnogorski)
   - all others → **en**
-- **Guest can manually change UI language:** GET **/locale/{locale}** (e.g. `/locale/cg`, `/locale/en`) stores choice in **session** and redirects back. SetLocale middleware uses `session('locale')` when set.
+- **Anyone can manually change UI language:** GET **/locale/{locale}** (e.g. `/locale/cg`, `/locale/en`) stores choice in **session** and redirects back. **`SetLocale`** reads **`session('locale')` first** when it is a supported value.
 
 ## 2. Email language
 

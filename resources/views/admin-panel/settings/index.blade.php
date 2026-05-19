@@ -18,7 +18,7 @@
         </div>
 
         @if (session('status'))
-            <div class="rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('status') }}</div>
+            <div class="rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('status') }}</div>
         @endif
         @if (session('error'))
             <div class="rounded-md bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
@@ -31,7 +31,7 @@
             </div>
         @endif
 
-        <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+        <section class="bg-white shadow rounded-lg p-6 border border-red-100">
             <div class="flex items-start justify-between gap-4 flex-wrap">
                 <div>
                     <h2 class="text-base font-semibold text-gray-900">Kapacitet</h2>
@@ -52,7 +52,7 @@
                         type="text"
                         class="mt-1 block w-full"
                         x-bind:readonly="!capEditing"
-                        x-bind:class="capEditing ? '' : 'bg-gray-50 text-gray-700'"
+                        x-bind:class="capEditing ? '' : 'bg-red-50 text-gray-700'"
                         x-bind:value="capEditing ? (document.getElementById('available_parking_slots')?.value ?? capOriginal) : capOriginal"
                         value="{{ old('available_parking_slots', $capacity) }}"
                         inputmode="numeric"
@@ -64,19 +64,19 @@
                 <div class="flex flex-wrap gap-2 items-center">
                     <button type="button"
                             x-show="!capEditing"
-                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50"
+                            class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50"
                             @click="capEditing = true; capOriginal = document.getElementById('available_parking_slots')?.value ?? capOriginal;">
                         Promjeni
                     </button>
 
                     <button type="submit"
                             x-show="capEditing"
-                            class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                            class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800">
                         Primjeni
                     </button>
                     <button type="button"
                             x-show="capEditing"
-                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50"
+                            class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50"
                             @click="
                                 capEditing = false;
                                 const el = document.getElementById('available_parking_slots');
@@ -88,7 +88,7 @@
             </form>
         </section>
 
-        <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+        <section class="bg-white shadow rounded-lg p-6 border border-red-100">
             <div class="flex items-start justify-between gap-4 flex-wrap">
                 <div>
                     <h2 class="text-base font-semibold text-gray-900">Izvještaji - email adrese</h2>
@@ -96,7 +96,7 @@
                 </div>
                 <button type="button"
                         id="settings-report-email-add"
-                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700"
+                        class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800"
                         @click="emailAddOpen = true">
                     Dodaj email adresu
                 </button>
@@ -104,7 +104,7 @@
 
             <div class="mt-4 space-y-2">
                 @forelse ($reportEmails as $re)
-                    <div class="flex items-center justify-between gap-3 p-3 rounded border border-gray-200">
+                    <div class="flex items-center justify-between gap-3 p-3 rounded border border-red-100">
                         <div class="text-sm text-gray-900">{{ $re->email }}</div>
                         <button type="button"
                             class="inline-flex items-center px-3 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-800 uppercase tracking-widest hover:bg-red-50"
@@ -121,7 +121,7 @@
                 @endforelse
             </div>
 
-            <div id="settings-report-email-form-panel" class="mt-6 p-4 rounded border border-gray-200 bg-gray-50 @unless($errors->has('email')) hidden @endunless" :class="{ 'hidden': ! emailAddOpen }">
+            <div id="settings-report-email-form-panel" class="mt-6 p-4 rounded border border-red-100 bg-red-50 @unless($errors->has('email')) hidden @endunless" :class="{ 'hidden': ! emailAddOpen }">
                 <form id="settings-report-email-form" method="POST" action="{{ route('panel_admin.settings.report-emails.store', [], false) }}" class="flex flex-wrap gap-3 items-end">
                     @csrf
                     <div class="min-w-[260px] grow">
@@ -131,11 +131,11 @@
                     </div>
                     <div class="flex gap-2">
                         <button type="submit"
-                            class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                            class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800">
                             Dodaj
                         </button>
                         <button type="button"
-                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50"
+                            class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50"
                             @click="emailAddOpen = false;">
                             Odkaži
                         </button>
@@ -144,7 +144,7 @@
             </div>
         </section>
 
-        <section class="bg-white shadow rounded-lg p-6 border border-gray-100">
+        <section class="bg-white shadow rounded-lg p-6 border border-red-100">
             <div class="flex items-start justify-between gap-4 flex-wrap">
                 <div>
                     <h2 class="text-base font-semibold text-gray-900">Incident - email adrese</h2>
@@ -152,7 +152,7 @@
                 </div>
                 <button type="button"
                         id="settings-incident-email-add"
-                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700"
+                        class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800"
                         x-on:click="incidentEmailAddOpen = true">
                     Dodaj email adresu
                 </button>
@@ -160,7 +160,7 @@
 
             <div class="mt-4 space-y-2">
                 @forelse ($limoIncidentEmails as $re)
-                    <div class="flex items-center justify-between gap-3 p-3 rounded border border-gray-200">
+                    <div class="flex items-center justify-between gap-3 p-3 rounded border border-red-100">
                         <div class="text-sm text-gray-900">{{ $re->email }}</div>
                         <button type="button"
                             class="inline-flex items-center px-3 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-800 uppercase tracking-widest hover:bg-red-50"
@@ -177,7 +177,7 @@
                 @endforelse
             </div>
 
-            <div id="settings-incident-email-form-panel" class="mt-6 p-4 rounded border border-gray-200 bg-gray-50 @unless($errors->has('limo_incident_email')) hidden @endunless" :class="{ 'hidden': ! incidentEmailAddOpen }">
+            <div id="settings-incident-email-form-panel" class="mt-6 p-4 rounded border border-red-100 bg-red-50 @unless($errors->has('limo_incident_email')) hidden @endunless" :class="{ 'hidden': ! incidentEmailAddOpen }">
                 <form id="settings-incident-email-form" method="POST" action="{{ route('panel_admin.settings.limo-incident-emails.store', [], false) }}" class="flex flex-wrap gap-3 items-end">
                     @csrf
                     <div class="min-w-[260px] grow">
@@ -187,11 +187,11 @@
                     </div>
                     <div class="flex gap-2">
                         <button type="submit"
-                            class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                            class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800">
                             Dodaj
                         </button>
                         <button type="button"
-                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50"
+                            class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50"
                             x-on:click="incidentEmailAddOpen = false;">
                             Odkaži
                         </button>
@@ -209,12 +209,12 @@
                         @csrf
                         @method('DELETE')
                         <button type="button"
-                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50"
+                            class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50"
                             @click="deleteOpen = false">
                             Ne
                         </button>
                         <button type="submit"
-                            class="inline-flex items-center px-4 py-2 bg-red-600 border border-red-700 rounded-md font-semibold text-xs text-white uppercase tracking-widest shadow-sm hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            class="inline-flex items-center px-4 py-2 bg-red-600 border border-red-700 rounded-md font-semibold text-xs text-white uppercase tracking-widest shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                             Da
                         </button>
                     </form>
