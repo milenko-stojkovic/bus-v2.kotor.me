@@ -1,4 +1,4 @@
-<x-guest-layout>
+<x-guest-layout :landing-background="true">
     @php
         $ui = fn (string $key, ?string $fallback = null) => \App\Support\UiText::t('auth', $key, $fallback);
     @endphp

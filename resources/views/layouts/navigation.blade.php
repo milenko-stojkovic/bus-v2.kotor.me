@@ -8,7 +8,7 @@
         <div class="flex justify-between h-16">
             <div class="flex min-w-0 flex-1">
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('panel.reservations') }}">
+                    <a href="{{ route('landing', [], false) }}">
                         <x-application-logo :white="true" class="block h-9 w-auto object-contain" />
                     </a>
                 </div>
@@ -61,7 +61,8 @@
                 </div>
             </div>
 
-            <div class="hidden sm:flex sm:items-center sm:shrink-0 sm:ms-2 lg:ms-4">
+            <div class="hidden sm:flex sm:items-center sm:shrink-0 sm:gap-3 sm:ms-2 lg:ms-4">
+                @include('partials.nav-locale-icons')
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-transparent hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 transition ease-in-out duration-150">
@@ -104,6 +105,9 @@
     </div>
 
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+        <div class="flex justify-end border-b border-white/15 px-4 py-3">
+            @include('partials.nav-locale-icons')
+        </div>
         <div class="pt-2 pb-3 space-y-1 px-2">
             <x-responsive-nav-link :href="route('panel.reservations')" :active="request()->routeIs('panel.reservations', 'panel.reservations.invoice')">
                 {{ $p('nav_reservations', 'Reservations') }}
