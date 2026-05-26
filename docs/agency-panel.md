@@ -97,6 +97,7 @@ Rute **`/panel/limo*`** vidljive i dostupne samo kada su ispunjena **oba** uslov
 Ako je bilo koji uslov false, `/panel/limo*` vraća **404**, a navigaciona stavka “Limo” može biti vidljiva ali **disabled** (bez linka) uz tooltip.
 
 - **Lista i generisanje:** `GET /panel/limo`, `POST /panel/limo/qr/generate`, **detalj QR:** `GET /panel/limo/qr/{limoQrToken}`.
+- Na vrhu Limo QR stranice prikazuje se **info-blok** sa operativnim uputstvom: mjesto ukrcavanja (map link), način evidentiranja (skeniranje jednodnevnog QR-a), efekti skeniranja (skidanje avansa + fiskal + email) i osnovni uslovi da agencija može pružati limo uslugu.
 - QR važi **samo za tekući kalendarski dan** (timezone projekta).
 - **Maks. 20 generisanih „slotova”** po agenciji po danu (aktivni tokeni + već evidentirani Limo pickup-i tog dana).
 - U bazi se čuvaju **`token_hash`** i **`encrypted_token`**; na ekranu se QR prikazuje iz dekriptovane vrijednosti.

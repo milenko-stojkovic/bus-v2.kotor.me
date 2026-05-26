@@ -378,6 +378,28 @@ servisa Bus Kotor.
 
 Dostupno samo kada su uključeni i avans i Limo servis.
 
+VAŽNE INFORMACIJE (OPERATIVA)
+
+Ukrcavanje putnika vrši se isključivo na predviđenom mjestu — autobuskom stajalištu
+kod gradske pijace (mapa: https://maps.app.goo.gl/BkmeQ1ZAo8XG1FDb6).
+
+Na tom mjestu službeno lice (limo evidentičar) evidentira pružanje limo usluge
+skeniranjem jednokratnog, jednodnevnog QR koda generisanog na ovoj stranici.
+
+Skeniranje QR koda ima za posljedicu:
+- umanjenje ukupnog avansa agencije,
+- izradu fiskalnog računa,
+- slanje fiskalnog računa na email agencije,
+- i označavanje QR koda kao iskorištenog (ništavnog).
+
+Da bi agencija mogla pružati limo uslugu, potrebno je da:
+- bude registrovana na Bus Kotor servisu,
+- posjeduje dovoljan avans u trenutku evidencije,
+- generiše QR kod koji će biti iskorišten tokom dana,
+- pokaže generisani QR kod evidentičaru.
+
+QR kod može biti odštampan na papiru ili prikazan kao slika na ekranu uređaja.
+
 11.1. Šta radi QR
 
 - Agencija generiše QR kod za tekući dan.
@@ -880,6 +902,28 @@ from the Bus Kotor service administrator.
 --------------------------------------------------------------------------------
 
 Available only when both advance and Limo service features are enabled.
+
+IMPORTANT INFORMATION (OPERATIONS)
+
+Passenger pickup must be performed only at the designated location — the bus stop
+by the city market (map: https://maps.app.goo.gl/BkmeQ1ZAo8XG1FDb6).
+
+At that location, an authorized officer (limo registrar) records the limo service
+by scanning a one-time, single-day QR code generated on this page.
+
+Scanning the QR code results in:
+- deducting the amount from the agency’s advance balance,
+- issuing a fiscal invoice,
+- sending the fiscal invoice to the agency email,
+- and marking the QR code as used (invalid).
+
+To provide limo service, the agency must:
+- be registered on the Bus Kotor service,
+- have sufficient advance balance at the time of registration,
+- generate a QR code that will be used during the day,
+- present the generated QR code to the registrar.
+
+The QR code may be printed on paper or shown as an image on a device screen.
 
 11.1. What the QR does
 
