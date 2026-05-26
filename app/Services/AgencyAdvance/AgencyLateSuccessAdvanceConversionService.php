@@ -120,7 +120,7 @@ final class AgencyLateSuccessAdvanceConversionService
                         'reference_type' => 'late_success_temp_data',
                         'reference_id' => (int) $locked->id,
                         'merchant_transaction_id' => (string) $locked->merchant_transaction_id,
-                        'note' => 'Late success konvertovan u avans',
+                        'note' => \App\Support\AdvanceLedgerNote::KEY_LATE_SUCCESS_CONVERSION,
                         'created_by_admin_id' => null,
                     ]);
                 }

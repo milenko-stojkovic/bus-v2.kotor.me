@@ -27,8 +27,12 @@ final class PanelReservationsAdvanceHeaderTest extends TestCase
     {
         config(['features.advance_payments' => true]);
 
-        $user = User::factory()->create(['email_verified_at' => now()]);
-        $this->actingAs($user);
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'lang' => 'cg',
+        ]);
+        $this->actingAs($user)
+            ->withSession(['locale' => 'cg']);
 
         AgencyAdvanceTransaction::query()->create([
             'agency_user_id' => $user->id,
@@ -50,6 +54,30 @@ final class PanelReservationsAdvanceHeaderTest extends TestCase
             ->assertOk()
             ->assertSee('Ukupan iznos avansa:', false)
             ->assertSee('65.00 EUR', false);
+    }
+
+    public function test_feature_flag_on_shows_english_total_advance_header_when_locale_is_en(): void
+    {
+        config(['features.advance_payments' => true]);
+
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'lang' => 'en',
+        ]);
+        $this->actingAs($user)
+            ->withSession(['locale' => 'en']);
+
+        AgencyAdvanceTransaction::query()->create([
+            'agency_user_id' => $user->id,
+            'amount' => '50.00',
+            'type' => AgencyAdvanceTransaction::TYPE_TOPUP,
+        ]);
+
+        $this->get(route('panel.reservations', [], false))
+            ->assertOk()
+            ->assertSee('Total advance balance:', false)
+            ->assertDontSee('Ukupan iznos avansa:', false)
+            ->assertSee('50.00 EUR', false);
     }
 }
 

@@ -119,7 +119,7 @@ Tekstovi na vrhu forme (pravni uvod, info-blok, pomoć za upload) dolaze iz **`u
 Forma je podijeljena u dvije cjeline:
 
 - **Cjelina 1 (datum + segmenti + vozila):**
-  - Datum (jedan datum po zahtjevu)
+  - Datum (jedan datum po zahtjevu) — unos **`dd/mm/yyyy`** (`<x-iso-date-input>`, backend `reservation_date` kao `Y-m-d`)
   - Segmenti (min 1, max 5): svaki segment je jedan par **Vrijeme dolaska** + **Vrijeme odlaska**
   - Vozila po segmentu (iz voznog parka ulogovane agencije; min 1; max = `system_config.available_parking_slots`; bez duplikata unutar segmenta)
 
@@ -180,6 +180,8 @@ Validacija: **`App\Http\Requests\UpdateReservationVehicleRequest`**.
 ---
 
 ## Statistika (`/panel/statistics`)
+
+**Unos datuma (Od / Do):** vidljivi format **`dd/mm/yyyy`** (`<x-iso-date-input>` + skriveni `Y-m-d` u GET upitu). Rezervacije i dalje koriste mesečni kalendar (`partials/reservation-date-calendar`).
 
 Servis **`App\Services\Reservation\PanelStatisticsService`**: koristi **`PanelReservationListService::realizedFor`** za istu definiciju „realized“, ali omogućava **filter po datumu** kroz query parametre:
 

@@ -106,6 +106,45 @@ class PanelStatisticsDateFilterTest extends TestCase
         $resp->assertDontSee('999.00');
     }
 
+    public function test_statistics_page_shows_english_filter_labels_when_locale_is_en(): void
+    {
+        $u = User::factory()->create([
+            'email_verified_at' => now(),
+            'lang' => 'en',
+        ]);
+
+        $this->actingAs($u)
+            ->withSession(['locale' => 'en']);
+
+        $resp = $this->get(route('panel.statistics', [], false))->assertOk();
+
+        $resp->assertSee('From', false);
+        $resp->assertSee('To', false);
+        $resp->assertSee('Apply', false);
+        $resp->assertDontSee('Primijeni', false);
+        $resp->assertDontSee('Od', false);
+        $resp->assertDontSee('Do', false);
+    }
+
+    public function test_statistics_page_uses_localized_date_text_inputs(): void
+    {
+        $u = User::query()->create([
+            'name' => 'A',
+            'email' => 'a@example.com',
+            'password' => bcrypt('secret'),
+            'country' => 'ME',
+            'lang' => 'cg',
+            'email_verified_at' => now(),
+        ]);
+
+        $this->actingAs($u);
+
+        $html = $this->get(route('panel.statistics', [], false))->assertOk()->getContent();
+
+        $this->assertStringContainsString('placeholder="dd/mm/yyyy"', $html);
+        $this->assertStringNotContainsString('type="date"', $html);
+    }
+
     public function test_validation_rejects_from_after_to(): void
     {
         $u = User::query()->create([

@@ -7,11 +7,11 @@
 <p>All the prices are final, shown in EUR. The Vendor, the Municipality of Kotor, as a local authority, is not a taxpayer within the VAT system; therefore the prices on the website do not include VAT.</p>
 <p>To process the services which the Buyer ordered through the website, there are no additional fees incurred on the Buyer.</p>
 <p>The goods and/or services are ordered online. The goods are considered to be ordered when the Buyer selects and confirms a payment method and when the credit or debit card authorization process is successfully terminated.</p>
-<p>Once the ordering process is completed, the Buyer gets an invoice which serves both as a confirmation of your order/proof of payment and a voucher for the service.</p>
+<p>Once the ordering process is completed, the Buyer gets an invoice which serves both as a confirmation of your order/proof of payment and a reservation for the service.</p>
 <p>Payment: The products and services are paid online by using one of the following debit or credit cards: MasterCard®, Maestro® or Visa.</p>
 <p>General conditions: Depending on the amount paid, the service is available for the vehicle of selected category, on the date and during the time indicated when making the purchase.</p>
-<p>The Voucher cannot be used outside the selected period. Once used, the Voucher can no longer be used.</p>
-<p>The Buyer is responsible for the use of the Voucher. The Municipality of Kotor bears no responsibility for the unauthorized use of the Voucher.</p>
+<p>The reservation cannot be used outside the selected period. Once used, the reservation can no longer be used.</p>
+<p>The Buyer is responsible for the use of the reservation. The Municipality of Kotor bears no responsibility for the unauthorized use of the reservation.</p>
 <p>The Municipality of Kotor reserves the right to change these terms and conditions. Any changes will be applied to the use of the bus.kotor.me website.</p>
 <p>The buyer bears the responsibility for the accuracy and completeness of data during the buying process.</p>
 <p>The services provided by the Municipality of Kotor on the bus.kotor.me website do not include the costs incurred by using computer equipment and internet service providers' services to access our website.</p>

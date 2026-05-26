@@ -169,5 +169,23 @@ class FzbrIntakeTest extends TestCase
             $un->payload_json['dedupe_key'] ?? null
         );
     }
+
+    public function test_fzbr_page_shows_english_segment_labels_when_locale_is_en(): void
+    {
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'lang' => 'en',
+            'country' => 'ME',
+        ]);
+        $this->actingAs($user)
+            ->withSession(['locale' => 'en']);
+
+        $html = $this->get(route('panel.fzbr.create', [], false))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Arrival and departure', $html);
+        $this->assertStringContainsString('Maximum number of vehicles per segment:', $html);
+        $this->assertStringNotContainsString('Dolazak i odlazak', $html);
+        $this->assertStringNotContainsString('Maksimalan broj vozila po segmentu', $html);
+    }
 }
 

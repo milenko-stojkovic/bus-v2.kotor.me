@@ -71,7 +71,7 @@ final class AdvanceTopupProcessor
                 'reference_type' => 'advance_topup',
                 'reference_id' => $topup->id,
                 'merchant_transaction_id' => $topup->merchant_transaction_id,
-                'note' => 'Avansna uplata',
+                'note' => \App\Support\AdvanceLedgerNote::KEY_TOPUP,
                 'created_by_admin_id' => null,
             ]);
 

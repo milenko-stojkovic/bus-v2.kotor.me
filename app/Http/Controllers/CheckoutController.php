@@ -153,7 +153,7 @@ class CheckoutController extends Controller
                         'reference_type' => 'reservation',
                         'reference_id' => (int) $reservation->id,
                         'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                        'note' => 'Plaćanje rezervacije iz avansa',
+                        'note' => \App\Support\AdvanceLedgerNote::KEY_RESERVATION_PAYMENT,
                     ]);
 
                     return $reservation;

@@ -95,17 +95,22 @@
             {{-- Cjelina 1: Datum + segmenti (dolazak/odlazak) + vozila --}}
             <div class="bg-white shadow sm:rounded-lg p-6 space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
-                    <div class="sm:col-span-1">
-                        <x-input-label for="reservation_date" :value="\App\Support\UiText::t('reservation', 'date')" />
-                        <input
+                    <div
+                        class="sm:col-span-1"
+                        @change="
+                            if ($event.target && $event.target.id === 'reservation_date') {
+                                selectedDate = $event.target.value || '';
+                                onDateChange();
+                            }
+                        "
+                    >
+                        <x-iso-date-input
                             id="reservation_date"
                             name="reservation_date"
-                            type="date"
-                            min="{{ $minDate }}"
-                            max="{{ $maxDate }}"
-                            x-model="selectedDate"
-                            x-on:change="onDateChange()"
-                            class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
+                            :label="\App\Support\UiText::t('reservation', 'date')"
+                            :value="old('reservation_date', '')"
+                            :min="$minDate"
+                            :max="$maxDate"
                             form="fzbrPostForm"
                             required
                         />
@@ -117,7 +122,7 @@
                             :disabled="segments.length >= 5"
                             @click="addSegment()"
                         >
-                            {{ $ui('add_segment', 'Dodaj dolazak i odlazak') }}
+                            {{ $ui('add_segment', $locale === 'en' ? 'Add arrival and departure' : 'Dodaj dolazak i odlazak') }}
                         </button>
                     </div>
                 </div>
@@ -126,7 +131,7 @@
                     <div class="rounded-md border border-red-100 p-4 space-y-3">
                         <div class="flex items-start justify-between gap-3">
                             <div class="text-sm font-semibold text-gray-900">
-                                {{ $ui('segment_title', 'Dolazak i odlazak') }} <span x-text="sIdx + 1"></span>
+                                {{ $ui('segment_title', $locale === 'en' ? 'Arrival and departure' : 'Dolazak i odlazak') }} <span x-text="sIdx + 1"></span>
                             </div>
                             <button
                                 type="button"
@@ -134,7 +139,7 @@
                                 x-show="segments.length > 1"
                                 @click="removeSegment(sIdx)"
                             >
-                                {{ $ui('remove_segment', 'Ukloni segment') }}
+                                {{ $ui('remove_segment', $locale === 'en' ? 'Remove segment' : 'Ukloni segment') }}
                             </button>
                         </div>
 
@@ -228,7 +233,12 @@
                                 if ($maxSegVehicles <= 0) {
                                     $maxSegVehicles = 9;
                                 }
-                                $limitTpl = (string) $ui('vehicles_limit_dynamic', 'Maksimalan broj vozila po segmentu: %1$d.');
+                                $limitTpl = (string) $ui(
+                                    'vehicles_limit_dynamic',
+                                    $locale === 'en'
+                                        ? 'Maximum number of vehicles per segment: %1$d.'
+                                        : 'Maksimalan broj vozila po segmentu: %1$d.',
+                                );
                                 $limitText = sprintf($limitTpl, $maxSegVehicles);
                             @endphp
                             <p class="text-xs text-gray-500">{{ $limitText }}</p>

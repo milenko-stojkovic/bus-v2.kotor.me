@@ -1,4 +1,5 @@
 @php
+    $locale = app()->getLocale();
     $p = fn (string $key, ?string $fallback = null) => \App\Support\UiText::t('panel', $key, $fallback);
     $s = fn (string $key, ?string $fallback = null) => \App\Support\UiText::t('statistics', $key, $fallback);
 @endphp
@@ -27,27 +28,23 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                 <form method="GET" class="flex flex-col sm:flex-row gap-3 sm:items-end">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700" for="date_from">{{ $s('date_from', 'Od') }}</label>
-                        <input
+                        <x-iso-date-input
                             id="date_from"
                             name="date_from"
-                            type="date"
-                            min="{{ $minDate }}"
-                            max="{{ $maxDate }}"
-                            value="{{ request('date_from', $date_from) }}"
-                            class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                            :label="$s('date_from', $locale === 'en' ? 'From' : 'Od')"
+                            :value="request('date_from', $date_from)"
+                            :min="$minDate"
+                            :max="$maxDate"
                         />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700" for="date_to">{{ $s('date_to', 'Do') }}</label>
-                        <input
+                        <x-iso-date-input
                             id="date_to"
                             name="date_to"
-                            type="date"
-                            min="{{ $minDate }}"
-                            max="{{ $maxDate }}"
-                            value="{{ request('date_to', $date_to) }}"
-                            class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                            :label="$s('date_to', $locale === 'en' ? 'To' : 'Do')"
+                            :value="request('date_to', $date_to)"
+                            :min="$minDate"
+                            :max="$maxDate"
                         />
                     </div>
                     <div class="flex gap-2">
@@ -55,13 +52,13 @@
                             type="submit"
                             class="inline-flex items-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
                         >
-                            {{ $s('apply_filters', 'Primijeni') }}
+                            {{ $s('apply_filters', $locale === 'en' ? 'Apply' : 'Primijeni') }}
                         </button>
                         <a
                             href="{{ route('panel.statistics') }}"
                             class="inline-flex items-center rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-red-100"
                         >
-                            {{ $s('reset_filters', 'Reset') }}
+                            {{ $s('reset_filters', $locale === 'en' ? 'Reset' : 'Resetuj') }}
                         </a>
                     </div>
                 </form>

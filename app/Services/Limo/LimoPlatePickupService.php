@@ -274,7 +274,7 @@ final class LimoPlatePickupService
                     'reference_type' => LimoPickupService::REFERENCE_TYPE_LIMO_PICKUP_EVENT,
                     'reference_id' => (int) $event->id,
                     'merchant_transaction_id' => $merchantTransactionId,
-                    'note' => 'Limo pickup via plate',
+                    'note' => \App\Support\AdvanceLedgerNote::KEY_LIMO_PICKUP_PLATE,
                     'created_by_admin_id' => $recordedByLimoAdminId,
                 ]);
 

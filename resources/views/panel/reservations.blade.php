@@ -8,7 +8,6 @@
     $termsTitle = $pn('terms_modal_title', $locale === 'cg' ? 'Uslovi korišćenja' : 'Terms and Conditions');
     $termsLinkLabel = $pn('terms_link_label', $locale === 'cg' ? 'uslovima korišćenja' : 'terms and conditions');
     $termsPrefix = $pn('terms_accept_prefix', $locale === 'cg' ? 'Saglasan/a sam sa' : 'I agree to the');
-    $locationLabel = $pn('location_label', $locale === 'cg' ? 'Lokacija:' : 'Location:');
     $countriesCfg = (array) config('countries', []);
     $cc = $u->country ?? '';
     $countryDisplay = $cc;
@@ -36,9 +35,11 @@
 
     <div class="py-6">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            @include('partials.reservation-pricing-notice')
+
             @if ($advanceEnabled && !is_null($advanceBalance))
                 <div class="rounded-md border border-red-100 bg-red-50 p-3">
-                    <span class="text-sm text-gray-600">Ukupan iznos avansa:</span>
+                    <span class="text-sm text-gray-600">{{ $pn('advance_total_label', $locale === 'cg' ? 'Ukupan iznos avansa:' : 'Total advance balance:') }}</span>
                     <span class="ml-2 font-semibold text-gray-900">{{ number_format((float) $advanceBalance, 2, '.', '') }} EUR</span>
                 </div>
             @endif
@@ -178,7 +179,7 @@
                                 </label>
                                 <label class="flex items-start gap-2 text-sm">
                                     <input type="checkbox" name="accept_privacy" value="1" class="mt-1 rounded border-red-200" {{ old('accept_privacy') ? 'checked' : '' }} required>
-                                    <span>{{ $ui('accept_privacy') }}</span>
+                                    <span>@include('partials.reservation-accept-parking-obligation')</span>
                                 </label>
                             </div>
 
@@ -204,14 +205,6 @@
                                     </div>
                                 </div>
                             @endif
-
-                            <div class="text-sm text-gray-700 space-y-1">
-                                <div class="font-medium">{{ $locationLabel }}</div>
-                                <div class="flex flex-col gap-1">
-                                    <a href="https://maps.app.goo.gl/oXD6SEzjyXtm4c586" target="_blank" rel="noopener" class="underline text-red-700 hover:text-red-900">Autoboka</a>
-                                    <a href="https://maps.app.goo.gl/kPAD6mipzZTjCCYE7" target="_blank" rel="noopener" class="underline text-red-700 hover:text-red-900">Puč</a>
-                                </div>
-                            </div>
 
                             <button
                                 type="submit"

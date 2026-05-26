@@ -39,6 +39,7 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 - **Blade partiali / markdown u `docs/`**: za **dugačke** tekstove (uslovi korišćenja, politika privatnosti, duga uputstva). Ne stavljati ceo pravni tekst u `ui_translations`.
 - Pristup u Blade-u: **`App\Support\UiText::t('group', 'key', $fallback)`**; novi ključevi kroz **`UiTranslationsSeeder`** sa `upsert` (bez dupliranja redova).
 - **Korisnik / mail locale:** za auth mailove koristiti **`$user->lang`** (`cg` / `en`); verify-email ekran treba da prati isti princip gde je korisnik ulogovan.
+- **Agencijski unos datuma (FZBR, Statistika):** vidljivo **`dd/mm/yyyy`** preko **`resources/views/components/iso-date-input.blade.php`** + **`resources/js/isoDateInput.js`** (skriveno polje šalje **`Y-m-d`**). **Rezervacije** koriste mesečni grid **`partials/reservation-date-calendar`** (isto `Y-m-d`). Izbegavati `input[type=date]` na agencijskim formama — prikaz zavisi od locale pregledača (npr. mm/dd/yyyy).
 
 ---
 

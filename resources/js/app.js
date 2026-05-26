@@ -2,6 +2,7 @@ import './bootstrap';
 
 import Alpine from 'alpinejs';
 import './dailyCapacityCharts';
+import './isoDateInput';
 
 window.Alpine = Alpine;
 

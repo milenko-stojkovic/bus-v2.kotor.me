@@ -116,7 +116,7 @@ final class LimoPickupService
                     'reference_type' => self::REFERENCE_TYPE_LIMO_PICKUP_EVENT,
                     'reference_id' => (int) $event->id,
                     'merchant_transaction_id' => $merchantTransactionId,
-                    'note' => 'Limo pickup via QR',
+                    'note' => \App\Support\AdvanceLedgerNote::KEY_LIMO_PICKUP_QR,
                     'created_by_admin_id' => $recordedByLimoAdminId,
                 ]);
 

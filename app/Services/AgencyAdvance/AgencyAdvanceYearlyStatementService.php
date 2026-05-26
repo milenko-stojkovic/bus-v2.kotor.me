@@ -68,7 +68,7 @@ final class AgencyAdvanceYearlyStatementService
             $rows[] = [
                 'date' => $tx->created_at?->format('d.m.Y. H:i') ?? '',
                 'type' => (string) $tx->type,
-                'description' => (string) ($tx->note ?? ''),
+                'description' => \App\Support\AdvanceLedgerNote::label($tx->note) ?: (string) ($tx->note ?? ''),
                 'amount' => $amount,
                 'balance_after' => $running,
             ];

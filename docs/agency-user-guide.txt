@@ -22,8 +22,9 @@ bus.kotor.me za rezervacije parkinga u Kotoru, upravljanje voznim parkom,
 avansno plaćanje (ako je uključeno), Limo QR (ako je uključeno) i podnošenje
 zahtjeva za besplatne rezervacije (FZBR).
 
-Agencija radi u dijelu aplikacije pod adresom /panel (Agency panel).
-Pristup zahtijeva registrovan nalog, potvrđenu email adresu i prijavu.
+Nakon prijave radite u panelu za agencije (stavke u gornjem meniju: Rezervacije,
+Vozila, FZBR i sl.). Pristup zahtijeva registrovan nalog, potvrđenu email
+adresu i prijavu.
 
 <opis: naslovna stranica sajta bus.kotor.me sa linkom „Prijava“ / „Agency sign in“>
 
@@ -60,7 +61,7 @@ Ako ste zaboravili lozinku:
 
 2.4. Nakon prijave
 
-- Ako je email već potvrđen, ulazite u Agency panel (/panel).
+- Ako je email već potvrđen, ulazite u panel za agencije.
 - Ako email nije potvrđen, sistem vas upućuje na stranicu za verifikaciju
   (vidi poglavlje 4).
 
@@ -92,7 +93,7 @@ Jezik naloga pri registraciji odgovara trenutno izabranom jeziku stranice
 3.3. Završetak registracije
 
 Nakon slanja forme:
-- Kreira se vaš korisnički nalog (User).
+- Kreira se vaš korisnički nalog agencije.
 - Automatski ste prijavljeni.
 - Sistem vas preusmjerava na stranicu za potvrdu email adrese (verifikacija).
 
@@ -106,9 +107,8 @@ Registracija NIJE završena operativno dok ne potvrdite email (poglavlje 4).
 
 4.1. Zašto je potrebna
 
-Agency panel (/panel) zaštićen je tako da samo verifikovani korisnici mogu
-rezervisati, upravljati vozilima i slati FZBR zahtjeve. Bez potvrđenog emaila
-nećete imati pun pristup panelu.
+Panel za agencije dostupan je samo nakon potvrde email adrese. Bez potvrđenog
+emaila ne možete rezervisati, upravljati vozilima ni slati FZBR zahtjeve.
 
 4.2. Prvi korak nakon registracije
 
@@ -130,7 +130,8 @@ Na ekranu „Potvrdite email“ / „Verify your email“:
 4.4. Nakon uspješne verifikacije
 
 - Email je označen kao potvrđen.
-- Možete koristiti Agency panel: Rezervacije, Vozila, FZBR, itd.
+- Možete koristiti panel za agencije: Rezervacije, Vozila, FZBR i ostale stavke
+  iz menija.
 
 4.5. Promjena email adrese u profilu
 
@@ -142,16 +143,16 @@ Ako u profilu (User) promijenite email:
 <opis: User tab u panelu — polje Email i Save>
 
 --------------------------------------------------------------------------------
-5. PREGLED AGENCY PANELA (NAKON PRIJAVE)
+5. PREGLED PANELA ZA AGENCIJE (NAKON PRIJAVE)
 --------------------------------------------------------------------------------
 
-Nakon prijave i verifikacije emaila otvara se Agency panel. U gornjem meniju
+Nakon prijave i verifikacije emaila otvara se panel za agencije. U gornjem meniju
 nalaze se (prema uključenim funkcijama):
 
 - Rezervacije — nova rezervacija (plaćena ili besplatna, kartica ili avans)
 - Avans — stanje avansa, uplate, istorija (samo ako je funkcija uključena)
-- Limo QR — generisanje QR kodova za Limo pickup (samo ako su uključeni avans
-  i Limo servis)
+- Limo QR — generisanje QR kodova za Limo uslugu na terenu (samo ako su uključeni
+  avans i Limo servis)
 - Korisnik — profil, jezik, lozinka, email
 - Vozila — vozni park
 - FZBR — Formular za besplatnu rezervaciju
@@ -159,7 +160,7 @@ nalaze se (prema uključenim funkcijama):
 - Realizovane rezervacije
 - Statistika
 
-<opis: gornja navigacija Agency panela sa označenim stavkama menija>
+<opis: gornja navigacija panela za agencije sa označenim stavkama menija>
 
 Jezik panela prati postavku „Jezik“ u profilu korisnika (cg ili en).
 
@@ -179,17 +180,17 @@ Jezik panela prati postavku „Jezik“ u profilu korisnika (cg ili en).
 6.2. Uklanjanje vozila
 
 - Ako vozilo nikada nije korišćeno u rezervaciji — može se obrisati.
-- Ako je bilo u istoriji rezervacija — ne briše se trajno; dobija status
-  „uklonjeno“ (removed) i nestaje iz liste aktivnih vozila.
+- Ako je bilo u istoriji rezervacija — ne briše se trajno; označava se kao
+  uklonjeno i nestaje iz liste aktivnih vozila.
 
 6.3. Ponovni unos iste tablice
 
 - Ista tablica + ista kategorija kao ranije uklonjeno vozilo → vozilo se
   reaktivira.
 - Ista tablica + DRUGA kategorija → direktan unos je blokiran. Morate
-  priložiti dokument (slika ili PDF) i poslati zahtjev administratoru za
-  odobrenje promjene kategorije. Dok zahtjev nije odobren, vozilo se ne može
-  koristiti sa novom kategorijom.
+  priložiti dokument (slika ili PDF) i poslati zahtjev administratoru servisa
+  Bus Kotor za odobrenje promjene kategorije. Dok zahtjev nije odobren, vozilo se
+  ne može koristiti sa novom kategorijom.
 
 <opis: poruka i forma za upload dokumenta pri promjeni kategorije tablice>
 
@@ -211,7 +212,8 @@ Ako pokušate ukloniti vozilo vezano za predstojeće rezervacije:
 
 1. Otvorite Rezervacije.
 2. Izaberite datum rezervacije.
-3. Izaberite termin dolaska (drop-off) i odlaska (pick-up).
+3. Izaberite termin dolaska i termin odlaska (vrijeme prikazano u padajućoj listi,
+   npr. „07:00 - 07:20“).
 4. Izaberite vozilo iz voznog parka (aktivna vozila).
 5. Provjerite cijenu / da li je termin besplatan (vidi 7.2).
 6. Izaberite način plaćanja ako je plaćena rezervacija (kartica ili avans).
@@ -221,14 +223,21 @@ Ako pokušate ukloniti vozilo vezano za predstojeće rezervacije:
 
 7.2. Besplatni termini
 
-Određeni termini mogu biti besplatni (jutarnji i večernji prozori, prema
-pravilima sistema). Za besplatnu rezervaciju:
+U padajućim listama „Vrijeme dolaska“ i „Vrijeme odlaska“ pojedini termini mogu
+biti označeni kao besplatni (najčešće jutarnji termin „00:00 - 07:00“ i večernji
+„20:00 - 24:00“, prema pravilima Opštine). Za besplatnu rezervaciju:
 - Ne ide se na banku za plaćanje.
 - Ne izdaje se fiskalni račun kao za plaćenu rezervaciju.
 - Šalje se email potvrde besplatne rezervacije.
 
-Posebna kombinacija termina 1→1 i 41→41 takođe može biti besplatna (sistem
-to automatski prepoznaje).
+Pored toga, sistem automatski tretira kao besplatne i ove kombinacije (koristite
+tačne nazive termina kao u formi):
+- dolazak „00:00 - 07:00“ i odlazak „00:00 - 07:00“
+- dolazak „00:00 - 07:00“ i odlazak „20:00 - 24:00“
+- dolazak „20:00 - 24:00“ i odlazak „20:00 - 24:00“
+
+Kombinacija dolazak „20:00 - 24:00“ i odlazak „00:00 - 07:00“ nije besplatna —
+rezervacija se plaća kao i ostali termini u tom periodu.
 
 7.3. Plaćena rezervacija — kartica
 
@@ -248,8 +257,8 @@ dopunite avans (poglavlje 8).
 
 7.5. Kapacitet i blokirani termini
 
-- Termin mora imati slobodan kapacitet (uključujući pending rezervacije u
-  obradi).
+- Termin mora imati slobodan kapacitet (uključujući rezervacije koje su u toku
+  plaćanja karticom i još nisu završene).
 - Blokirani termini nisu dostupni za kupovinu.
 - Datum obično može biti najviše ~90 dana unaprijed (ograničenje sistema).
 
@@ -261,20 +270,21 @@ dopunite avans (poglavlje 8).
 
 Otvorite Avans. Vidite:
 - Trenutno stanje (zbir svih knjiženja na avansu)
-- Istoriju knjiženja (uplate, korišćenje za rezervacije, korekcije admina)
+- Istoriju knjiženja (uplate, korišćenje za rezervacije, korekcije od strane
+  administratora servisa Bus Kotor)
 - Istoriju pokušaja dopune avansa
 
 <opis: stranica Avans sa saldom i tabelom knjiženja>
 
-8.2. Dopuna avansa (top-up)
+8.2. Dopuna avansa
 
 1. Unesite iznos dopune.
-2. Pokrenite uplatu — preusmjerenje na banku (ili test okruženje).
+2. Pokrenite uplatu — preusmjerenje na stranicu banke za plaćanje karticom.
 3. Nakon uspješne uplate stanje avansa se povećava.
 4. Na email stiže PDF potvrda o evidentiranoj avansnoj uplati (to NIJE fiskalni
    račun).
 
-<opis: forma za top-up i povratak sa banke>
+<opis: forma za dopunu avansa i povratak sa banke>
 
 8.3. Korišćenje avansa za rezervacije
 
@@ -285,7 +295,7 @@ iznos rezervacije.
 9. PREDSTOJEĆE I REALIZOVANE REZERVACIJE
 --------------------------------------------------------------------------------
 
-9.1. Predstojeće (Upcoming)
+9.1. Predstojeće rezervacije
 
 Prikaz rezervacija čiji je datum u budućnosti ili je danas, a termin odlaska
 još nije prošao. Ovdje možete:
@@ -294,7 +304,7 @@ još nije prošao. Ovdje možete:
 
 <opis: lista predstojećih rezervacija sa opcijom promjene vozila>
 
-9.2. Realizovane (Realized)
+9.2. Realizovane rezervacije
 
 Prikaz prošlih rezervacija i današnjih gdje je termin odlaska već prošao.
 PDF računa dostupan za pregled/preuzimanje gdje je primjenjivo.
@@ -307,7 +317,8 @@ Dozvoljeno samo vozilo:
 - iz vašeg voznog parka (aktivno),
 - iste ili NIŽE kategorije (cijena kategorije ≤ cijena na rezervaciji),
 - bez konflikta: ne smije imati drugu rezervaciju na isti datum sa istim
-  terminom DOLASKA ili istim terminom ODLASKA (cross-match nije zabranjen).
+  terminom dolaska ili istim terminom odlaska (dozvoljeno je da vaš dolazak
+  bude u istom terminu kao tuđi odlazak — to nije smatrano duplikatom).
 
 Za plaćenu rezervaciju nakon promjene vozila može se ponovo poslati email
 sa računom.
@@ -326,9 +337,9 @@ odobri besplatne termine.
 2. Nakon odobrenja Sekretarijata, odobrenje se proslijedi agenciji/prevozniku.
 3. Tek tada agencija podnosi FZBR u sistemu uz dokumentaciju.
 
-Administrator NE odobrava besplatnu rezervaciju dok sva neophodna dokumentacija
-nije dostavljena i pregledana. Možete poslati dokumentaciju i u više koraka,
-ali zahtjev neće biti odobren dok komplet ne bude.
+Administrator servisa Bus Kotor NE odobrava besplatnu rezervaciju dok sva
+neophodna dokumentacija nije dostavljena i pregledana. Možete poslati
+dokumentaciju i u više koraka, ali zahtjev neće biti odobren dok komplet ne bude.
 
 <opis: informativni blok na vrhu FZBR stranice sa tekstom o prihodi@kotor.me>
 
@@ -336,27 +347,30 @@ ali zahtjev neće biti odobren dok komplet ne bude.
 
 1. Otvorite FZBR u meniju.
 2. Izaberite jedan datum za cijeli zahtjev.
-3. Dodajte 1 do 5 segmenata. Svaki segment = jedan par:
+3. Dodajte 1 do 5 blokova termina (u formi: segmenti). Svaki blok = jedan par:
    - Vrijeme dolaska
    - Vrijeme odlaska
-4. Za svaki segment izaberite vozila iz voznog parka (min. 1 vozilo po
-   segmentu; maksimum po segmentu = operativni kapacitet parkinga, obično
-   do 9 vozila).
-5. Isto vozilo ne smije biti izabrano dva puta u istom segmentu.
+4. Za svaki blok izaberite vozila iz voznog parka (najmanje 1 vozilo po bloku;
+   obično najviše 9 vozila po bloku — kapacitet parkinga).
+5. Isto vozilo ne smije biti izabrano dva puta u istom bloku.
 6. Priložite dokumentaciju: slike ili PDF, ukupno do 10 MB.
-7. Potvrdite saglasnost sa politikom privatnosti.
+7. Potvrdite checkbox sa tekstom o obavezi iskrcaja/ukrcaja na parkingu Autoboka
+   i Puč (linkovi u tekstu).
 8. Pošaljite zahtjev.
 
-<opis: FZBR forma — segmenti, izbor vozila, upload dokumenata, dugme Podnesi>
+<opis: FZBR forma — blokovi termina, izbor vozila, upload dokumenata, dugme Podnesi>
 
 10.3. Nakon slanja
 
-- Zahtjev dobija status „submitted“ (podnesen).
-- Administrator pregleda zahtjev u admin panelu.
-- Možete dobiti status „updated“, „fulfilled“ (odobreno i realizovano) ili
-  „rejected“ (odbijeno).
+- Zahtjev je podnesen — čeka pregled.
+- Administrator servisa Bus Kotor pregleda zahtjev i dokumentaciju.
+- Mogući ishodi koje vidite u sistemu:
+  • zahtjev je ažuriran (dopuna dokumentacije),
+  • odobren i realizovan (besplatne rezervacije kreirane),
+  • odbijen.
 
-Agencija NE finalizuje besplatnu rezervaciju sama — čeka admin akciju.
+Agencija NE finalizuje besplatnu rezervaciju sama — čeka odluku administratora
+servisa Bus Kotor.
 
 --------------------------------------------------------------------------------
 11. LIMO QR (AKO JE UKLJUČENO)
@@ -367,23 +381,23 @@ Dostupno samo kada su uključeni i avans i Limo servis.
 11.1. Šta radi QR
 
 - Agencija generiše QR kod za tekući dan.
-- QR koristi Limo evidenter na terenu pri potvrdi pickup-a.
-- Samo generisanje QR-a NE troši avans i NE fiskalizuje.
+- QR koristi Limo osoblje na terenu pri potvrdi preuzimanja putnika.
+- Samo generisanje QR-a NE troši avans i NE izdaje fiskalni račun.
 
 11.2. Ograničenja
 
-- QR važi samo za današnji kalendarski dan (vremenska zona projekta).
-- Maksimalno 20 generisanih „slotova“ po agenciji po danu (aktivni tokeni +
-  već evidentirani pickup-i tog dana).
+- QR važi samo za današnji datum (kalendarski dan u sistemu Bus Kotor).
+- Najviše 20 QR kodova po agenciji po danu (uključujući već korišćene i nove
+  za taj dan).
 
 11.3. Koraci
 
 1. Otvorite Limo QR u meniju.
 2. Generišite novi QR.
 3. Prikažite ili preuzmite PDF za štampu.
-4. Predajte QR evidenteru na terenu.
+4. Predajte QR osoblju na terenu.
 
-<opis: lista QR tokena za današnji dan i dugme Generiši>
+<opis: lista QR kodova za današnji dan i dugme Generiši>
 
 --------------------------------------------------------------------------------
 12. STATISTIKA
@@ -418,7 +432,7 @@ Brisanje naloga: dostupna opcija u profilu (oprez — nepovratno za pristup).
 14.1. Nalog i pristup
 
 - Jedan email = jedan nalog agencije.
-- Email mora biti verifikovan za pun pristup /panel funkcijama.
+- Email mora biti verifikovan za pun pristup panelu za agencije.
 - Čuvajte lozinku povjerljivo; koristite opciju reset lozinke ako je zaboravljena.
 
 14.2. Registarske tablice
@@ -426,20 +440,20 @@ Brisanje naloga: dostupna opcija u profilu (oprez — nepovratno za pristup).
 - Unosite tablice tačno (sistem normalizuje velika slova; dijakritici se
   tolerišu pri provjeri duplikata).
 - Ne pokušavajte zaobići promjenu kategorije vozila ponovnim unosom iste
-  tablice bez admin odobrenja.
+  tablice bez odobrenja administratora servisa Bus Kotor.
 
 14.3. Rezervacije i duplikati
 
 - NE možete kreirati novu rezervaciju ako za isti datum i istu tablicu već
   postoji rezervacija sa ISTIM terminom dolaska ILI ISTIM terminom odlaska.
-- Dozvoljeno je da imate rezervaciju gdje je vaš dolazak = tuđi odlazak
-  (cross-match) — to NIJE duplikat.
+- Dozvoljeno je da imate rezervaciju gdje je vaš dolazak u istom terminu kao
+  tuđi odlazak — to NIJE duplikat.
 
 14.4. Kapacitet i termini
 
 - Rezervišite samo kada sistem prikaže dostupan termin.
 - Ne rezervišite za prošle datume.
-- Poštujte blokade termina koje je postavio administrator.
+- Poštujte blokade termina koje je postavio administrator servisa Bus Kotor.
 
 14.5. Plaćanje
 
@@ -452,19 +466,20 @@ Brisanje naloga: dostupna opcija u profilu (oprez — nepovratno za pristup).
 
 - Prvo odobrenje preko prihodi@kotor.me, zatim FZBR u sistemu.
 - Priložite jasnu dokumentaciju (odobrenje, angažovanje prevoznika, itd.).
-- Administrator ne odobrava dok dokumentacija nije kompletna.
-- Maks. 5 segmenata po zahtjevu; po segmentu poštujte limit broja vozila.
+- Administrator servisa Bus Kotor ne odobrava dok dokumentacija nije kompletna.
+- Maks. 5 blokova termina po zahtjevu; po bloku poštujte limit broja vozila.
 
 14.7. Promjena vozila na rezervaciji
 
 - Samo niža ili ista kategorija.
-- Bez konflikta termina (isto pravilo drop/pick kao pri duplikatima).
+- Bez konflikta termina (isto pravilo dolaska/odlaska kao pri duplikatima).
 - Za plaćene rezervacije promjena može pokrenuti novi email sa računom.
 
 14.8. Limo (ako je uključeno)
 
 - QR samo za današnji dan; ne dijelite QR izvan operativne namjene.
-- Finansijski efekat nastaje tek kada evidenter potvrdi pickup na terenu.
+- Finansijski efekat nastaje tek kada osoblje na terenu potvrdi preuzimanje
+  putnika skeniranjem QR koda.
 
 14.9. Tačni podaci
 
@@ -474,8 +489,10 @@ Brisanje naloga: dostupna opcija u profilu (oprez — nepovratno za pristup).
 14.10. Zabranjeno / ne raditi
 
 - Ne koristite tuđe naloge.
-- Ne manipulišite URL-ovima ili API-jem van predviđenog UI-ja.
-- Ne očekujte automatsko odobrenje FZBR bez admin pregleda.
+- Koristite samo dugmad i forme u aplikaciji — ne pokušavajte ručno mijenjati
+  adrese u pregledaču da biste zaobišli pravila.
+- Ne očekujte automatsko odobrenje FZBR bez pregleda od strane administratora
+  servisa Bus Kotor.
 - Ne brišite vozila sa predstojećim rezervacijama bez zamjene kada sistem
   to traži.
 
@@ -484,18 +501,19 @@ Brisanje naloga: dostupna opcija u profilu (oprez — nepovratno za pristup).
 --------------------------------------------------------------------------------
 
 P: Zašto ne vidim Avans ili Limo u meniju?
-O: Funkcije zavise od podešavanja sistema (feature flags). Ako su isključene,
-   stavka je siva ili nedostupna.
+O: Te stavke su uključene samo za agencije kojima je to omogućeno u sistemu Bus
+   Kotor. Ako vam nisu potrebne ili niste u programu, stavka je siva ili nedostupna.
 
-P: Zašto me sistem ne pušta na /panel nakon prijave?
+P: Zašto nakon prijave ne vidim Rezervacije i ostale stavke?
 O: Vjerovatno email nije verifikovan — provjerite inbox i stranicu za
-   verifikaciju.
+   verifikaciju (poglavlje 4).
 
 P: Mogu li imati više agencija na jedan email?
 O: Ne — email mora biti jedinstven.
 
 P: Šta ako plaćanje karticom ne uspije?
-O: Pending rezervacija može isteći; pokušajte ponovo ili kontaktirajte podršku.
+O: Rezervacija može ostati nepotvrđena dok se plaćanje ne završi; pokušajte
+   ponovo ili kontaktirajte podršku Bus Kotor.
 
 --------------------------------------------------------------------------------
 KRAJ DIO A (CG)
@@ -514,8 +532,9 @@ application to book Kotor parking, manage their vehicle fleet, use advance
 payments (if enabled), Limo QR (if enabled), and submit free reservation
 requests (FZBR).
 
-Agencies work in the /panel area (Agency panel). Access requires a registered
-account, verified email address, and sign-in.
+After sign-in you work in the agency panel (top menu: Reservations, Vehicles,
+FZBR, etc.). Access requires a registered account, verified email address, and
+sign-in.
 
 <screenshot: site home page with “Agency sign in” / “Log in” link highlighted>
 
@@ -552,7 +571,7 @@ If you forgot your password:
 
 2.4. After sign-in
 
-- If your email is already verified, you enter the Agency panel (/panel).
+- If your email is already verified, you enter the agency panel.
 - If not verified, you are redirected to email verification (see section 4).
 
 --------------------------------------------------------------------------------
@@ -596,9 +615,8 @@ Registration is NOT operationally complete until you verify email (section 4).
 
 4.1. Why it is required
 
-The Agency panel (/panel) is protected: only verified users can book,
-manage vehicles, and submit FZBR requests. Without verified email you will
-not have full panel access.
+The agency panel is available only after email verification. Without a verified
+email you cannot book, manage vehicles, or submit FZBR requests.
 
 4.2. Right after registration
 
@@ -619,7 +637,8 @@ On the “Verify your email” screen:
 4.4. After successful verification
 
 - Your email is marked verified.
-- You can use the Agency panel: Reservations, Vehicles, FZBR, etc.
+- You can use the agency panel: Reservations, Vehicles, FZBR, and other menu
+  items.
 
 4.5. Changing email in profile
 
@@ -634,12 +653,12 @@ If you change email in User profile:
 5. AGENCY PANEL OVERVIEW (AFTER SIGN IN)
 --------------------------------------------------------------------------------
 
-After sign-in and verification you see the Agency panel. Top menu items
+After sign-in and verification you see the agency panel. Top menu items
 (depending on enabled features):
 
 - Reservations — new booking (paid or free, card or advance)
-- Advance — balance, top-ups, history (if feature enabled)
-- Limo QR — generate QR codes for Limo pickup (if advance + Limo enabled)
+- Advance — balance, top-up payments, history (if feature enabled)
+- Limo QR — generate QR codes for Limo field service (if advance + Limo enabled)
 - User — profile, language, password, email
 - Vehicles — fleet
 - FZBR — free reservation request form
@@ -668,15 +687,16 @@ Panel language follows your User profile language setting (cg or en).
 
 - If the vehicle was never used in a reservation — it can be deleted.
 - If it appears in reservation history — it is not physically deleted;
-  status becomes “removed” and it disappears from active fleet lists.
+  it is marked as removed and disappears from active fleet lists.
 
 6.3. Re-entering the same plate
 
 - Same plate + same category as a previously removed vehicle → vehicle is
   reactivated.
 - Same plate + DIFFERENT category → direct entry is blocked. You must upload
-  a document (image or PDF) and submit an admin approval request for category
-  change. Until approved, the vehicle cannot be used with the new category.
+  a document (image or PDF) and submit a request to the Bus Kotor service
+  administrator for category change approval. Until approved, the vehicle cannot
+  be used with the new category.
 
 <screenshot: message and upload form for category change approval>
 
@@ -698,7 +718,7 @@ If you try to remove a vehicle linked to upcoming reservations:
 
 1. Open Reservations.
 2. Select reservation date.
-3. Select arrival (drop-off) and departure (pick-up) time slots.
+3. Select arrival and departure time (as shown in the dropdown, e.g. “07:00 - 07:20”).
 4. Select a vehicle from your active fleet.
 5. Check price / whether the slot is free (see 7.2).
 6. For paid bookings choose payment method (card or advance).
@@ -708,14 +728,21 @@ If you try to remove a vehicle linked to upcoming reservations:
 
 7.2. Free time slots
 
-Certain slots may be free (morning/evening windows per system rules). For free
-bookings:
+In the “Arrival time” and “Departure time” dropdowns, some options may be marked
+as free (most often the morning slot “00:00 - 07:00” and the evening slot
+“20:00 - 24:00”, per municipal rules). For a free booking:
 - No bank payment redirect.
 - No fiscal receipt like a paid booking.
 - A free reservation confirmation email is sent.
 
-Special slot combinations 1→1 and 41→41 may also be free (system detects
-automatically).
+The system also treats these combinations as free automatically (use the exact
+labels shown in the form):
+- arrival “00:00 - 07:00” and departure “00:00 - 07:00”
+- arrival “00:00 - 07:00” and departure “20:00 - 24:00”
+- arrival “20:00 - 24:00” and departure “20:00 - 24:00”
+
+Arrival “20:00 - 24:00” with departure “00:00 - 07:00” is not free — you pay
+like any other booking in that period.
 
 7.3. Paid reservation — card
 
@@ -735,7 +762,7 @@ If advance is insufficient, the option is disabled — use card or top up advanc
 
 7.5. Capacity and blocked slots
 
-- Slot must have available capacity (including pending bookings in progress).
+- Slot must have available capacity (including card payments still in progress).
 - Blocked slots cannot be purchased.
 - Dates are typically limited to ~90 days ahead (system limit).
 
@@ -747,15 +774,16 @@ If advance is insufficient, the option is disabled — use card or top up advanc
 
 Open Advance. You see:
 - Current balance (sum of ledger entries)
-- Ledger history (top-ups, usage for reservations, admin corrections)
-- Top-up attempt history
+- Ledger history (top-ups, usage for reservations, corrections by the Bus Kotor
+  service administrator)
+- History of advance top-up attempts
 
 <screenshot: Advance page with balance and ledger table>
 
 8.2. Topping up advance
 
 1. Enter top-up amount.
-2. Start payment — redirect to bank (or test environment).
+2. Start payment — redirect to the bank card payment page.
 3. After successful payment advance balance increases.
 4. A confirmation PDF is emailed (this is NOT a fiscal invoice).
 
@@ -772,8 +800,8 @@ reservation amount.
 
 9.1. Upcoming
 
-Lists reservations whose date is in the future, or today before pick-up end
-time. Here you can:
+Lists reservations whose date is in the future, or today before the departure
+time window ends. Here you can:
 - Change vehicle on a reservation (only allowed replacements)
 - Open invoice PDF (view or download) for paid reservations
 
@@ -781,7 +809,8 @@ time. Here you can:
 
 9.2. Realized
 
-Past reservations and today after pick-up end time. Invoice PDF available
+Past reservations and today after the departure time window has passed. Invoice
+PDF available
 where applicable.
 
 <screenshot: realized reservations list>
@@ -791,8 +820,9 @@ where applicable.
 Allowed only if replacement vehicle:
 - is in your active fleet,
 - has same or LOWER category (category price ≤ reservation category price),
-- has no conflict: no other reservation on same date with same ARRIVAL slot
-  OR same DEPARTURE slot (cross-match is allowed).
+- has no conflict: no other reservation on the same date with the same arrival
+  time or the same departure time (your arrival may match someone else’s
+  departure — that is allowed).
 
 For paid reservations a vehicle change may trigger a new invoice email.
 
@@ -810,9 +840,9 @@ free slots.
 2. After Secretariat approval, approval is forwarded to the agency/carrier.
 3. Only then the agency submits FZBR in the system with documentation.
 
-An administrator will NOT approve the free reservation until all required
-documentation is submitted and reviewed. You may upload in steps, but approval
-waits until complete.
+The Bus Kotor service administrator will NOT approve the free reservation until
+all required documentation is submitted and reviewed. You may upload in steps,
+but approval waits until complete.
 
 <screenshot: informational block at top of FZBR page mentioning prihodi@kotor.me>
 
@@ -820,26 +850,30 @@ waits until complete.
 
 1. Open FZBR in the menu.
 2. Select one date for the whole request.
-3. Add 1 to 5 segments. Each segment = one pair:
+3. Add 1 to 5 time blocks (labeled as segments in the form). Each block = one pair:
    - Arrival time
    - Departure time
-4. For each segment select vehicles from your fleet (min. 1 per segment;
-   max per segment = parking operational capacity, usually up to 9).
-5. The same vehicle cannot be selected twice in one segment.
+4. For each block select vehicles from your fleet (at least 1 per block; usually
+   up to 9 per block — parking capacity).
+5. The same vehicle cannot be selected twice in one block.
 6. Attach documentation: images or PDF, total up to 10 MB.
-7. Accept privacy policy.
+7. Tick the checkbox about drop-off/pick-up obligation at Autoboka and Puč
+   parking (links in the text).
 8. Submit the request.
 
-<screenshot: FZBR form — segments, vehicle selection, document upload, Submit>
+<screenshot: FZBR form — time blocks, vehicle selection, document upload, Submit>
 
 10.3. After submission
 
-- Request status becomes “submitted”.
-- Administrator reviews in admin panel.
-- You may receive “updated”, “fulfilled” (approved and completed), or
-  “rejected”.
+- The request is submitted and awaits review.
+- The Bus Kotor service administrator reviews the request and documents.
+- Possible outcomes you may see:
+  • request updated (additional documents),
+  • approved and completed (free reservations created),
+  • rejected.
 
-The agency does NOT finalize the free reservation alone — wait for admin action.
+The agency does NOT finalize the free reservation alone — wait for a decision
+from the Bus Kotor service administrator.
 
 --------------------------------------------------------------------------------
 11. LIMO QR (IF ENABLED)
@@ -850,14 +884,13 @@ Available only when both advance and Limo service features are enabled.
 11.1. What the QR does
 
 - Agency generates a QR code for the current day.
-- Limo staff use it in the field when confirming pickup.
-- Generating QR alone does NOT charge advance and does NOT fiscalize.
+- Limo staff use it in the field when confirming passenger pickup.
+- Generating QR alone does NOT charge advance and does NOT issue a fiscal receipt.
 
 11.2. Limits
 
-- QR valid only for today’s calendar day (project timezone).
-- Maximum 20 generated “slots” per agency per day (active tokens + pickups
-  already recorded that day).
+- QR valid only for today’s date (calendar day in the Bus Kotor system).
+- Up to 20 QR codes per agency per day (including codes already used that day).
 
 11.3. Steps
 
@@ -866,7 +899,7 @@ Available only when both advance and Limo service features are enabled.
 3. Display or download PDF for printing.
 4. Hand QR to field staff.
 
-<screenshot: list of today’s QR tokens and Generate button>
+<screenshot: list of today’s QR codes and Generate button>
 
 --------------------------------------------------------------------------------
 12. STATISTICS
@@ -901,7 +934,7 @@ Account deletion: available in profile (caution — irreversible for access).
 14.1. Account and access
 
 - One email = one agency account.
-- Email must be verified for full /panel access.
+- Email must be verified for full agency panel access.
 - Keep password confidential; use password reset if forgotten.
 
 14.2. License plates
@@ -909,20 +942,20 @@ Account deletion: available in profile (caution — irreversible for access).
 - Enter plates accurately (system normalizes uppercase; diacritics tolerated
   for duplicate checks).
 - Do not bypass category change rules by re-entering the same plate without
-  admin approval.
+  Bus Kotor service administrator approval.
 
 14.3. Reservations and duplicates
 
 - You CANNOT create a new reservation if the same date and plate already has
   a reservation with the SAME arrival slot OR the SAME departure slot.
-- Having arrival = someone else’s departure (cross-match) is allowed — NOT a
-  duplicate.
+- Your arrival in the same time slot as someone else’s departure is allowed —
+  NOT a duplicate.
 
 14.4. Capacity and slots
 
 - Book only when the system shows availability.
 - Do not book past dates.
-- Respect administrator slot blocks.
+- Respect time slot blocks set by the Bus Kotor service administrator.
 
 14.5. Payment
 
@@ -935,19 +968,20 @@ Account deletion: available in profile (caution — irreversible for access).
 
 - Secretariat approval via prihodi@kotor.me first, then FZBR in the system.
 - Attach clear documentation (approval, carrier engagement, etc.).
-- Admin will not approve until documentation is complete.
-- Max. 5 segments per request; respect per-segment vehicle limits.
+- The Bus Kotor service administrator will not approve until documentation is
+  complete.
+- Max. 5 time blocks per request; respect per-block vehicle limits.
 
 14.7. Vehicle change on reservation
 
 - Same or lower category only.
-- No slot conflict (same drop/pick duplicate rule).
+- No time conflict (same arrival/departure duplicate rule).
 - Paid reservations may trigger a new invoice email.
 
 14.8. Limo (if enabled)
 
 - QR for today only; do not misuse QR outside operations.
-- Financial effect only when field staff confirms pickup.
+- Financial effect only when field staff confirm pickup by scanning the QR code.
 
 14.9. Accurate data
 
@@ -957,8 +991,10 @@ Account deletion: available in profile (caution — irreversible for access).
 14.10. Do not
 
 - Do not use others’ accounts.
-- Do not manipulate URLs/API outside the intended UI.
-- Do not expect automatic FZBR approval without admin review.
+- Use only buttons and forms in the application — do not try to change browser
+  addresses manually to bypass rules.
+- Do not expect automatic FZBR approval without review by the Bus Kotor service
+  administrator.
 - Do not delete vehicles with upcoming reservations without replacement when
   the system requires it.
 
@@ -967,17 +1003,19 @@ Account deletion: available in profile (caution — irreversible for access).
 --------------------------------------------------------------------------------
 
 Q: Why don’t I see Advance or Limo in the menu?
-A: Features depend on system settings. If disabled, the item is greyed out
-   or unavailable.
+A: Those items are enabled only for agencies that are set up for them in the Bus
+   Kotor system. If not applicable, the menu item is greyed out or unavailable.
 
-Q: Why can’t I access /panel after login?
-A: Email is probably not verified — check inbox and verification page.
+Q: Why don’t I see Reservations and other menu items after login?
+A: Your email is probably not verified — check your inbox and the verification
+   page (section 4).
 
 Q: Can I have multiple agencies on one email?
 A: No — email must be unique.
 
 Q: What if card payment fails?
-A: Pending booking may expire; try again or contact support.
+A: The booking may remain unconfirmed until payment completes; try again or
+   contact Bus Kotor support.
 
 --------------------------------------------------------------------------------
 END PART B (EN)

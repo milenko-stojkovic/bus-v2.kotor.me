@@ -5,14 +5,16 @@
         $locale = app()->getLocale();
         $ui = fn (string $key) => \App\Support\UiText::t('reservation', $key);
         $termsTitle = $locale === 'cg' ? 'Uslovi korišćenja' : 'Terms and Conditions';
-        $locationLabel = $locale === 'cg' ? 'Lokacija:' : 'Location:';
         $termsLinkLabel = $locale === 'cg' ? 'uslovima korišćenja' : 'terms and conditions';
     @endphp
 
     <div class="space-y-6">
-        <div class="space-y-1">
-            <h1 class="text-lg font-semibold">{{ $ui('title') }}</h1>
-            <p class="text-sm text-gray-600">{{ $ui('step_hint') }}</p>
+        <div class="space-y-3">
+            <div class="space-y-1">
+                <h1 class="text-lg font-semibold">{{ $ui('title') }}</h1>
+                <p class="text-sm text-gray-600">{{ $ui('step_hint') }}</p>
+            </div>
+            @include('partials.reservation-pricing-notice')
         </div>
 
         @include('partials.checkout-result-banner')
@@ -162,17 +164,9 @@
 
                 <label class="flex items-start gap-2 text-sm">
                     <input type="checkbox" name="accept_privacy" value="1" class="mt-1 rounded border-red-200" {{ old('accept_privacy') ? 'checked' : '' }} required>
-                    <span>{{ $ui('accept_privacy') }}</span>
+                    <span>@include('partials.reservation-accept-parking-obligation')</span>
                 </label>
                 <x-input-error class="mt-2" :messages="$errors->get('accept_privacy')" />
-            </div>
-
-            <div class="text-sm text-gray-700 space-y-1">
-                <div class="font-medium">{{ $locationLabel }}</div>
-                <div class="flex flex-col gap-1">
-                    <a href="https://maps.app.goo.gl/oXD6SEzjyXtm4c586" target="_blank" rel="noopener" class="underline text-red-700 hover:text-red-900">Autoboka</a>
-                    <a href="https://maps.app.goo.gl/kPAD6mipzZTjCCYE7" target="_blank" rel="noopener" class="underline text-red-700 hover:text-red-900">Puč</a>
-                </div>
             </div>
 
             <button

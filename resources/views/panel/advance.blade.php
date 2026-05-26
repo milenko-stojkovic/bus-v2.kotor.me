@@ -103,7 +103,10 @@
                                             <td class="py-2 pr-4">{{ $typeLabel((string) $tx->type) }}</td>
                                             <td class="py-2 pr-4 font-medium">{{ $fmtAmount($tx->amount) }}</td>
                                             <td class="py-2 pr-4 text-gray-700">
-                                                {{ $tx->note ?: ($tx->reference_type ? ($tx->reference_type.($tx->reference_id ? '#'.$tx->reference_id : '')) : '—') }}
+                                                @php
+                                                    $noteLabel = \App\Support\AdvanceLedgerNote::label($tx->note);
+                                                @endphp
+                                                {{ $noteLabel !== '' ? $noteLabel : ($tx->reference_type ? ($tx->reference_type.($tx->reference_id ? '#'.$tx->reference_id : '')) : '—') }}
                                             </td>
                                         </tr>
                                     @endforeach
