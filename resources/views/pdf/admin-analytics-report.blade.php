@@ -39,6 +39,13 @@
         <tr>
             <td colspan="2"><strong>Ukupan prihod (rezervacije + Limo)</strong></td><td colspan="2"><strong>{{ $fmtMoney((float)($k['revenue_grand_total'] ?? 0)) }}</strong></td>
         </tr>
+        @php($rkPdf = (array) ($dataset['reservation_kinds'] ?? []))
+        <tr>
+            <td>Termini — broj / prihod</td>
+            <td>{{ (int)(($rkPdf['time_slots']['count'] ?? 0)) }} / {{ $fmtMoney((float)(($rkPdf['time_slots']['revenue'] ?? 0))) }}</td>
+            <td>Dnevne karte — broj / prihod</td>
+            <td>{{ (int)(($rkPdf['daily_ticket']['count'] ?? 0)) }} / {{ $fmtMoney((float)(($rkPdf['daily_ticket']['revenue'] ?? 0))) }}</td>
+        </tr>
         <tr>
             <td>Rezervacije</td><td>{{ (int)($k['reservations_total'] ?? 0) }}</td>
             <td>Paid / Free</td><td>{{ (int)($k['paid_reservations'] ?? 0) }} / {{ (int)($k['free_reservations'] ?? 0) }}</td>
@@ -48,7 +55,7 @@
             <td></td><td></td>
         </tr>
         <tr>
-            <td>Zauzeti slotovi</td><td>{{ (int)($k['occupied_slots_total'] ?? 0) }}</td>
+            <td>Zauzeti slotovi (samo termini)</td><td>{{ (int)($k['occupied_slots_total'] ?? 0) }}</td>
             <td>Popunjenost (slot-level)</td><td>{{ $fmtPct((float)($k['avg_occupancy_slot_level'] ?? 0)) }}</td>
         </tr>
         <tr>

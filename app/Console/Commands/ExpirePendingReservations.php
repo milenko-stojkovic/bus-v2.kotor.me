@@ -36,14 +36,18 @@ class ExpirePendingReservations extends Command
                 $from = $temp->status;
                 $temp->update(['status' => TempData::STATUS_EXPIRED]);
                 TempData::logStateTransition($temp->merchant_transaction_id, $from, TempData::STATUS_EXPIRED, 'cron: pending expired');
-                $slotIds = array_values(array_unique([
-                    (int) $temp->drop_off_time_slot_id,
-                    (int) $temp->pick_up_time_slot_id,
-                ]));
-                DailyParkingData::query()
-                    ->where('date', $temp->reservation_date)
-                    ->whereIn('time_slot_id', $slotIds)
-                    ->decrement('pending');
+                if (! $temp->isDailyTicket()) {
+                    $slotIds = array_values(array_unique(array_filter([
+                        $temp->drop_off_time_slot_id,
+                        $temp->pick_up_time_slot_id,
+                    ], fn ($id) => $id !== null)));
+                    if ($slotIds !== []) {
+                        DailyParkingData::query()
+                            ->where('date', $temp->reservation_date)
+                            ->whereIn('time_slot_id', $slotIds)
+                            ->decrement('pending');
+                    }
+                }
                 app(BlockZoneWorklistService::class)->onTempDataFailedOrExpired($temp, 'expired');
             });
         }

@@ -16,7 +16,19 @@ use RuntimeException;
  */
 class PaidInvoicePdfGenerator
 {
-    public const NON_FISCAL_NOTE = 'Račun je važeći kao potvrda o kupovini termina. Fiskalizovani račun biće dostavljen naknadno.';
+    public const NON_FISCAL_NOTE_TIME_SLOTS = 'Račun je važeći kao potvrda o kupovini termina. Fiskalizovani račun biće dostavljen naknadno.';
+
+    public const NON_FISCAL_NOTE_DAILY_TICKET = 'Račun je važeći kao potvrda o kupovini dnevne karte. Fiskalizovani račun biće dostavljen naknadno.';
+
+    /** @deprecated Use {@see nonFiscalNoteFor()} */
+    public const NON_FISCAL_NOTE = self::NON_FISCAL_NOTE_TIME_SLOTS;
+
+    public static function nonFiscalNoteFor(Reservation $reservation): string
+    {
+        return $reservation->isDailyTicket()
+            ? self::NON_FISCAL_NOTE_DAILY_TICKET
+            : self::NON_FISCAL_NOTE_TIME_SLOTS;
+    }
 
     /**
      * PDF kao binarni sadržaj (bez čuvanja na disku). Baca izuzetak ako generisanje ne uspe — nema tihog null fallback-a.
@@ -48,9 +60,15 @@ class PaidInvoicePdfGenerator
 
             $internalNumber = KotorPdfAssets::parseInternalNumberFromFiscalQr($reservation->fiscal_qr);
 
+            $validityDate = $reservation->reservation_date
+                ? Carbon::parse($reservation->reservation_date)->format('d.m.Y')
+                : '—';
+
             $pdf = Pdf::loadView('pdf.paid-invoice', [
                 'reservation' => $reservation,
                 'isFiscal' => $isFiscal,
+                'isDailyTicket' => $reservation->isDailyTicket(),
+                'validityDateDisplay' => $validityDate,
                 'logoDataUri' => KotorPdfAssets::logoDataUri(),
                 'qrDataUri' => $qrDataUri,
                 'countryDisplay' => KotorPdfAssets::countryDisplayCg((string) $reservation->country),
@@ -58,7 +76,7 @@ class PaidInvoicePdfGenerator
                 'unitPrice' => $unitPrice,
                 'fiscalDateTime' => $fiscalDateTime,
                 'internalNumber' => $internalNumber,
-                'nonFiscalNote' => self::NON_FISCAL_NOTE,
+                'nonFiscalNote' => self::nonFiscalNoteFor($reservation),
             ])->setPaper('a4', 'portrait');
 
             $out = $pdf->output();

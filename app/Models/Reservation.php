@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ReservationKind;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class Reservation extends Model
 {
+    public const KIND_TIME_SLOTS = ReservationKind::TIME_SLOTS;
+
+    public const KIND_DAILY_TICKET = ReservationKind::DAILY_TICKET;
+
     /**
      * Stanje slanja email potvrde / računa (queue idempotency + stariji cron ReportEmail).
      * Ne uvoditi novu kolonu — samo ova tri stanja.
@@ -42,6 +47,7 @@ class Reservation extends Model
         'user_id',
         'vehicle_id',
         'merchant_transaction_id',
+        'reservation_kind',
         'payment_method',
         'drop_off_time_slot_id',
         'pick_up_time_slot_id',
@@ -157,6 +163,16 @@ class Reservation extends Model
     public function isGuest(): bool
     {
         return $this->user_id === null;
+    }
+
+    public function isTimeSlots(): bool
+    {
+        return ($this->reservation_kind ?? self::KIND_TIME_SLOTS) === self::KIND_TIME_SLOTS;
+    }
+
+    public function isDailyTicket(): bool
+    {
+        return $this->reservation_kind === self::KIND_DAILY_TICKET;
     }
 
     public function vehicle(): BelongsTo

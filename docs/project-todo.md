@@ -1,8 +1,18 @@
 # Project TODO (otvoreno)
 
-**Poslednje ažuriranje:** 2026-05-16
+**Poslednje ažuriranje:** 2026-05-28
 
 Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/project-done.md` i ukloni odavde.
+
+---
+
+## Dnevna karta (agency)
+
+- [x] **Phase 1 — šema/model:** `reservation_kind`, nullable slot FK, `ReservationKind` + testovi (v. `project-done.md` 2026-05-28).
+- [x] **Phase 2 — agency UI + checkout:** izbor Termini / Dnevna karta, validacija, checkout bez `daily_parking_data` za daily (v. `project-done.md` 2026-05-28).
+- [x] **Phase 3A — PDF/email + panel liste:** fiskalni PDF, email, upcoming/realized lifecycle, admin prikaz (v. `project-done.md` 2026-05-28).
+- [x] **Phase 3B — admin analitika:** odvojeni brojači/prihod Termini vs Dnevna karta; zauzetost slotova samo time_slots (v. `project-done.md` 2026-05-28).
+- [x] **Phase 5 — admin edit:** izmena rezervacija u admin panelu (termini + dnevna karta); v. `project-done.md` 2026-05-28.
 
 **Napomena:** Operativni sloj (zakazane komande, `alerts:system-health`, heartbeat keš, **Sistem status** u adminu, MEGA retry/arhiva, queue stale signalizacija) je **uvezen u kod i dokumentaciju** — v. `docs/admin-panel.md`, `docs/cron-commands.md`, `docs/production-readiness-and-disaster-recovery.md`. Ovaj fajl ne navodi ponovo te zadatke; fokus je na **preostalom** poslu, roadmapu i otvorenim poslovnim/ E2E pitanjima.
 

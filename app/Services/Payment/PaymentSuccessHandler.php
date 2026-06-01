@@ -127,10 +127,18 @@ class PaymentSuccessHandler
 
     private function doReleaseSoftLock(TempData $temp, bool $incrementReserved): void
     {
-        $slotIds = array_values(array_unique([
-            (int) $temp->drop_off_time_slot_id,
-            (int) $temp->pick_up_time_slot_id,
-        ]));
+        if ($temp->isDailyTicket()) {
+            return;
+        }
+
+        $slotIds = array_values(array_unique(array_filter([
+            $temp->drop_off_time_slot_id,
+            $temp->pick_up_time_slot_id,
+        ], fn ($id) => $id !== null)));
+
+        if ($slotIds === []) {
+            return;
+        }
 
         $rows = DailyParkingData::query()
             ->where('date', $temp->reservation_date)
@@ -151,6 +159,7 @@ class PaymentSuccessHandler
             'user_id' => $temp->user_id,
             'vehicle_id' => $temp->vehicle_id,
             'merchant_transaction_id' => $temp->merchant_transaction_id,
+            'reservation_kind' => $temp->reservation_kind ?? Reservation::KIND_TIME_SLOTS,
             'drop_off_time_slot_id' => $temp->drop_off_time_slot_id,
             'pick_up_time_slot_id' => $temp->pick_up_time_slot_id,
             'reservation_date' => $temp->reservation_date,

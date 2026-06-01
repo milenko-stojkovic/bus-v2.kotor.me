@@ -49,7 +49,7 @@
                                 <thead class="bg-red-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $ui('date', 'Date') }}</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $ui('arrival_time', 'Arrival') }}</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $p('table_kind_or_arrival', $locale === 'cg' ? 'Termin / vrsta' : 'Slot / type') }}</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $ui('departure_time', 'Departure') }}</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $ui('registration_plates', 'Registration plates') }}</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-700">{{ $ui('vehicle_category', 'Vehicle category') }}</th>
@@ -65,8 +65,14 @@
                                         @endphp
                                         <tr class="align-top" x-data="{ editing: false }">
                                             <td class="px-3 py-2 whitespace-nowrap text-gray-900">{{ $r->reservation_date?->format('Y-m-d') }}</td>
-                                            <td class="px-3 py-2 text-gray-700">{{ $r->dropOffTimeSlot?->time_slot ?? '—' }}</td>
-                                            <td class="px-3 py-2 text-gray-700">{{ $r->pickUpTimeSlot?->time_slot ?? '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-700">@include('partials.reservation-slot-display', ['reservation' => $r, 'slot' => $r->dropOffTimeSlot])</td>
+                                            <td class="px-3 py-2 text-gray-700">
+                                                @if ($r->isDailyTicket())
+                                                    <span class="text-gray-400">—</span>
+                                                @else
+                                                    @include('partials.reservation-slot-display', ['reservation' => $r, 'slot' => $r->pickUpTimeSlot])
+                                                @endif
+                                            </td>
                                             <td class="px-3 py-2 text-gray-900">
                                                 <span x-show="! editing">{{ $r->license_plate }}</span>
                                                 @if ($allowed->isNotEmpty())

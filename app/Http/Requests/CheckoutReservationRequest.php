@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\ReservationKind;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -22,6 +23,22 @@ class CheckoutReservationRequest extends FormRequest
             $normalized = preg_replace('/[^A-Z0-9]/', '', $normalized) ?? $normalized;
             $this->merge(['license_plate' => $normalized]);
         }
+
+        $authUser = $this->user();
+        $panelAuthBooking = $authUser !== null && $this->boolean('auth_panel_booking');
+        if ($panelAuthBooking) {
+            $kind = $this->input('reservation_kind');
+            if (! is_string($kind) || trim($kind) === '') {
+                $this->merge(['reservation_kind' => ReservationKind::TIME_SLOTS]);
+            }
+        }
+
+        if ($this->resolvedReservationKind() === ReservationKind::DAILY_TICKET) {
+            $this->merge([
+                'drop_off_time_slot_id' => null,
+                'pick_up_time_slot_id' => null,
+            ]);
+        }
     }
 
     public function authorize(): bool
@@ -35,6 +52,7 @@ class CheckoutReservationRequest extends FormRequest
         $usingSavedVehicle = $authUser !== null && $this->filled('vehicle_id');
         $panelAuthBooking = $authUser !== null && $this->boolean('auth_panel_booking');
         $advanceEnabled = (bool) config('features.advance_payments');
+        $isDailyTicket = $this->resolvedReservationKind() === ReservationKind::DAILY_TICKET;
 
         return [
             // Opciono: ako frontend pošalje, koristi se za dupli klik; inače backend generiše UUID
@@ -45,13 +63,20 @@ class CheckoutReservationRequest extends FormRequest
                 'in:card,advance',
             ],
             'auth_panel_booking' => ['nullable', 'boolean'],
+            'reservation_kind' => $panelAuthBooking
+                ? ['nullable', 'string', Rule::in(ReservationKind::ALL)]
+                : ['prohibited'],
             'vehicle_id' => [
                 $panelAuthBooking ? 'required' : 'nullable',
                 'integer',
                 Rule::exists('vehicles', 'id')->where(fn ($q) => $q->where('user_id', $authUser?->id)),
             ],
-            'drop_off_time_slot_id' => ['required', 'integer', 'exists:list_of_time_slots,id'],
-            'pick_up_time_slot_id' => ['required', 'integer', 'exists:list_of_time_slots,id'],
+            'drop_off_time_slot_id' => $isDailyTicket
+                ? ['prohibited']
+                : ['required', 'integer', 'exists:list_of_time_slots,id'],
+            'pick_up_time_slot_id' => $isDailyTicket
+                ? ['prohibited']
+                : ['required', 'integer', 'exists:list_of_time_slots,id'],
             'reservation_date' => ['required', 'date', 'after_or_equal:today'],
             'name' => [$usingSavedVehicle ? 'nullable' : 'required', 'string', 'min:2', 'max:255'],
             'country' => [$usingSavedVehicle ? 'nullable' : 'required', 'string', 'max:100'],
@@ -89,5 +114,28 @@ class CheckoutReservationRequest extends FormRequest
                 $validator->errors()->add('payment_method', 'Avansno plaćanje trenutno nije dostupno.');
             }
         });
+    }
+
+    public function resolvedReservationKind(): string
+    {
+        if ($this->user() !== null && $this->boolean('auth_panel_booking')) {
+            $kind = $this->input('reservation_kind');
+
+            return is_string($kind) && in_array($kind, ReservationKind::ALL, true)
+                ? $kind
+                : ReservationKind::TIME_SLOTS;
+        }
+
+        return ReservationKind::TIME_SLOTS;
+    }
+
+    public function isDailyTicketBooking(): bool
+    {
+        return $this->resolvedReservationKind() === ReservationKind::DAILY_TICKET;
+    }
+
+    public function isPanelAuthBooking(): bool
+    {
+        return $this->user() !== null && $this->boolean('auth_panel_booking');
     }
 }

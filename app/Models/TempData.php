@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ReservationKind;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +17,10 @@ use Illuminate\Support\Facades\Log;
  */
 class TempData extends Model
 {
+    public const KIND_TIME_SLOTS = ReservationKind::TIME_SLOTS;
+
+    public const KIND_DAILY_TICKET = ReservationKind::DAILY_TICKET;
+
     public const STATUS_PENDING = 'pending';
     public const STATUS_PROCESSED = 'processed';
     public const STATUS_LATE_SUCCESS = 'late_success';
@@ -36,6 +41,7 @@ class TempData extends Model
 
     protected $fillable = [
         'merchant_transaction_id',
+        'reservation_kind',
         'retry_token',
         'user_id',
         'vehicle_id',
@@ -104,6 +110,16 @@ class TempData extends Model
     public function isGuest(): bool
     {
         return $this->user_id === null;
+    }
+
+    public function isTimeSlots(): bool
+    {
+        return ($this->reservation_kind ?? self::KIND_TIME_SLOTS) === self::KIND_TIME_SLOTS;
+    }
+
+    public function isDailyTicket(): bool
+    {
+        return $this->reservation_kind === self::KIND_DAILY_TICKET;
     }
 
     /**

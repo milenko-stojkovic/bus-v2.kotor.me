@@ -3,6 +3,7 @@
 namespace App\Services\AdminPanel\Reservation;
 
 use App\Models\Reservation;
+use App\Support\ReservationKind;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -89,6 +90,10 @@ final class AdminReservationSearchService
 
         if (! empty($filters['status']) && in_array($filters['status'], ['paid', 'free'], true)) {
             $q->where('status', $filters['status']);
+        }
+
+        if (! empty($filters['reservation_kind']) && in_array($filters['reservation_kind'], ReservationKind::ALL, true)) {
+            $q->where('reservation_kind', $filters['reservation_kind']);
         }
     }
 

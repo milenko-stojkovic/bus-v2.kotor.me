@@ -7,6 +7,7 @@ use App\Models\ListOfTimeSlot;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
+use App\Support\ReservationKind;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -158,8 +159,14 @@ final class ReservationBookingPageData
         $dateStr = (string) $request->query('reservation_date', '');
         $selectedDate = $this->parseAllowedDate($dateStr);
 
-        $arrivalId = $this->asIntOrNull($request->query('drop_off_time_slot_id'));
-        $departureId = $this->asIntOrNull($request->query('pick_up_time_slot_id'));
+        $reservationKind = (string) $request->query('reservation_kind', ReservationKind::TIME_SLOTS);
+        if (! in_array($reservationKind, ReservationKind::ALL, true)) {
+            $reservationKind = ReservationKind::TIME_SLOTS;
+        }
+        $isDailyTicketBooking = $reservationKind === ReservationKind::DAILY_TICKET;
+
+        $arrivalId = $isDailyTicketBooking ? null : $this->asIntOrNull($request->query('drop_off_time_slot_id'));
+        $departureId = $isDailyTicketBooking ? null : $this->asIntOrNull($request->query('pick_up_time_slot_id'));
 
         $slotPayload = $this->buildSlotPayload($selectedDate, $arrivalId, $departureId, $locale);
         $departureId = $slotPayload['effective_departure_id'];
@@ -188,7 +195,12 @@ final class ReservationBookingPageData
 
         $isFreeReservation = false;
         $paidAmount = null;
-        if ($slotPayload['selected_arrival_slot'] && $slotPayload['selected_departure_slot']) {
+        if ($isDailyTicketBooking && $selectedDate && $selectedVehicle) {
+            $vt = $selectedVehicle->vehicleType;
+            if ($vt && is_numeric((string) $vt->price)) {
+                $paidAmount = number_format((float) $vt->price, 2, '.', '');
+            }
+        } elseif ($slotPayload['selected_arrival_slot'] && $slotPayload['selected_departure_slot']) {
             $isFreeReservation = FreeReservationRules::isFreeReservation(
                 $slotPayload['selected_arrival_slot'],
                 $slotPayload['selected_departure_slot']
@@ -205,6 +217,8 @@ final class ReservationBookingPageData
             'selected_date' => $selectedDate?->toDateString(),
             'arrival_id' => $arrivalId,
             'departure_id' => $departureId,
+            'reservation_kind' => $reservationKind,
+            'is_daily_ticket_booking' => $isDailyTicketBooking,
             'vehicle_types' => collect(),
             'countries' => [],
             'paid_amount' => $paidAmount,

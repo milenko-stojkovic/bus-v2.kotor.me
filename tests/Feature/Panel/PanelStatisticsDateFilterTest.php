@@ -126,7 +126,7 @@ class PanelStatisticsDateFilterTest extends TestCase
         $resp->assertDontSee('Do', false);
     }
 
-    public function test_statistics_page_uses_localized_date_text_inputs(): void
+    public function test_statistics_page_uses_hybrid_iso_date_inputs_for_from_and_to(): void
     {
         $u = User::query()->create([
             'name' => 'A',
@@ -139,10 +139,22 @@ class PanelStatisticsDateFilterTest extends TestCase
 
         $this->actingAs($u);
 
-        $html = $this->get(route('panel.statistics', [], false))->assertOk()->getContent();
+        $html = $this->get(route('panel.statistics', [
+            'date_from' => '2026-05-16',
+            'date_to' => '2026-05-20',
+        ], false))->assertOk()->getContent();
 
         $this->assertStringContainsString('placeholder="dd/mm/yyyy"', $html);
-        $this->assertStringNotContainsString('type="date"', $html);
+        $this->assertStringContainsString('data-iso-date-display', $html);
+        $this->assertStringContainsString('data-iso-date-hidden', $html);
+        $this->assertStringContainsString('data-iso-date-picker', $html);
+        $this->assertStringContainsString('data-iso-date-calendar-btn', $html);
+        $this->assertStringContainsString('name="date_from"', $html);
+        $this->assertStringContainsString('value="2026-05-16"', $html);
+        $this->assertStringContainsString('name="date_to"', $html);
+        $this->assertStringContainsString('value="2026-05-20"', $html);
+        $this->assertStringContainsString('16/05/2026', $html);
+        $this->assertSame(2, substr_count($html, 'data-iso-date-picker'));
     }
 
     public function test_validation_rejects_from_after_to(): void

@@ -2,14 +2,11 @@
 
 namespace App\Services\AdminPanel\Reservation;
 
-use App\Jobs\SendFreeReservationConfirmationJob;
-use App\Jobs\SendInvoiceEmailJob;
 use App\Models\DailyParkingData;
 use App\Models\ListOfTimeSlot;
 use App\Models\Reservation;
 use App\Models\VehicleType;
 use App\Services\AdminPanel\Blocking\BlockReservationAdjustmentValidator;
-use App\Support\ReservationInvoiceAmount;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,9 +29,11 @@ final class AdminReservationUpdateService
      *   vehicle_type_id:int,
      *   email:string,
      * }  $data
+     * @return list<string>
      */
-    public function apply(Reservation $reservation, array $data): void
+    public function apply(Reservation $reservation, array $data): array
     {
+        $changedFields = [];
         $oldDate = $reservation->reservation_date->toDateString();
         $oldDrop = (int) $reservation->drop_off_time_slot_id;
         $oldPick = (int) $reservation->pick_up_time_slot_id;
@@ -67,7 +66,7 @@ final class AdminReservationUpdateService
             $newDrop,
             $newPick,
             $newVtId,
-            $vt,
+            &$changedFields,
         ): void {
             /** @var Reservation|null $r */
             $r = Reservation::query()->whereKey($reservation->id)->lockForUpdate()->first();
@@ -143,10 +142,7 @@ final class AdminReservationUpdateService
                 }
             }
 
-            $invoiceAmount = $r->invoice_amount;
-            if ($r->status === 'paid' && (int) $r->vehicle_type_id !== $newVtId) {
-                $invoiceAmount = ReservationInvoiceAmount::snapshotForNewReservation('paid', $newVtId);
-            }
+            $changedFields = AdminReservationFieldChangeTracker::diff($r, $data, includeSlots: true);
 
             $r->update([
                 'reservation_date' => $newDate,
@@ -157,7 +153,6 @@ final class AdminReservationUpdateService
                 'license_plate' => $data['license_plate'],
                 'vehicle_type_id' => $newVtId,
                 'email' => $data['email'],
-                'invoice_amount' => $invoiceAmount,
                 'invoice_sent_at' => null,
                 'email_sent' => Reservation::EMAIL_NOT_SENT,
             ]);
@@ -167,14 +162,10 @@ final class AdminReservationUpdateService
                 'merchant_transaction_id' => $r->merchant_transaction_id,
                 'old_date' => $oldDate,
                 'new_date' => $newDate,
+                'changed_fields' => $changedFields,
             ]);
-
-            if ($r->status === 'free') {
-                SendFreeReservationConfirmationJob::dispatch($r->id);
-            } else {
-                $isFiscal = $r->fiscal_jir !== null;
-                SendInvoiceEmailJob::dispatch($r->id, $isFiscal);
-            }
         });
+
+        return $changedFields;
     }
 }

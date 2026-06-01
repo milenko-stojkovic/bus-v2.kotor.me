@@ -1,6 +1,6 @@
 # Agency panel (ulogovani korisnik, `/panel`)
 
-**Poslednje ažuriranje:** 2026-05-14
+**Poslednje ažuriranje:** 2026-05-28
 
 Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navigacija: `resources/views/layouts/navigation.blade.php`.
 
@@ -10,7 +10,7 @@ Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navig
 
 | Ruta | Naziv rute (izbor) | Opis |
 |------|-------------------|------|
-| `GET /panel/reservations` | `panel.reservations` | Nova rezervacija (`ReservationBookingPageData`) |
+| `GET /panel/reservations` | `panel.reservations` | Nova rezervacija (`ReservationBookingPageData`) — **Termini** (slotovi) ili **Dnevna karta** (agency-only, bez slotova) |
 | `GET /panel/upcoming` | `panel.upcoming` | Predstojeće rezervacije, promena vozila |
 | `GET /panel/realized` | `panel.realized` | Realizovane, link na PDF u novom tabu |
 | `GET /panel/vehicles` | `panel.vehicles` | Vozila |
@@ -87,6 +87,17 @@ Backend tok `payment_method=advance`:
   - `type=usage`, `amount=-invoice_amount`, `reference_type=reservation`, `reference_id=reservation.id`
 - pokreće standardni post-payment pipeline za `paid` rezervacije (invoice/fiskalizacija kao i inače)
 
+### Dnevna karta (`reservation_kind=daily_ticket`)
+
+Na **`GET /panel/reservations`** agencija bira **Termini** (default) ili **Dnevna karta** (radio ispod objašnjenja). Iznad radio dugmadi stalno su prikazana oba objašnjenja (Termini + Dnevna karta) sa linkovima na mape (Benovo; Autoboka, Puč, Perast, Risan) — CG/EN preko `ui_translations` (`booking_kind_expl_*`). Gost (`/guest/reserve`) **nema** ovu opciju.
+
+- **Termini:** postojeći tok — obavezni arrival/departure slotovi, kapacitet preko `daily_parking_data`, duplicate check po slotu+tablici.
+- **Dnevna karta:** isti iznos po kategoriji vozila kao plaćena slot rezervacija; **bez** slotova, **bez** `daily_parking_data`, **bez** slot duplicate checka; isti plate+datum može imati i slot rezervaciju.
+- Checkout: `POST /checkout` sa `auth_panel_booking=1` i `reservation_kind=daily_ticket` (kartica → `temp_data` + banka; avans → odmah `Reservation` kao za Termini, bez lock-a na slotovima).
+- PDF i email: fiskalni/ne-fiskalni račun i potvrda prikazuju **Dnevna karta**, datum važenja i lokacije Autoboka/Puč (bez termina).
+- Predstojeće/realizovane: daily ticket je predstojeći cijeli dan važenja, realizovan od sljedećeg kalendarskog dana.
+- Admin analitika (odvojeni brojači) — Phase 3B.
+
 ### Limo QR (pick-up taksa)
 
 Rute **`/panel/limo*`** vidljive i dostupne samo kada su ispunjena **oba** uslova:
@@ -120,7 +131,7 @@ Tekstovi na vrhu forme (pravni uvod, info-blok, pomoć za upload) dolaze iz **`u
 Forma je podijeljena u dvije cjeline:
 
 - **Cjelina 1 (datum + segmenti + vozila):**
-  - Datum (jedan datum po zahtjevu) — unos **`dd/mm/yyyy`** (`<x-iso-date-input>`, backend `reservation_date` kao `Y-m-d`)
+  - Datum (jedan datum po zahtjevu) — **`dd/mm/yyyy`** + dugme kalendara (`<x-iso-date-input>`, backend `reservation_date` kao `Y-m-d`)
   - Segmenti (min 1, max 5): svaki segment je jedan par **Vrijeme dolaska** + **Vrijeme odlaska**
   - Vozila po segmentu (iz voznog parka ulogovane agencije; min 1; max = `system_config.available_parking_slots`; bez duplikata unutar segmenta)
 
@@ -182,7 +193,7 @@ Validacija: **`App\Http\Requests\UpdateReservationVehicleRequest`**.
 
 ## Statistika (`/panel/statistics`)
 
-**Unos datuma (Od / Do):** vidljivi format **`dd/mm/yyyy`** (`<x-iso-date-input>` + skriveni `Y-m-d` u GET upitu). Rezervacije i dalje koriste mesečni kalendar (`partials/reservation-date-calendar`).
+**Unos datuma (Od / Do):** **`dd/mm/yyyy`** + kalendar (`<x-iso-date-input>`, skriveni `Y-m-d` u GET upitu). Rezervacije i dalje koriste mesečni kalendar (`partials/reservation-date-calendar`).
 
 Servis **`App\Services\Reservation\PanelStatisticsService`**: koristi **`PanelReservationListService::realizedFor`** za istu definiciju „realized“, ali omogućava **filter po datumu** kroz query parametre:
 

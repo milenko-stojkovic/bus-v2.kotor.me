@@ -64,11 +64,17 @@
                     @endif
                 </p>
             </div>
-            <a href="{{ $cancelUrl }}" class="text-sm text-red-700 hover:underline">Odkaži</a>
+            <a href="{{ $cancelUrl }}" class="text-sm text-red-700 hover:underline">Otkaži</a>
         </div>
 
+        @if (! empty($pickUpOnly))
+            <p class="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-md p-3">
+                Dolazak je već prošao — možete mijenjati samo <strong>termin odlaska</strong> i ostala polja (ne datum ni dolazak).
+            </p>
+        @endif
+
         <p class="text-sm text-red-800 bg-red-50 border border-red-200 rounded-md p-3">
-            Kalendar i lista termina su <strong>prefilter</strong>. Konačna provjera dostupnosti radi se pri „Primjeni promjenu“, nakon zaključavanja redova u bazi.
+            Kalendar i lista termina su <strong>prefilter</strong>. Konačna provjera dostupnosti radi se pri „Sačuvaj“, nakon zaključavanja redova u bazi.
         </p>
 
         <form x-ref="mainForm" method="post" action="{{ route('panel_admin.reservations.update', $reservation, false) }}"
@@ -82,25 +88,31 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
                     <x-input-label for="reservation_date" value="Datum" />
-                    <input type="date" name="reservation_date" id="reservation_date" required
-                        min="{{ $dateMin }}" max="{{ $dateMax }}"
-                        value="{{ $fd }}"
-                        class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
-                        @change="
-                            const u = new URL(@json($editBase), window.location.origin);
-                            u.searchParams.set('form_date', $event.target.value);
-                            @if ($returnQuery !== '')
-                                u.searchParams.set('rq', @json($returnQuery));
-                            @endif
-                            window.location.href = u.toString();
-                        " />
+                    @if (! empty($pickUpOnly))
+                        <p class="mt-1 text-sm text-gray-900">{{ $reservation->reservation_date->format('d.m.Y.') }}</p>
+                        <input type="hidden" name="reservation_date" value="{{ $reservation->reservation_date->toDateString() }}" />
+                    @else
+                        <input type="date" name="reservation_date" id="reservation_date" required
+                            min="{{ $dateMin }}" max="{{ $dateMax }}"
+                            value="{{ $fd }}"
+                            class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
+                            @change="
+                                const u = new URL(@json($editBase), window.location.origin);
+                                u.searchParams.set('form_date', $event.target.value);
+                                @if ($returnQuery !== '')
+                                    u.searchParams.set('rq', @json($returnQuery));
+                                @endif
+                                window.location.href = u.toString();
+                            " />
+                    @endif
                     <x-input-error class="mt-2" :messages="$errors->get('reservation_date')" />
                 </div>
 
                 <div>
                     <x-input-label for="drop_off_time_slot_id" value="Vrijeme dolaska (drop-off)" />
                     <select name="drop_off_time_slot_id" id="drop_off_time_slot_id" required
-                        class="mt-1 block w-full rounded-md border-red-200 shadow-sm">
+                        @if (! empty($pickUpOnly)) disabled @endif
+                        class="mt-1 block w-full rounded-md border-red-200 shadow-sm @if(!empty($pickUpOnly)) bg-gray-100 @endif">
                         <option value="">— izaberite —</option>
                         @foreach ($slotOptions as $row)
                             @php
@@ -120,6 +132,9 @@
                             </option>
                         @endforeach
                     </select>
+                    @if (! empty($pickUpOnly))
+                        <input type="hidden" name="drop_off_time_slot_id" value="{{ $reservation->drop_off_time_slot_id }}" />
+                    @endif
                     <x-input-error class="mt-2" :messages="$errors->get('drop_off_time_slot_id')" />
                 </div>
                 <div>
@@ -197,12 +212,12 @@
             <div class="flex flex-wrap justify-end gap-3 pt-2">
                 <a href="{{ $cancelUrl }}"
                     class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50">
-                    Odkaži
+                    Otkaži
                 </a>
                 <button type="submit"
                     class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800 disabled:opacity-50"
-                    x-bind:disabled="!canSubmit()">
-                    Primjeni promjenu
+                    @if (empty($pickUpOnly)) x-bind:disabled="!canSubmit()" @endif>
+                    Sačuvaj
                 </button>
             </div>
         </form>

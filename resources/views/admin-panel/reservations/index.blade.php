@@ -14,7 +14,8 @@
                 (this.$refs.plate && this.$refs.plate.value.trim()) ||
                 (this.$refs.country && this.$refs.country.value) ||
                 (this.$refs.status && this.$refs.status.value) ||
-                (this.$refs.agency && this.$refs.agency.value)
+                (this.$refs.agency && this.$refs.agency.value) ||
+                (this.$refs.reservationKind && this.$refs.reservationKind.value)
             );
         }
     }">
@@ -143,6 +144,16 @@
                         <option value="free" @selected(old('status', $filters['status'] ?? '') === 'free')>Besplatno</option>
                     </select>
                 </div>
+                <div>
+                    <x-input-label for="reservation_kind" value="Vrsta rezervacije" />
+                    <select name="reservation_kind" id="reservation_kind" x-ref="reservationKind"
+                        class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500">
+                        <option value="" @selected(old('reservation_kind', $filters['reservation_kind'] ?? '') === '')>Sve</option>
+                        <option value="time_slots" @selected(old('reservation_kind', $filters['reservation_kind'] ?? '') === 'time_slots')>Termini</option>
+                        <option value="daily_ticket" @selected(old('reservation_kind', $filters['reservation_kind'] ?? '') === 'daily_ticket')>Dnevna karta</option>
+                    </select>
+                    <x-input-error class="mt-2" :messages="$errors->get('reservation_kind')" />
+                </div>
             </div>
 
             <div class="flex justify-end">
@@ -159,7 +170,7 @@
                 <ul class="space-y-3">
                     @foreach ($results as $r)
                         @php
-                            $realized = \App\Services\Reservation\PanelReservationListService::isRealized($r);
+                            $canEdit = \App\Services\AdminPanel\Reservation\AdminReservationEditPolicy::canEdit($r);
                             $rq = request()->getQueryString();
                         @endphp
                         <li class="bg-white shadow rounded-lg p-4 border border-red-100">
@@ -167,8 +178,14 @@
                                 <div class="text-sm space-y-1 min-w-0">
                                     <div><span class="text-gray-500">MTID:</span> {{ $r->merchant_transaction_id ?? '—' }}</div>
                                     <div><span class="text-gray-500">Datum:</span> {{ $r->reservation_date->format('d.m.Y.') }}</div>
-                                    <div><span class="text-gray-500">Dolazak:</span> {{ $r->dropOffTimeSlot?->time_slot ?? '—' }}</div>
-                                    <div><span class="text-gray-500">Odlazak:</span> {{ $r->pickUpTimeSlot?->time_slot ?? '—' }}</div>
+                                    @if ($r->isDailyTicket())
+                                        <div><span class="text-gray-500">Vrsta:</span> @include('partials.reservation-slot-display', ['reservation' => $r, 'slot' => null, 'locale' => 'cg'])</div>
+                                        <div><span class="text-gray-500">Datum važenja:</span> {{ $r->reservation_date->format('d.m.Y.') }}</div>
+                                        <div><span class="text-gray-500">Lokacije:</span> Autoboka i Puč</div>
+                                    @else
+                                        <div><span class="text-gray-500">Dolazak:</span> @include('partials.reservation-slot-display', ['reservation' => $r, 'slot' => $r->dropOffTimeSlot, 'locale' => 'cg'])</div>
+                                        <div><span class="text-gray-500">Odlazak:</span> @include('partials.reservation-slot-display', ['reservation' => $r, 'slot' => $r->pickUpTimeSlot, 'locale' => 'cg'])</div>
+                                    @endif
                                     <div><span class="text-gray-500">Ime:</span> {{ $r->user_name }}</div>
                                     <div><span class="text-gray-500">Država:</span> {{ $r->country }}</div>
                                     <div><span class="text-gray-500">Tablica:</span> {{ $r->license_plate }}</div>
@@ -176,12 +193,14 @@
                                     <div><span class="text-gray-500">Email:</span> {{ $r->email }}</div>
                                     <div><span class="text-gray-500">Status:</span> {{ $r->status }}</div>
                                 </div>
-                                <div class="flex flex-col gap-2 shrink-0">
+                                <div class="flex flex-row flex-wrap gap-2 shrink-0 items-start">
                                     <a href="{{ route('panel_admin.reservations.pdf', $r, false) }}" target="_blank" rel="noopener"
                                        class="inline-flex justify-center items-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50">PDF</a>
-                                    @if (! $realized)
-                                        <a href="{{ route('panel_admin.reservations.edit', ['reservation' => $r, 'rq' => $rq], false) }}"
-                                           class="inline-flex justify-center items-center px-3 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-800 uppercase tracking-widest hover:bg-red-50">Promjeni</a>
+                                    @if ($canEdit)
+                                        <a href="{{ route('panel_admin.reservations.edit', array_filter(['reservation' => $r, 'rq' => $rq ?: null]), false) }}"
+                                           class="inline-flex justify-center items-center px-3 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-800 uppercase tracking-widest hover:bg-red-50">Izmeni</a>
+                                    @else
+                                        <span class="inline-flex justify-center items-center px-3 py-2 border border-gray-200 rounded-md text-xs font-semibold text-gray-400 uppercase tracking-widest cursor-not-allowed" title="Realizovana rezervacija">Izmeni</span>
                                     @endif
                                 </div>
                             </div>

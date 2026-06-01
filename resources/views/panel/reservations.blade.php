@@ -27,6 +27,8 @@
         ? 'Raspoloživi avans nije dovoljan za ovu rezervaciju.'
         : 'Your advance balance is not sufficient for this reservation.');
     $checkoutMtid = \Illuminate\Support\Str::uuid()->toString();
+    $reservationKind = $reservation_kind ?? \App\Support\ReservationKind::TIME_SLOTS;
+    $isDailyTicketBooking = (bool) ($is_daily_ticket_booking ?? ($reservationKind === \App\Support\ReservationKind::DAILY_TICKET));
 @endphp
 <x-app-layout>
     <x-slot name="header">
@@ -77,6 +79,60 @@
                     <form method="GET" action="{{ route('panel.reservations', [], false) }}" class="space-y-4" id="panelStepForm">
                             @include('partials.reservation-date-calendar')
 
+                            @php
+                                $benovoUrl = 'https://maps.app.goo.gl/5Mp6LFS1gNLYFrSQA';
+                                $autobokaUrl = 'https://maps.app.goo.gl/BqfQWnYqy8mjTo1D8';
+                                $pucUrl = 'https://maps.app.goo.gl/1XKocEMgyYi7YoD99';
+                                $perastUrl = 'https://maps.app.goo.gl/7nMtnAKLNubDNvVm8';
+                                $risanUrl = 'https://maps.app.goo.gl/TxjFWQfkTGQARAE97';
+                                $linkClass = 'font-medium text-red-700 hover:text-red-600 underline decoration-red-200 underline-offset-2';
+                                $benovoLink = '<a href="' . e($benovoUrl) . '" target="_blank" rel="noopener noreferrer" class="' . $linkClass . '">' . e($pn('booking_link_benovo', 'Benovo')) . '</a>';
+                                $autobokaLink = '<a href="' . e($autobokaUrl) . '" target="_blank" rel="noopener noreferrer" class="' . $linkClass . '">' . e($pn('booking_link_autoboka', 'Autoboka')) . '</a>';
+                                $pucLink = '<a href="' . e($pucUrl) . '" target="_blank" rel="noopener noreferrer" class="' . $linkClass . '">' . e($pn('booking_link_puc', 'Puč')) . '</a>';
+                                $perastLink = '<a href="' . e($perastUrl) . '" target="_blank" rel="noopener noreferrer" class="' . $linkClass . '">' . e($pn('booking_link_perast', 'Perast')) . '</a>';
+                                $risanLink = '<a href="' . e($risanUrl) . '" target="_blank" rel="noopener noreferrer" class="' . $linkClass . '">' . e($pn('booking_link_risan', 'Risan')) . '</a>';
+                                $explTimeSlots = str_replace(
+                                    ':benovo_link',
+                                    $benovoLink,
+                                    $pn(
+                                        'booking_kind_expl_time_slots',
+                                        $locale === 'cg'
+                                            ? 'Termini — kupujete termine koji će se koristiti za ukrcaj i iskrcaj putnika na lokaciji :benovo_link.'
+                                            : 'Time slots — you purchase arrival and departure time slots for passenger pick-up and drop-off at :benovo_link.',
+                                    ),
+                                );
+                                $explDaily = str_replace(
+                                    [':autoboka_link', ':puc_link', ':perast_link', ':risan_link'],
+                                    [$autobokaLink, $pucLink, $perastLink, $risanLink],
+                                    $pn(
+                                        'booking_kind_expl_daily_ticket',
+                                        $locale === 'cg'
+                                            ? 'Dnevna karta — kupujete pravo da u toku odabranog dana izvršite ukrcaj i iskrcaj putnika na parkinzima za autobuse :autoboka_link i :puc_link u periodu kada Vama odgovara. Ako nameravate da posetite :perast_link i :risan_link — odaberite ovu opciju.'
+                                            : 'Daily ticket — you purchase the right to pick up and drop off passengers on the selected calendar day at the :autoboka_link and :puc_link bus parking areas, at times that suit you. Choose this option if you plan to visit :perast_link and :risan_link.',
+                                    ),
+                                );
+                            @endphp
+                            <fieldset class="space-y-3" id="panelReservationKindFieldset">
+                                <legend class="text-sm font-medium text-gray-900">{{ $pn('booking_kind_legend', $locale === 'cg' ? 'Vrsta rezervacije' : 'Reservation type') }}</legend>
+                                <div id="panelBookingKindExplanation" class="rounded-md border border-red-100 bg-red-50 p-4 text-sm text-gray-700 space-y-3">
+                                    <p class="m-0">{!! $explTimeSlots !!}</p>
+                                    <p class="m-0">{!! $explDaily !!}</p>
+                                </div>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="radio" name="reservation_kind" value="{{ \App\Support\ReservationKind::TIME_SLOTS }}" class="rounded border-red-200"
+                                            {{ $reservationKind === \App\Support\ReservationKind::TIME_SLOTS ? 'checked' : '' }}>
+                                        <span>{{ $pn('booking_kind_time_slots', $locale === 'cg' ? 'Termini' : 'Time slots') }}</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="radio" name="reservation_kind" value="{{ \App\Support\ReservationKind::DAILY_TICKET }}" class="rounded border-red-200"
+                                            {{ $reservationKind === \App\Support\ReservationKind::DAILY_TICKET ? 'checked' : '' }}>
+                                        <span>{{ $pn('booking_kind_daily_ticket', $locale === 'cg' ? 'Dnevna karta' : 'Daily ticket') }}</span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            <div id="panelTimeSlotsSection" class="space-y-4 {{ $isDailyTicketBooking ? 'hidden' : '' }}">
                             <div>
                                 <x-input-label for="drop_off_time_slot_id" :value="$ui('arrival_time')" />
                                 <select
@@ -111,6 +167,7 @@
                                 </select>
                                 <p class="mt-1 text-xs text-gray-500">{{ $ui('departure_disabled_hint') }}</p>
                             </div>
+                            </div>
 
                             <div>
                                 <x-input-label for="vehicle_id_panel" :value="$pn('booking_vehicle_label', 'Vehicle')" />
@@ -118,7 +175,7 @@
                                     id="vehicle_id_panel"
                                     name="vehicle_id"
                                     class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
-                                    @disabled($vehicles->isEmpty() || empty($selected_date) || empty($arrival_id) || empty($departure_id))
+                                    @disabled($vehicles->isEmpty() || empty($selected_date) || (! $isDailyTicketBooking && (empty($arrival_id) || empty($departure_id))))
                                 >
                                     <option value="">{{ $pn('select_vehicle_option', 'Select vehicle') }}</option>
                                     @foreach ($vehicles as $v)
@@ -135,12 +192,16 @@
                             <input type="hidden" name="auth_panel_booking" value="1">
                             <input type="hidden" name="merchant_transaction_id" value="{{ $checkoutMtid }}">
                             <input type="hidden" name="reservation_date" value="{{ $selected_date ?? '' }}">
-                            <input type="hidden" name="drop_off_time_slot_id" value="{{ $arrival_id ?? '' }}">
-                            <input type="hidden" name="pick_up_time_slot_id" value="{{ $departure_id ?? '' }}">
+                            <input type="hidden" name="reservation_kind" id="panelPostReservationKind" value="{{ $reservationKind }}">
+                            <input type="hidden" name="drop_off_time_slot_id" id="panelPostDropOff" value="{{ $isDailyTicketBooking ? '' : ($arrival_id ?? '') }}">
+                            <input type="hidden" name="pick_up_time_slot_id" id="panelPostPickUp" value="{{ $isDailyTicketBooking ? '' : ($departure_id ?? '') }}">
                             <input type="hidden" name="vehicle_id" value="{{ $vehicle_id ?? '' }}">
 
                             <div class="rounded-md bg-red-50 p-3 text-sm text-gray-800">
-                                @if (!empty($arrival_id) && !empty($departure_id))
+                                @if ($isDailyTicketBooking && !empty($selected_date) && !empty($vehicle_id))
+                                    <strong>{{ $ui('total_to_pay') }}:</strong>
+                                    {{ $paid_amount ?? '—' }} EUR
+                                @elseif (!empty($arrival_id) && !empty($departure_id))
                                     @if ($is_free_reservation ?? false)
                                         <strong>{{ $ui('free_reservation') }}</strong>
                                     @else
@@ -183,7 +244,7 @@
                                 </label>
                             </div>
 
-                            @if ($advanceEnabled && !($is_free_reservation ?? false) && !empty($arrival_id) && !empty($departure_id) && !empty($vehicle_id))
+                            @if ($advanceEnabled && !($is_free_reservation ?? false) && !empty($vehicle_id) && (($isDailyTicketBooking && !empty($selected_date)) || (!empty($arrival_id) && !empty($departure_id))))
                                 <div class="rounded-md bg-red-50 border border-red-100 p-3 text-sm space-y-2">
                                     <div class="text-gray-800">
                                         <strong>{{ $pn('advance_available', $locale === 'cg' ? 'Raspoloživi avans' : 'Available advance') }}:</strong>
@@ -259,13 +320,39 @@
                 if (arrival) arrival.addEventListener('change', () => stepForm.submit());
                 if (departure) departure.addEventListener('change', () => stepForm.submit());
                 if (vehicle) vehicle.addEventListener('change', () => stepForm.submit());
+                stepForm.querySelectorAll('input[name="reservation_kind"]').forEach((radio) => {
+                    radio.addEventListener('change', () => stepForm.submit());
+                });
             }
 
             const reserveBtn = document.getElementById('panelReserveBtn');
             const postForm = reserveBtn ? reserveBtn.closest('form') : null;
+            const postKindInput = document.getElementById('panelPostReservationKind');
+            const postDropOff = document.getElementById('panelPostDropOff');
+            const postPickUp = document.getElementById('panelPostPickUp');
+
+            function isDailyKindSelected() {
+                if (postKindInput) {
+                    return postKindInput.value === '{{ \App\Support\ReservationKind::DAILY_TICKET }}';
+                }
+                const checked = document.querySelector('#panelStepForm input[name="reservation_kind"]:checked');
+                return checked && checked.value === '{{ \App\Support\ReservationKind::DAILY_TICKET }}';
+            }
+
+            function syncPostKindFromStepForm() {
+                if (!postKindInput || !stepForm) return;
+                const checked = stepForm.querySelector('input[name="reservation_kind"]:checked');
+                if (checked) {
+                    postKindInput.value = checked.value;
+                }
+                const daily = isDailyKindSelected();
+                if (postDropOff) postDropOff.value = daily ? '' : (document.getElementById('drop_off_time_slot_id')?.value || '');
+                if (postPickUp) postPickUp.value = daily ? '' : (document.getElementById('pick_up_time_slot_id')?.value || '');
+            }
 
             function computePostValid() {
                 if (!postForm) return false;
+                syncPostKindFromStepForm();
                 const required = Array.from(postForm.querySelectorAll('[required]'));
                 for (const el of required) {
                     if (el.type === 'checkbox') {
@@ -276,9 +363,11 @@
                 }
                 const vid = postForm.querySelector('input[name="vehicle_id"]');
                 const d = postForm.querySelector('input[name="reservation_date"]');
+                if (!vid || !vid.value || !d || !d.value) return false;
+                if (isDailyKindSelected()) return true;
                 const a = postForm.querySelector('input[name="drop_off_time_slot_id"]');
                 const p = postForm.querySelector('input[name="pick_up_time_slot_id"]');
-                return !!(vid && vid.value && d && d.value && a && a.value && p && p.value);
+                return !!(a && a.value && p && p.value);
             }
 
             function refresh() {

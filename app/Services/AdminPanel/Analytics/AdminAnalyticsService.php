@@ -9,6 +9,7 @@ use App\Models\PostFiscalizationData;
 use App\Models\Reservation;
 use App\Models\TempData;
 use App\Models\VehicleType;
+use App\Support\ReservationKind;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -52,10 +53,19 @@ final class AdminAnalyticsService
         $paid = $reservations->where('status', 'paid');
         $free = $reservations->where('status', 'free');
 
+        $timeSlotsReservations = $this->onlyTimeSlots($reservations);
+        $dailyTicketReservations = $this->onlyDailyTickets($reservations);
+        $paidTimeSlots = $this->onlyTimeSlots($paid);
+        $paidDailyTickets = $this->onlyDailyTickets($paid);
+
         $revenueTotal = (float) $paid->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
+        $timeSlotsRevenue = (float) $paidTimeSlots->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
+        $dailyTicketRevenue = (float) $paidDailyTickets->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
         $paidCount = $paid->count();
         $freeCount = $free->count();
         $reservationCount = $reservations->count();
+        $timeSlotsCount = $timeSlotsReservations->count();
+        $dailyTicketCount = $dailyTicketReservations->count();
 
         $occupiedSlotsTotal = $this->occupiedSlotsFor($reservations);
         $occupiedSlotsPaid = $this->occupiedSlotsFor($paid);
@@ -103,8 +113,8 @@ final class AdminAnalyticsService
         // Trend by day.
         $trendByDay = $this->trendByDay($from, $to, $reservations);
 
-        // Day parts.
-        $dayParts = $this->groupByDayPart($reservations, $slotById);
+        // Day parts (time_slots only) + optional daily ticket row outside slot grouping.
+        $dayParts = $this->groupByDayPart($timeSlotsReservations, $slotById, $dailyTicketReservations);
 
         // Vehicle types.
         $byVehicleType = $this->groupByVehicleType($reservations);
@@ -137,7 +147,7 @@ final class AdminAnalyticsService
 
         // Operational problems / recovery (from existing payment state machine tables).
         $ops = $this->operationalProblems($from, $to);
-        $ops['paid_reservations_fully_in_free_zone'] = $this->countPaidReservationsFullyInFreeZones($reservations, $slotById);
+        $ops['paid_reservations_fully_in_free_zone'] = $this->countPaidReservationsFullyInFreeZones($timeSlotsReservations, $slotById);
         $ops['double_paid_same_slot_pairs'] = $this->countDoublePaidSameSlotPairs($from, $to);
 
         $limo = $this->limoPickupAnalytics($dateFrom, $dateTo);
@@ -145,9 +155,14 @@ final class AdminAnalyticsService
 
         $kpi = [
             'revenue_reservations' => $revenueTotal,
+            'total_revenue' => $revenueTotal,
+            'time_slots_revenue' => $timeSlotsRevenue,
+            'daily_ticket_revenue' => $dailyTicketRevenue,
             'limo_revenue_total' => $limo['revenue_total'],
             'revenue_grand_total' => $revenueGrandTotal,
             'reservations_total' => $reservationCount,
+            'time_slots_count' => $timeSlotsCount,
+            'daily_ticket_count' => $dailyTicketCount,
             'paid_reservations' => $paidCount,
             'free_reservations' => $freeCount,
             'avg_revenue_per_paid' => $paidCount > 0 ? ($revenueTotal / $paidCount) : 0.0,
@@ -156,6 +171,19 @@ final class AdminAnalyticsService
             'blocked_slot_rows' => $blockedSlotRowsCount,
             'fully_blocked_days' => $fullyBlockedDays,
             'blocked_capacity_pct' => $blockedCapacityPct,
+        ];
+
+        $reservationKinds = [
+            'time_slots' => [
+                'count' => $timeSlotsCount,
+                'paid_count' => $paidTimeSlots->count(),
+                'revenue' => $timeSlotsRevenue,
+            ],
+            'daily_ticket' => [
+                'count' => $dailyTicketCount,
+                'paid_count' => $paidDailyTickets->count(),
+                'revenue' => $dailyTicketRevenue,
+            ],
         ];
 
         $advanceBalancesTotal = null;
@@ -172,6 +200,7 @@ final class AdminAnalyticsService
                 'day_count' => $dayCount,
             ],
             'kpi' => $kpi,
+            'reservation_kinds' => $reservationKinds,
             'trend_by_day' => $trendByDay,
             'day_parts' => $dayParts,
             'by_vehicle_type' => $byVehicleType,
@@ -304,7 +333,7 @@ final class AdminAnalyticsService
     {
         $cnt = 0;
         foreach ($reservations as $r) {
-            if ($r->status !== 'paid') {
+            if ($r->status !== 'paid' || ! $r->isTimeSlots()) {
                 continue;
             }
 
@@ -360,9 +389,10 @@ final class AdminAnalyticsService
     {
         $rows = Reservation::query()
             ->where('status', 'paid')
+            ->where('reservation_kind', ReservationKind::TIME_SLOTS)
             ->whereDate('reservation_date', '>=', $from->toDateString())
             ->whereDate('reservation_date', '<=', $to->toDateString())
-            ->get(['id', 'reservation_date', 'license_plate', 'drop_off_time_slot_id', 'pick_up_time_slot_id']);
+            ->get(['id', 'reservation_date', 'license_plate', 'drop_off_time_slot_id', 'pick_up_time_slot_id', 'reservation_kind']);
 
         $groups = $rows->groupBy(fn (Reservation $r) => $r->reservation_date->toDateString().'|'.(string) $r->license_plate);
 
@@ -395,12 +425,41 @@ final class AdminAnalyticsService
     /**
      * @param  Collection<int, Reservation>  $reservations
      */
+    /**
+     * @param  Collection<int, Reservation>  $reservations
+     * @return Collection<int, Reservation>
+     */
+    private function onlyTimeSlots(Collection $reservations): Collection
+    {
+        return $reservations->filter(fn (Reservation $r) => $r->isTimeSlots())->values();
+    }
+
+    /**
+     * @param  Collection<int, Reservation>  $reservations
+     * @return Collection<int, Reservation>
+     */
+    private function onlyDailyTickets(Collection $reservations): Collection
+    {
+        return $reservations->filter(fn (Reservation $r) => $r->isDailyTicket())->values();
+    }
+
+    /**
+     * Benovo slot occupancy: only {@see ReservationKind::TIME_SLOTS} reservations count.
+     *
+     * @param  Collection<int, Reservation>  $reservations
+     */
     private function occupiedSlotsFor(Collection $reservations): int
     {
         $total = 0;
         foreach ($reservations as $r) {
+            if (! $r->isTimeSlots()) {
+                continue;
+            }
             $drop = (int) $r->drop_off_time_slot_id;
             $pick = (int) $r->pick_up_time_slot_id;
+            if ($drop < 1 || $pick < 1) {
+                continue;
+            }
             $total += ($drop === $pick) ? 1 : 2;
         }
 
@@ -412,7 +471,11 @@ final class AdminAnalyticsService
      * @param  Collection<int, ListOfTimeSlot>  $slotById
      * @return list<array{key:string,label:string,reservations:int,occupied_slots:int,revenue:float,share_occupied:float,share_revenue:float}>
      */
-    private function groupByDayPart(Collection $reservations, Collection $slotById): array
+    /**
+     * @param  Collection<int, Reservation>  $timeSlotsReservations
+     * @param  Collection<int, Reservation>  $dailyTicketReservations
+     */
+    private function groupByDayPart(Collection $timeSlotsReservations, Collection $slotById, Collection $dailyTicketReservations): array
     {
         $groups = [
             AdminAnalyticsDefinitions::PART_FREE_MORNING => ['reservations' => 0, 'occupied' => 0, 'revenue' => 0.0],
@@ -420,10 +483,10 @@ final class AdminAnalyticsService
             AdminAnalyticsDefinitions::PART_FREE_EVENING => ['reservations' => 0, 'occupied' => 0, 'revenue' => 0.0],
         ];
 
-        $totalOcc = $this->occupiedSlotsFor($reservations);
-        $totalRev = (float) $reservations->where('status', 'paid')->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
+        $totalOcc = $this->occupiedSlotsFor($timeSlotsReservations);
+        $totalRev = (float) $timeSlotsReservations->where('status', 'paid')->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
 
-        foreach ($reservations as $r) {
+        foreach ($timeSlotsReservations as $r) {
             $dropSlot = $slotById->get((int) $r->drop_off_time_slot_id);
             $part = AdminAnalyticsDefinitions::dayPartForSlot($dropSlot);
             $groups[$part]['reservations']++;
@@ -443,6 +506,23 @@ final class AdminAnalyticsService
                 'revenue' => (float) $g['revenue'],
                 'share_occupied' => $totalOcc > 0 ? ((int) $g['occupied'] / $totalOcc) : 0.0,
                 'share_revenue' => $totalRev > 0 ? ((float) $g['revenue'] / $totalRev) : 0.0,
+                'is_daily_ticket' => false,
+            ];
+        }
+
+        if ($dailyTicketReservations->isNotEmpty()) {
+            $dailyRev = (float) $dailyTicketReservations->where('status', 'paid')
+                ->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
+            $reservationRevenueTotal = $totalRev + $dailyRev;
+            $out[] = [
+                'key' => AdminAnalyticsDefinitions::PART_DAILY_TICKET,
+                'label' => AdminAnalyticsDefinitions::dayPartLabel(AdminAnalyticsDefinitions::PART_DAILY_TICKET),
+                'reservations' => $dailyTicketReservations->count(),
+                'occupied_slots' => 0,
+                'revenue' => $dailyRev,
+                'share_occupied' => 0.0,
+                'share_revenue' => $reservationRevenueTotal > 0 ? ($dailyRev / $reservationRevenueTotal) : 0.0,
+                'is_daily_ticket' => true,
             ];
         }
 
@@ -563,7 +643,15 @@ final class AdminAnalyticsService
                 $occMorning = 0;
                 $occDay = 0;
                 $occEvening = 0;
+                $dailyTicketCountAgency = $rows->where(fn (Reservation $r) => $r->isDailyTicket())->count();
+                $dailyTicketRevenueAgency = (float) $rows
+                    ->where(fn (Reservation $r) => $r->isDailyTicket() && $r->status === 'paid')
+                    ->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
+
                 foreach ($rows as $r) {
+                    if (! $r->isTimeSlots()) {
+                        continue;
+                    }
                     $dropSlot = $slotById->get((int) $r->drop_off_time_slot_id);
                     $part = AdminAnalyticsDefinitions::dayPartForSlot($dropSlot);
                     $occ = ((int) $r->drop_off_time_slot_id === (int) $r->pick_up_time_slot_id) ? 1 : 2;
@@ -611,6 +699,8 @@ final class AdminAnalyticsService
                     'morning_pct' => $morningPct,
                     'day_pct' => $dayPct,
                     'evening_pct' => $eveningPct,
+                    'daily_ticket_count' => $dailyTicketCountAgency,
+                    'daily_ticket_revenue' => $dailyTicketRevenueAgency,
                 ];
             }
         );
@@ -645,6 +735,10 @@ final class AdminAnalyticsService
                 'morning_pct' => 0.0,
                 'day_pct' => 0.0,
                 'evening_pct' => 0.0,
+                'daily_ticket_count' => $guestRows->where(fn (Reservation $r) => $r->isDailyTicket())->count(),
+                'daily_ticket_revenue' => (float) $guestRows
+                    ->where(fn (Reservation $r) => $r->isDailyTicket() && $r->status === 'paid')
+                    ->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0)),
             ]);
         }
 
@@ -723,6 +817,9 @@ final class AdminAnalyticsService
                 $occDay = 0;
                 $occEvening = 0;
                 foreach ($rows as $r) {
+                    if (! $r->isTimeSlots()) {
+                        continue;
+                    }
                     $dropSlot = $slotById->get((int) $r->drop_off_time_slot_id);
                     $part = AdminAnalyticsDefinitions::dayPartForSlot($dropSlot);
                     $occ = ((int) $r->drop_off_time_slot_id === (int) $r->pick_up_time_slot_id) ? 1 : 2;

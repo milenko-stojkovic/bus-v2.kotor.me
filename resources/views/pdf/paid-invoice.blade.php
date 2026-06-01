@@ -157,6 +157,22 @@
                     {{ ($reservation->created_at ?? now())->format('d.m.Y H:i') }}
                 @endif
             </div>
+        @elseif (! empty($isDailyTicket))
+            <div class="bold" style="font-size:13px; margin-bottom:4px; border-bottom:1px dashed #000; padding-bottom:2px;">
+                Detalji rezervacije
+            </div>
+            <div class="small" style="margin-bottom:2px;">
+                <span class="bold">Tip vozila:</span> {{ $vehicleLine }}
+            </div>
+            <div class="small" style="margin-bottom:2px;">
+                <span class="bold">Vrsta rezervacije:</span> Dnevna karta
+            </div>
+            <div class="small" style="margin-bottom:2px;">
+                <span class="bold">Datum važenja:</span> {{ $validityDateDisplay ?? '—' }}
+            </div>
+            <div class="small" style="margin-bottom:4px;">
+                <span class="bold">Lokacije korišćenja:</span> Autoboka i Puč
+            </div>
         @else
             <div class="bold" style="font-size:13px; margin-bottom:4px; border-bottom:1px dashed #000; padding-bottom:2px;">
                 Detalji rezervacije
@@ -168,10 +184,10 @@
                 <span class="bold">Datum rezervacije:</span> {{ ($reservation->created_at ?? now())->format('d.m.Y') }}
             </div>
             <div class="small" style="margin-bottom:2px;">
-                <span class="bold">Vrijeme dolaska:</span> {{ $reservation->dropOffTimeSlot->time_slot ?? 'N/A' }}
+                <span class="bold">Vrijeme dolaska:</span> {{ $reservation->dropOffTimeSlot?->time_slot ?? 'N/A' }}
             </div>
             <div class="small" style="margin-bottom:4px;">
-                <span class="bold">Vrijeme odlaska:</span> {{ $reservation->pickUpTimeSlot->time_slot ?? 'N/A' }}
+                <span class="bold">Vrijeme odlaska:</span> {{ $reservation->pickUpTimeSlot?->time_slot ?? 'N/A' }}
             </div>
         @endif
     </div>

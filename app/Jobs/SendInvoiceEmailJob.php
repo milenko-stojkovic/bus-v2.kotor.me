@@ -199,10 +199,16 @@ class SendInvoiceEmailJob implements ShouldQueue
             );
         }
 
+        $bodyKey = $reservation->isDailyTicket()
+            ? 'paid_invoice_email_body_daily_ticket'
+            : 'paid_invoice_email_body';
+
         $bodyTemplate = UiText::t(
             'emails',
-            'paid_invoice_email_body',
-            "Hello,\n\nYour paid parking reservation #%1\$d is confirmed for date %2\$s.%3\$s\n\nA PDF copy of your invoice or confirmation is attached.\n\nThank you.",
+            $bodyKey,
+            $reservation->isDailyTicket()
+                ? "Hello,\n\nYour daily ticket reservation #%1\$d is confirmed. Valid on: %2\$s.%3\$s\n\nA PDF copy of your invoice or confirmation is attached.\n\nThank you."
+                : "Hello,\n\nYour paid parking reservation #%1\$d is confirmed for date %2\$s.%3\$s\n\nA PDF copy of your invoice or confirmation is attached.\n\nThank you.",
             $emailLocale
         );
 

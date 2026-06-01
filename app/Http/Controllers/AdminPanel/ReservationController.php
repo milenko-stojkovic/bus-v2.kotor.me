@@ -10,7 +10,10 @@ use App\Models\ListOfTimeSlot;
 use App\Models\Reservation;
 use App\Models\User;
 use App\Models\VehicleType;
+use App\Services\AdminPanel\Reservation\AdminDailyTicketUpdateService;
 use App\Services\AdminPanel\Reservation\AdminReservationDateBounds;
+use App\Services\AdminPanel\Reservation\AdminReservationEditPolicy;
+use App\Services\AdminPanel\Reservation\AdminReservationUpdateNotification;
 use App\Services\AdminPanel\Reservation\AdminReservationSearchService;
 use App\Services\AdminPanel\Reservation\AdminReservationSlotRules;
 use App\Services\AdminPanel\Reservation\AdminReservationUpdateService;
@@ -68,8 +71,37 @@ class ReservationController extends Controller
     ): View {
         $reservation->load(['pickUpTimeSlot', 'dropOffTimeSlot', 'vehicleType']);
 
-        if (PanelReservationListService::isRealized($reservation)) {
+        try {
+            AdminReservationEditPolicy::assertEditable($reservation);
+        } catch (\RuntimeException) {
             abort(403);
+        }
+
+        if ($reservation->isDailyTicket()) {
+            $returnQuery = (string) $request->query('rq', '');
+            $boundsMin = $dateBounds->editMinDate()->toDateString();
+            $boundsMax = $dateBounds->editMaxDate()->toDateString();
+            $currentVt = $reservation->vehicleType;
+            $currentPrice = $currentVt !== null ? (float) $currentVt->price : 0.0;
+            $vehicleTypesAllowed = VehicleType::query()
+                ->where('price', '<=', $currentPrice)
+                ->with('translations')
+                ->orderBy('price')
+                ->orderBy('id')
+                ->get();
+
+            return view('admin-panel.reservations.edit-daily-ticket', [
+                'navActive' => 'reservations',
+                'pageTitle' => 'Rezervacija #'.$reservation->id.' — Dnevna karta',
+                'reservation' => $reservation,
+                'returnQuery' => $returnQuery,
+                'dateMin' => $boundsMin,
+                'dateMax' => $boundsMax,
+                'countries' => (array) config('countries', []),
+                'vehicleTypesAllowed' => $vehicleTypesAllowed,
+                'cancelUrl' => route('panel_admin.reservations', [], false)
+                    .($returnQuery !== '' ? '?'.$returnQuery : ''),
+            ]);
         }
 
         $formDate = (string) $request->query('form_date', $reservation->reservation_date->toDateString());
@@ -116,7 +148,7 @@ class ReservationController extends Controller
             'countries' => (array) config('countries', []),
             'vehicleTypesAllowed' => $vehicleTypesAllowed,
             'returnQuery' => (string) $request->query('rq', ''),
-            'realized' => PanelReservationListService::isRealized($reservation),
+            'pickUpOnly' => AdminReservationEditPolicy::isPickUpOnlyMode($reservation),
         ]);
     }
 
@@ -124,11 +156,14 @@ class ReservationController extends Controller
         AdminReservationUpdateRequest $request,
         Reservation $reservation,
         AdminReservationUpdateService $updateService,
+        AdminDailyTicketUpdateService $dailyUpdateService,
     ): RedirectResponse {
-        if (PanelReservationListService::isRealized($reservation)) {
+        try {
+            AdminReservationEditPolicy::assertEditable($reservation);
+        } catch (\RuntimeException $e) {
             return redirect()
                 ->route('panel_admin.reservations.edit', ['reservation' => $reservation])
-                ->with('error', 'Realizovana rezervacija se ne može mijenjati.');
+                ->with('error', $e->getMessage());
         }
 
         $data = $request->validated();
@@ -136,24 +171,41 @@ class ReservationController extends Controller
         unset($data['return_query']);
 
         try {
-            $updateService->apply($reservation, $data);
+            $adminId = auth('panel_admin')->id();
+            if ($reservation->isDailyTicket()) {
+                $changedFields = $dailyUpdateService->apply($reservation, $data);
+            } else {
+                $data = AdminReservationEditPolicy::enforcePickUpOnlyFields($reservation, $data);
+                $changedFields = $updateService->apply($reservation, $data);
+            }
+
+            AdminReservationUpdateNotification::dispatchAfterSuccessfulUpdate(
+                $reservation->fresh() ?? $reservation,
+                is_int($adminId) ? $adminId : null,
+                $changedFields,
+            );
         } catch (\RuntimeException $e) {
             return redirect()
                 ->route('panel_admin.reservations.edit', array_filter([
                     'reservation' => $reservation->id,
                     'rq' => $rq !== '' ? $rq : null,
-                    'form_date' => $data['reservation_date'],
+                    'form_date' => $data['reservation_date'] ?? null,
                 ]))
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
 
+        return $this->redirectAfterUpdate($rq, 'Izmjena je sačuvana; dokument je u redu za slanje.');
+    }
+
+    private function redirectAfterUpdate(string $rq, string $statusMessage): RedirectResponse
+    {
         $redirectUrl = route('panel_admin.reservations', [], false);
         if ($rq !== '') {
             $redirectUrl .= '?'.$rq;
         }
 
-        return redirect()->to($redirectUrl)->with('status', 'Izmjena je sačuvana; dokument je u redu za slanje.');
+        return redirect()->to($redirectUrl)->with('status', $statusMessage);
     }
 
     public function pdf(Reservation $reservation): StreamedResponse|\Illuminate\Http\Response
@@ -246,6 +298,9 @@ class ReservationController extends Controller
         if (! empty($v['status'])) {
             $filters['status'] = $v['status'];
         }
+        if (! empty($v['reservation_kind'])) {
+            $filters['reservation_kind'] = (string) $v['reservation_kind'];
+        }
 
         $heur = $searchService->buildHeuristicPatterns($v['name'] ?? null, $v['email'] ?? null);
         $filters = array_merge($filters, $heur);
@@ -271,6 +326,7 @@ class ReservationController extends Controller
             'country' => '',
             'status' => '',
             'agency_user_id' => '',
+            'reservation_kind' => '',
         ];
     }
 }

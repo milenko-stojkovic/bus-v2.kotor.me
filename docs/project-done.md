@@ -1,6 +1,6 @@
 # Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-05-16  
+**Poslednje ažuriranje:** 2026-05-28  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
@@ -8,6 +8,14 @@ Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj
 
 ## 2026-04 — Agency panel, besplatan checkout, dokumentacija
 
+- **2026-05-28** — **PDF logo (grb Opštine):** **`KotorPdfAssets`** → **`public/images/logo_kotor.png`** umjesto frontend SVG; dokumentacija u **`project-conventions.md`**, **`success-payment-pipeline.md`**.
+- **2026-05-28** — **Admin pretraga rezervacija — filter vrste:** Sve / Termini / Dnevna karta (`reservation_kind`); testovi **`AdminReservationKindFilterTest`**.
+- **2026-05-28** — **Admin izmena — lista + ažurirani PDF email:** „Izmeni” u pretrazi (aktivan/onemogućen); **`SendAdminUpdatedReservationDocumentJob`** posle uspješne izmjene; Podgorica TZ za upcoming/realized; testovi prošireni.
+- **2026-05-28** — **Admin izmena rezervacija (restore + harden):** lista **Izmeni** + PDF; `AdminReservationUpdateService` / `AdminDailyTicketUpdateService`; paid bez preračuna `invoice_amount`; free/paid pravila termina; pick-up-only posle dolaska; dnevna karta bez slotova/kapaciteta; testovi **`AdminReservationEditHardeningTest`**.
+- **2026-05-28** — **Dnevna karta — Phase 3B (admin analitika):** `AdminAnalyticsService` — odvojeni KPI (`time_slots_*` / `daily_ticket_*`), zauzetost slotova i day-part samo za termine; red „Dnevna karta” van slot prozora; agencije + daily kolone; UI/PDF analitike; testovi **`AdminAnalyticsDailyTicketTest`**.
+- **2026-05-28** — **Dnevna karta — Phase 3A (PDF/email + panel lifecycle):** `paid-invoice` blok za daily (Vrsta/Datum važenja/Lokacije); nefiskalna napomena „dnevne karte”; email `paid_invoice_email_body_daily_ticket`; **`PanelReservationListService`** — daily upcoming/realized po kalendarskom danu (Podgorica); admin pretraga + read-only **`edit-daily-ticket`**; testovi **`DailyTicketPaidInvoiceTest`**, **`PanelReservationListDailyTicketTest`**. Admin analitika — Phase 3B.
+- **2026-05-28** — **Dnevna karta — Phase 2 (agency UI + checkout):** na **`GET /panel/reservations`** radio **Termini** / **Dnevna karta** (default Termini) + CG/EN objašnjenje i map linkovi; **`CheckoutReservationRequest`** (agency-only `reservation_kind`, slot pravila); **`CheckoutController::storeDailyTicketBooking`** (bez kapaciteta/duplicate slot check/`daily_parking_data`); **`PaymentSuccessHandler`** / **`ExpirePendingReservations`** preskaču slot lock za daily; liste (upcoming/realized/admin pretraga) prikazuju **Dnevna karta** umjesto termina. PDF/email/analitika puni format — **Phase 3**.
+- **2026-05-28** — **Dnevna karta — Phase 1 (foundation):** migracija **`2026_05_28_100000_add_reservation_kind_to_reservations_and_temp_data`** (`reservation_kind`, nullable slot FK na `reservations` i `temp_data`); **`App\Support\ReservationKind`**; model helperi; testovi **`ReservationKindFoundationTest`**, **`ReservationKindTest`**. Checkout/UI/PDF/analitika **nisu** uključeni (Phase 2+).
 - **2026-05-16** — **Usaglašavanje `project-todo.md`:** uklonjene zastarjele operativne stavke koje su već pokrivene (alerti, system-health, heartbeat, Sistem status, MEGA/queue runbook); sekcija **Operativno / audit** sužena na retenciju, fine-tuning alert politike, lifecycle rubne slučajeve i audit fiskalne klasifikacije; dopunjena napomena o Limo stanju; preimenovanje opcione sekcije. Datum ažuriranja TODO-a **2026-05-16**.
 - **2026-05-16** — **Operativna dokumentacija PR/DR:** novi **[production-readiness-and-disaster-recovery.md](./production-readiness-and-disaster-recovery.md)** — checklist produkcije, scheduler/queue, dnevne/sedmične provjere, očekivani backup obuhvat, scenariji oporavka, šta nije auto-recovery, verifikacija restore-a; poveznice na **admin-panel**, **cron-commands**, **external-file-archive**, **testing-mysql**; mapa u **README.md**.
 - **2026-05-16** — **Rekoncilijacija dokumentacije sa kodom:** usklađen opis **`reservations:process-pending`** kao no-op stuba u **scheduled-tasks-overview**, **production-readiness-and-disaster-recovery**, **cron-commands** (production readiness + EXCLUDED); ispravljene zastarjele formulacije heartbeat-a („priprema za Sistem status“) u **admin-panel**, **cron-commands**, ovoj listi; **`parking:update-availability`** i **`reservations:send-emails`** — eksplicitno da **nisu** u Laravel Schedule u repou.

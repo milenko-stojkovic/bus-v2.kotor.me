@@ -1,6 +1,6 @@
 # Konvencije projekta (bus.kotor.me)
 
-**Poslednje ažuriranje:** 2026-05-15  
+**Poslednje ažuriranje:** 2026-05-28  
 
 Za AI i ljude: držati se ovoga pri novim izmenama da ostane konzistentno.
 
@@ -39,7 +39,7 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 - **Blade partiali / markdown u `docs/`**: za **dugačke** tekstove (uslovi korišćenja, politika privatnosti, duga uputstva). Ne stavljati ceo pravni tekst u `ui_translations`.
 - Pristup u Blade-u: **`App\Support\UiText::t('group', 'key', $fallback)`**; novi ključevi kroz **`UiTranslationsSeeder`** sa `upsert` (bez dupliranja redova).
 - **Korisnik / mail locale:** za auth mailove koristiti **`$user->lang`** (`cg` / `en`); verify-email ekran treba da prati isti princip gde je korisnik ulogovan.
-- **Agencijski unos datuma (FZBR, Statistika):** vidljivo **`dd/mm/yyyy`** preko **`resources/views/components/iso-date-input.blade.php`** + **`resources/js/isoDateInput.js`** (skriveno polje šalje **`Y-m-d`**). **Rezervacije** koriste mesečni grid **`partials/reservation-date-calendar`** (isto `Y-m-d`). Izbegavati `input[type=date]` na agencijskim formama — prikaz zavisi od locale pregledača (npr. mm/dd/yyyy).
+- **Agencijski unos datuma (FZBR, Statistika):** hibrid preko **`iso-date-input`**: vidljivo **`dd/mm/yyyy`**, submit **`Y-m-d`** (skriveno `name`), kalendar preko skrivenog `input[type=date]` + dugmeta (native picker, bez vidljivog mm/dd/yyyy u polju). **`isoDateInput.js`** sinhronizuje tipkanje, picker i canonical. **Rezervacije** koriste mesečni grid **`partials/reservation-date-calendar`** (isto `Y-m-d`).
 
 ---
 
@@ -50,6 +50,7 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 
 ### PDF računi i potvrde (izdavač: Opština Kotor)
 
+- **Logo u PDF-u:** grb Opštine Kotor — **`public/images/logo_kotor.png`**, učitava **`KotorPdfAssets::logoDataUri()`** (plaćeni račun, besplatna potvrda, admin analitika). **Ne** koristiti frontend rebrand (`buslogofull.svg` / `buslogowhite.svg`); web layout i zvanični PDF su odvojeni.
 - **Iznos na plaćenom računu** u PDF-u dolazi isključivo iz **`reservations.invoice_amount`** (snapshot pri kreiranju rezervacije), ne iz trenutne **`vehicle_types.price`**. PDF se generiše na zahtev (email ili panel); nema trajnog čuvanja u **`storage/app/invoices`**.
 - **Queue jobovi za mejl** (`SendInvoiceEmailJob`, `SendFreeReservationConfirmationJob`): PDF isključivo **`renderBinary`** iz baze; greška → **ne šalji** mejl, **`email_sent`** na **`Reservation::EMAIL_NOT_SENT`**, job **baca izuzetak** (retry preko reda; v. `success-payment-pipeline.md`). **`email_sent`:** `EMAIL_NOT_SENT` (0), `EMAIL_SENT` (1), `EMAIL_SENDING` (2) — konstante u modelu.
 - Tekst u PDF šablonima (**fiskalni račun**, **nefiskalni račun**, **besplatna potvrda**) je **isključivo na crnogorskom (cg, latinica)** — **nema en varijante** u samom dokumentu; smisao je zvaničnog izdavača u Crnoj Gori.
@@ -87,6 +88,13 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 - Operativni opis: **[external-file-archive.md](./external-file-archive.md)** (tabela `external_file_archives`, komande `files:archive-private`, `files:restore-private`, **`files:mega-diagnose`**, **`files:cleanup-preview-cache`**, Node `scripts/mega-archive.js`; admin **neuspjeli redovi** `/admin/sistemska-arhiva/neuspjeli`). Limo **plate upload** arhiva koristi JPEG derivat (`LimoPlateArchiveDerivativeBuilder`, GD).
 
 - **Limo servis:** `features.limo_service` (ENV `LIMO_SERVICE_ENABLED`) i **mora** imati i `features.advance_payments` ON. Effective rule: \(advance\_payments \land limo\_service\).
+
+### Rezervacije — `reservation_kind` (Dnevna karta)
+
+- Kolona **`reservation_kind`** na **`reservations`** i **`temp_data`**: `time_slots` (default) | `daily_ticket`.
+- Konstante: **`App\Support\ReservationKind`**, aliasi na **`Reservation`** / **`TempData`**; helperi **`isTimeSlots()`**, **`isDailyTicket()`**.
+- **Invariant (Phase 2+ checkout/admin):** `time_slots` → oba slot ID NOT NULL; `daily_ticket` → oba NULL (bez sentinel slotova; ne dira **`daily_parking_data`**).
+- **Phase 1 (2026-05-28):** samo šema/model; UI, checkout, PDF, analitika **nisu** još uključeni.
 
 ---
 

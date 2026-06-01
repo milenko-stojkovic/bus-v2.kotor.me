@@ -11,10 +11,12 @@ use Illuminate\Support\Collection;
 /**
  * Predstojeće vs realizovane rezervacije za agency panel (isti korisnik).
  * Upcoming: datum u budućnosti ILI (danas i now < kraj departure slota).
+ * Daily ticket: upcoming dok je reservation_date >= danas (Europe/Podgorica); realizovana od sljedećeg dana.
  * Realized: komplement.
  */
 final class PanelReservationListService
 {
+    public const OPERATIONS_TIMEZONE = 'Europe/Podgorica';
     /**
      * @return Collection<int, Reservation>
      */
@@ -44,8 +46,15 @@ final class PanelReservationListService
 
     public static function isUpcoming(Reservation $r): bool
     {
-        $day = $r->reservation_date->copy()->startOfDay();
-        $today = now()->startOfDay();
+        if ($r->isDailyTicket()) {
+            $day = $r->reservation_date->copy()->timezone(self::OPERATIONS_TIMEZONE)->startOfDay();
+            $today = self::operationsToday();
+
+            return $day->gte($today);
+        }
+
+        $day = $r->reservation_date->copy()->timezone(self::OPERATIONS_TIMEZONE)->startOfDay();
+        $today = self::operationsToday();
 
         if ($day->gt($today)) {
             return true;
@@ -56,10 +65,10 @@ final class PanelReservationListService
 
         $end = $r->pickUpTimeSlot?->getEndTimeForDate($day);
         if ($end === null) {
-            return true;
+            return false;
         }
 
-        return now()->lt($end);
+        return now(self::OPERATIONS_TIMEZONE)->lt($end);
     }
 
     public static function isRealized(Reservation $r): bool
@@ -70,9 +79,21 @@ final class PanelReservationListService
     /** Kraj departure (pick-up) termina za sortiranje realizovanih (najnovije prvo). */
     public static function pickUpEndForSort(Reservation $r): ?Carbon
     {
+        if ($r->isDailyTicket()) {
+            return $r->reservation_date
+                ->copy()
+                ->timezone(self::OPERATIONS_TIMEZONE)
+                ->endOfDay();
+        }
+
         $day = $r->reservation_date->copy()->startOfDay();
 
         return $r->pickUpTimeSlot?->getEndTimeForDate($day);
+    }
+
+    public static function operationsToday(): Carbon
+    {
+        return now(self::OPERATIONS_TIMEZONE)->startOfDay();
     }
 
     /**

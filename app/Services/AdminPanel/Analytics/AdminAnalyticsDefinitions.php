@@ -10,12 +10,16 @@ final class AdminAnalyticsDefinitions
     public const PART_PAID_DAY = 'paid_day';
     public const PART_FREE_EVENING = 'free_evening';
 
+    /** Outside Benovo slot grouping (Autoboka / Puč daily ticket). */
+    public const PART_DAILY_TICKET = 'daily_ticket';
+
     public static function dayPartLabel(string $key): string
     {
         return match ($key) {
             self::PART_FREE_MORNING => 'Free jutro (00:00–07:00)',
             self::PART_PAID_DAY => 'Paid dnevni prozor (07:00–20:00)',
             self::PART_FREE_EVENING => 'Free veče (20:00–24:00)',
+            self::PART_DAILY_TICKET => 'Dnevna karta (bez termina)',
             default => $key,
         };
     }

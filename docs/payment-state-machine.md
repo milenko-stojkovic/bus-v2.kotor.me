@@ -32,6 +32,7 @@ mora biti **isti iznos koji je poslat banci u trenutku checkout-a**.
 
 ### Snapshot (temp_data)
 
+- **`reservation_kind`:** `time_slots` (default) ili `daily_ticket` (samo agency checkout sa `auth_panel_booking`). Za `daily_ticket` slot FK su `NULL` i **ne** dira se `daily_parking_data` (nema `pending`/`reserved` na slotovima; expire/cancel/success handler preskače soft-lock). Fiskalni PDF (`pdf/paid-invoice`) i email potvrda prikazuju vrstu/datum važenja/lokacije umjesto termina dolaska/odlaska.
 - Taj iznos se čuva kao snapshot u `temp_data` (npr. `invoice_amount_snapshot`).
 - Nakon kreiranja `temp_data` taj iznos se **više nikada ne računa ponovo iz cjenovnika**.
 - Promjene cijena **ne utiču** na već započete ili završene payment pokušaje.
@@ -82,7 +83,7 @@ Glavni tok checkout-a: **`pending` → …** (prelazi ispod).
 | `pending` | `success` (webhook ili inquiry) | `processed` | Kreira se **`reservations`** (jednom po `merchant_transaction_id`), `temp_data` → processed, soft-lock → reserved; **`ProcessReservationAfterPaymentJob`** (fiskal + mejl) po pravilima handlera. |
 | `pending` | `failed` (CANCEL/ERROR/normalizovano) | `canceled` | **`handleCanceled`**: `releaseSoftLock` bez povećanja reserved; **`PaymentFailed`**; nema rezervacije. |
 | `pending` | `timeout` | `late_success` | **`applyLateSuccess(..., releaseLock: true)`** — nema kreiranja rezervacije u ovom koraku. |
-| `pending` | istek (cron `reservations:expire-pending`) | `expired` | Samo cron; smanjenje **`daily_parking_data.pending`**; nema `PaymentCallbackJob`. |
+| `pending` | istek (cron `reservations:expire-pending`) | `expired` | Samo cron; smanjenje **`daily_parking_data.pending`** samo za `time_slots`; nema `PaymentCallbackJob`. |
 | `pending` | `success`, ali rezervacija već postoji | *(nema promene statusa u ovom koraku)* | Job prekida ranije: log „duplicate“, nema duplog kreiranja. |
 | `processed` | bilo koji ponovni callback/inquiry | `processed` | No-op (raniji return); idempotentnost. |
 | `expired` | `success` | `late_success` | **`applyLateSuccess(..., releaseLock: false)`** (lock već pušten pri expire); **nema** automatskog kreiranja rezervacije. |

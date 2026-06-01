@@ -14,18 +14,28 @@ use Throwable;
  */
 final class KotorPdfAssets
 {
+    /**
+     * Grb Opštine Kotor za zvanične PDF-ove (račun, potvrde, izvještaji).
+     */
     public static function logoDataUri(): ?string
     {
-        $path = public_path('images/buslogo.svg');
+        return self::fileDataUri(public_path('images/logo_kotor.png'), 'image/png');
+    }
+
+    /**
+     * @return non-empty-string|null
+     */
+    private static function fileDataUri(string $path, string $mime): ?string
+    {
         if (! is_readable($path)) {
             return null;
         }
         $data = @file_get_contents($path);
-        if ($data === false) {
+        if ($data === false || $data === '') {
             return null;
         }
 
-        return 'data:image/svg+xml;base64,'.base64_encode($data);
+        return 'data:'.$mime.';base64,'.base64_encode($data);
     }
 
     /**

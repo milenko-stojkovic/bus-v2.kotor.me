@@ -20,6 +20,7 @@ use App\Services\Reservation\FreeReservationRules;
 use App\Support\CheckoutResultFlash;
 use App\Support\QueueMode;
 use App\Support\ReservationInvoiceAmount;
+use App\Support\ReservationKind;
 use App\Support\UiText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -51,6 +52,10 @@ class CheckoutController extends Controller
         PaymentSuccessHandler $successHandler,
         DuplicateReservationAttemptService $duplicateAttemptService,
     ): RedirectResponse|Response|JsonResponse {
+        if ($request->isDailyTicketBooking()) {
+            return $this->storeDailyTicketBooking($request, $paymentService, $successHandler);
+        }
+
         $date = $request->validated('reservation_date');
         $dropOffSlotId = (int) $request->validated('drop_off_time_slot_id');
         $pickUpSlotId = (int) $request->validated('pick_up_time_slot_id');
@@ -121,6 +126,7 @@ class CheckoutController extends Controller
                         'vehicle_id' => $snapshot['vehicle_id'],
                         'merchant_transaction_id' => $merchantTransactionId,
                         'payment_method' => 'advance',
+                        'reservation_kind' => ReservationKind::TIME_SLOTS,
                         'drop_off_time_slot_id' => (int) $dropOffSlotId,
                         'pick_up_time_slot_id' => (int) $pickUpSlotId,
                         'reservation_date' => $date,
@@ -269,6 +275,7 @@ class CheckoutController extends Controller
                     'retry_token' => $retryToken,
                     'user_id' => $request->user()?->id,
                     'vehicle_id' => $snapshot['vehicle_id'],
+                    'reservation_kind' => ReservationKind::TIME_SLOTS,
                     'drop_off_time_slot_id' => $dropOffSlotId,
                     'pick_up_time_slot_id' => $pickUpSlotId,
                     'reservation_date' => $date,
@@ -427,6 +434,184 @@ class CheckoutController extends Controller
      *
      * @return array{vehicle_id:int|null,user_name:string,country:string,license_plate:string,vehicle_type_id:int,email:string}
      */
+    /**
+     * Agency-only daily ticket: no slot capacity, no daily_parking_data, no slot duplicate check.
+     */
+    private function storeDailyTicketBooking(
+        CheckoutReservationRequest $request,
+        PaymentService $paymentService,
+        PaymentSuccessHandler $successHandler,
+    ): RedirectResponse|Response|JsonResponse {
+        $date = $request->validated('reservation_date');
+        $snapshot = $this->resolveSnapshotInput($request);
+        $panelAuthBooking = $request->isPanelAuthBooking();
+        $paymentMethod = $panelAuthBooking ? (string) ($request->validated('payment_method') ?? 'card') : 'card';
+
+        if ($panelAuthBooking && $paymentMethod === 'advance') {
+            if (! (bool) config('features.advance_payments')) {
+                $msg = 'Avansno plaćanje trenutno nije dostupno.';
+
+                return back()->withInput()->with('error', $msg)->withErrors(['payment_method' => $msg]);
+            }
+
+            $invoiceAmount = ReservationInvoiceAmount::snapshotForNewReservation('paid', $snapshot['vehicle_type_id'] ?? null);
+            $userId = (int) $request->user()->id;
+
+            $merchantTransactionId = $request->validated('merchant_transaction_id');
+            $merchantTransactionId = is_string($merchantTransactionId) && trim($merchantTransactionId) !== ''
+                ? trim($merchantTransactionId)
+                : Str::uuid()->toString();
+
+            try {
+                $reservation = DB::transaction(function () use ($date, $snapshot, $invoiceAmount, $userId, $merchantTransactionId) {
+                    User::query()->whereKey($userId)->lockForUpdate()->first();
+
+                    $balance = (float) (DB::table('agency_advance_transactions')
+                        ->where('agency_user_id', $userId)
+                        ->selectRaw('COALESCE(SUM(amount), 0) as s')
+                        ->value('s') ?? 0);
+                    $need = (float) $invoiceAmount;
+                    if ($balance + 0.000001 < $need) {
+                        $msg = 'Raspoloživi avans nije dovoljan za ovu rezervaciju. Možete izabrati plaćanje karticom ili izvršiti avansnu uplatu.';
+                        abort(422, $msg);
+                    }
+
+                    $reservation = Reservation::create([
+                        'user_id' => $userId,
+                        'vehicle_id' => $snapshot['vehicle_id'],
+                        'merchant_transaction_id' => $merchantTransactionId,
+                        'payment_method' => 'advance',
+                        'reservation_kind' => ReservationKind::DAILY_TICKET,
+                        'drop_off_time_slot_id' => null,
+                        'pick_up_time_slot_id' => null,
+                        'reservation_date' => $date,
+                        'user_name' => $snapshot['user_name'],
+                        'country' => $snapshot['country'],
+                        'license_plate' => $snapshot['license_plate'],
+                        'vehicle_type_id' => $snapshot['vehicle_type_id'],
+                        'email' => $snapshot['email'],
+                        'preferred_locale' => $snapshot['preferred_locale'] ?? app()->getLocale(),
+                        'status' => 'paid',
+                        'invoice_amount' => $invoiceAmount,
+                        'email_sent' => Reservation::EMAIL_NOT_SENT,
+                        'created_by_admin' => false,
+                    ]);
+
+                    AgencyAdvanceTransaction::query()->create([
+                        'agency_user_id' => $userId,
+                        'amount' => number_format(-1 * (float) $invoiceAmount, 2, '.', ''),
+                        'type' => AgencyAdvanceTransaction::TYPE_USAGE,
+                        'reference_type' => 'reservation',
+                        'reference_id' => (int) $reservation->id,
+                        'merchant_transaction_id' => $reservation->merchant_transaction_id,
+                        'note' => \App\Support\AdvanceLedgerNote::KEY_RESERVATION_PAYMENT,
+                    ]);
+
+                    return $reservation;
+                });
+            } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                $existing = Reservation::query()->where('merchant_transaction_id', $merchantTransactionId)->first();
+                if ($existing) {
+                    $reservation = $existing;
+                } else {
+                    throw $e;
+                }
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                if ($e->getStatusCode() === 422) {
+                    return back()->withInput()->with('error', $e->getMessage())->withErrors(['payment_method' => $e->getMessage()]);
+                }
+                throw $e;
+            }
+
+            $bankFake = (string) config('services.bank.driver', 'fake') === 'fake';
+            $fiscalFake = (string) config('services.fiscalization.driver', 'fake') === 'fake';
+            if ($bankFake && $fiscalFake) {
+                QueueMode::dispatchForFakeE2e(new ProcessReservationAfterPaymentJob($reservation->id));
+            } else {
+                ProcessReservationAfterPaymentJob::dispatch($reservation->id);
+            }
+
+            return redirect()->to(route('panel.reservations', [], false))
+                ->with('checkout_banner', CheckoutResultFlash::forReservationSuccess(false, true, false));
+        }
+
+        $merchantTransactionId = Str::uuid()->toString();
+        $retryToken = Str::uuid()->toString();
+
+        try {
+            $temp = DB::transaction(function () use ($request, $date, $merchantTransactionId, $retryToken, $snapshot) {
+                $preferredLocale = $request->user()
+                    ? ($request->user()->lang ?? 'en')
+                    : ($request->session()->get('locale') ?: app()->getLocale());
+                if (! LocaleHelper::isValid($preferredLocale)) {
+                    $preferredLocale = 'en';
+                }
+
+                $invoiceSnapshot = ReservationInvoiceAmount::snapshotForNewReservation(
+                    'paid',
+                    $snapshot['vehicle_type_id'] ?? null
+                );
+
+                $temp = TempData::create([
+                    'merchant_transaction_id' => $merchantTransactionId,
+                    'retry_token' => $retryToken,
+                    'user_id' => $request->user()?->id,
+                    'vehicle_id' => $snapshot['vehicle_id'],
+                    'reservation_kind' => ReservationKind::DAILY_TICKET,
+                    'drop_off_time_slot_id' => null,
+                    'pick_up_time_slot_id' => null,
+                    'reservation_date' => $date,
+                    'user_name' => $snapshot['user_name'],
+                    'country' => $snapshot['country'],
+                    'license_plate' => $snapshot['license_plate'],
+                    'vehicle_type_id' => $snapshot['vehicle_type_id'],
+                    'invoice_amount_snapshot' => $invoiceSnapshot,
+                    'email' => $snapshot['email'],
+                    'preferred_locale' => $preferredLocale,
+                    'status' => TempData::STATUS_PENDING,
+                ]);
+
+                Log::channel('payments')->info('Payment init', [
+                    'merchant_transaction_id' => $merchantTransactionId,
+                    'temp_data_id' => $temp->id,
+                    'user_id' => $temp->user_id,
+                    'reservation_id' => null,
+                    'retry_token' => $retryToken,
+                    'reservation_kind' => ReservationKind::DAILY_TICKET,
+                ]);
+
+                return $temp;
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            $existingByMtid = TempData::where('merchant_transaction_id', $merchantTransactionId)
+                ->where('status', TempData::STATUS_PENDING)
+                ->first();
+            if ($existingByMtid) {
+                $session = $paymentService->createSession($existingByMtid);
+                if ($session->success && $session->paymentUrl) {
+                    return redirect()->away($session->paymentUrl);
+                }
+
+                return $this->createSessionFailedResponse($request, $session);
+            }
+            throw $e;
+        }
+
+        $session = $paymentService->createSession($temp);
+
+        if ($session->success && $session->paymentUrl) {
+            return redirect()->away($session->paymentUrl);
+        }
+
+        Log::channel('payments')->warning('checkout_create_session_failed', [
+            'stage' => 'checkout_daily_ticket_after_temp_created',
+            'merchant_transaction_id' => $temp->merchant_transaction_id,
+            'temp_data_id' => $temp->id,
+        ]);
+
+        return $this->createSessionFailedResponse($request, $session);
+    }
+
     private function resolveSnapshotInput(CheckoutReservationRequest $request): array
     {
         $vehicleId = $request->validated('vehicle_id');

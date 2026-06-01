@@ -31,6 +31,22 @@ class FzbrIntakeTest extends TestCase
         $this->assertStringNotContainsString('/free-reservation-request', $html);
     }
 
+    public function test_fzbr_page_uses_hybrid_iso_date_input_for_reservation_date(): void
+    {
+        $user = User::factory()->create(['lang' => 'cg', 'country' => 'ME']);
+        $this->actingAs($user);
+
+        $html = $this->get(route('panel.fzbr.create', [], false))->assertOk()->getContent();
+
+        $this->assertStringContainsString('name="reservation_date"', $html);
+        $this->assertStringContainsString('data-iso-date-display', $html);
+        $this->assertStringContainsString('data-iso-date-hidden', $html);
+        $this->assertStringContainsString('data-iso-date-picker', $html);
+        $this->assertStringContainsString('data-iso-date-calendar-btn', $html);
+        $this->assertStringContainsString('placeholder="dd/mm/yyyy"', $html);
+        $this->assertStringContainsString('form="fzbrPostForm"', $html);
+    }
+
     public function test_agency_panel_fzbr_submit_creates_request_snapshots_attachments_sends_admin_mail_and_creates_warning(): void
     {
         Storage::fake('local');

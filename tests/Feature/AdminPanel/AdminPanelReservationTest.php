@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\AdminPanel;
 
+use App\Jobs\SendAdminUpdatedReservationDocumentJob;
 use App\Jobs\SendFreeReservationConfirmationJob;
 use App\Jobs\SendInvoiceEmailJob;
 use App\Models\Admin;
@@ -10,6 +11,7 @@ use App\Models\ListOfTimeSlot;
 use App\Models\Reservation;
 use App\Models\VehicleType;
 use App\Models\VehicleTypeTranslation;
+use App\Support\ReservationKind;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -224,7 +226,8 @@ class AdminPanelReservationTest extends TestCase
             ->where('time_slot_id', $slots['s3']->id)
             ->value('reserved'));
 
-        Queue::assertPushed(SendInvoiceEmailJob::class);
+        Queue::assertPushed(SendAdminUpdatedReservationDocumentJob::class);
+        Queue::assertNotPushed(SendInvoiceEmailJob::class);
         Queue::assertNotPushed(SendFreeReservationConfirmationJob::class);
     }
 
@@ -274,7 +277,87 @@ class AdminPanelReservationTest extends TestCase
 
         $this->assertSame('Free User Updated', $r->fresh()->user_name);
 
-        Queue::assertPushed(SendFreeReservationConfirmationJob::class);
+        Queue::assertPushed(SendAdminUpdatedReservationDocumentJob::class);
         Queue::assertNotPushed(SendInvoiceEmailJob::class);
+        Queue::assertNotPushed(SendFreeReservationConfirmationJob::class);
+    }
+
+    public function test_admin_search_renders_daily_ticket_without_slot_crash(): void
+    {
+        $admin = $this->seedAdmin();
+        $d = Carbon::now()->addDays(5)->toDateString();
+        $vt = VehicleType::query()->create(['price' => 20]);
+        $mtid = 'mt-admin-daily-'.uniqid();
+
+        Reservation::query()->create([
+            'merchant_transaction_id' => $mtid,
+            'reservation_kind' => ReservationKind::DAILY_TICKET,
+            'drop_off_time_slot_id' => null,
+            'pick_up_time_slot_id' => null,
+            'reservation_date' => $d,
+            'user_name' => 'Daily Agency',
+            'country' => 'ME',
+            'license_plate' => 'KO777DD',
+            'vehicle_type_id' => $vt->id,
+            'email' => 'daily-admin@test.local',
+            'status' => 'paid',
+            'invoice_amount' => '20.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $this->actingAs($admin, 'panel_admin');
+
+        $this->get(route('panel_admin.reservations', ['merchant_transaction_id' => $mtid], false))
+            ->assertOk()
+            ->assertSee('Dnevna karta', false)
+            ->assertSee('Autoboka i Puč', false)
+            ->assertDontSee('Vrijeme dolaska', false);
+    }
+
+    public function test_admin_can_update_daily_ticket_safe_fields(): void
+    {
+        Queue::fake();
+
+        $admin = $this->seedAdmin();
+        $d = Carbon::now()->addDays(4)->toDateString();
+        $vt = VehicleType::query()->create(['price' => 20]);
+
+        $r = Reservation::query()->create([
+            'merchant_transaction_id' => 'mt-admin-daily-edit',
+            'reservation_kind' => ReservationKind::DAILY_TICKET,
+            'drop_off_time_slot_id' => null,
+            'pick_up_time_slot_id' => null,
+            'reservation_date' => $d,
+            'user_name' => 'Daily Agency',
+            'country' => 'ME',
+            'license_plate' => 'KO777DD',
+            'vehicle_type_id' => $vt->id,
+            'email' => 'daily-admin@test.local',
+            'status' => 'paid',
+            'invoice_amount' => '20.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $this->actingAs($admin, 'panel_admin');
+
+        $this->get(route('panel_admin.reservations.edit', ['reservation' => $r], false))
+            ->assertOk()
+            ->assertSee('Dnevna karta', false)
+            ->assertSee('Sačuvaj', false);
+
+        $this->put(route('panel_admin.reservations.update', $r, false), [
+            'reservation_date' => $d,
+            'user_name' => 'Daily Updated',
+            'country' => 'ME',
+            'license_plate' => 'KO888EE',
+            'vehicle_type_id' => $vt->id,
+            'email' => 'daily-updated@test.local',
+            'return_query' => '',
+        ])->assertRedirect();
+
+        $r->refresh();
+        $this->assertSame('Daily Updated', $r->user_name);
+        $this->assertSame('KO888EE', $r->license_plate);
+        Queue::assertPushed(SendAdminUpdatedReservationDocumentJob::class);
     }
 }

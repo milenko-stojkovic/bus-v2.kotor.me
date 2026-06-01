@@ -96,7 +96,11 @@ final class PaidInvoicePdfRegressionTest extends TestCase
             'unitPrice' => $unitPrice,
             'fiscalDateTime' => $fiscalDateTime,
             'internalNumber' => $internalNumber,
-            'nonFiscalNote' => PaidInvoicePdfGenerator::NON_FISCAL_NOTE,
+            'nonFiscalNote' => PaidInvoicePdfGenerator::nonFiscalNoteFor($reservation),
+            'isDailyTicket' => $reservation->isDailyTicket(),
+            'validityDateDisplay' => $reservation->reservation_date
+                ? Carbon::parse($reservation->reservation_date)->format('d.m.Y')
+                : '—',
         ])->render();
     }
 
@@ -137,7 +141,7 @@ final class PaidInvoicePdfRegressionTest extends TestCase
             'unitPrice' => $unitPrice,
             'fiscalDateTime' => $fiscalDateTime,
             'internalNumber' => $internalNumber,
-            'nonFiscalNote' => PaidInvoicePdfGenerator::NON_FISCAL_NOTE,
+            'nonFiscalNote' => PaidInvoicePdfGenerator::NON_FISCAL_NOTE_TIME_SLOTS,
         ])->render();
     }
 
