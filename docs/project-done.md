@@ -6,8 +6,19 @@ Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj
 
 ---
 
+## 2026-06 — V2 staging deploy (server validacija)
+
+- **2026-06-17** — **V2 deploy na staging (produkcijski server, odvojeno od V1):** aplikacija živi na **`https://bus-v2.kotor.me`** sa **zasebnom bazom** (V1 produkcija na **`https://bus.kotor.me`** ostaje aktivna i nepromijenjena). Prelazak sa isključivo lokalnog razvoja na **primarno test okruženje na serveru** — E2E validacija u toku, **bez production cut-over-a** na V2.
+  - **Plaćanje:** Bankart **simulaciono** test okruženje (real driver, test kredencijali).
+  - **Fiskalizacija:** Primatech **simulaciono** test okruženje; pun `fiscalReceipt` payload usklađen sa V1; test seller/PIB za sandbox.
+  - **Queue:** Plesk scheduled task **`queue-worker.php`** (`* * * * *`, bez `--stop-when-empty`, `--max-time=55`, lock `plesk_queue_worker_bus_v2`) — nema Supervisor/Laravel Toolkit Queue.
+  - **UX:** scroll pozicija na rezervacionim formama (`reservationFormScroll.js`) — guest + agency panel.
+  - **Poslovni model na stagingu:** **Dnevna naknada / Daily fee** (agency + guest), **Control** provjera tablice, **Promjena tablica**; **Limo QR/OCR/evidentičar** ostaje **legacy** (`LIMO_QR_WORKFLOW_ENABLED=false`, kod i istorija očuvani).
+  - **Dokumentacija:** `handoff-new-chat.md`, `project-todo.md` (STAGING VALIDATION PHASE), `production-runbook.md` (topologija V1/V2), `project-conventions.md` (URL-ovi).
+
 ## 2026-06 — UX i operativa
 
+- **2026-06-17** — **Plesk queue worker:** `queue-worker.php` bez `--stop-when-empty` (`--max-time=55`, `--sleep=1`); `Cache::lock` / file lock protiv preklapanja; docs (`cron-commands.md`, `production-runbook.md`, `production-readiness-and-disaster-recovery.md`).
 - **2026-06-17** — **Rezervacije — scroll poslije GET auto-refresh:** na **`/guest/reserve`** i **`/panel/reservations`** izbor datuma/vrste/vozila/termina više ne vraća korisnika na vrh stranice; **`resources/js/reservationFormScroll.js`** + `sessionStorage` (`reservation_form_scroll_guest` | `reservation_form_scroll_panel`); preskočeno kad ima validacionih grešaka; bez promjene checkout/poslovne logike; docs (`project-conventions.md`, `agency-panel.md`, `auth-and-guests.md`).
 
 ## 2026-06 — Preimenovanje korisničkog naziva (Dnevna naknada / Daily fee)

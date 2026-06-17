@@ -1,8 +1,38 @@
 ﻿# Project TODO (otvoreno)
 
-**Poslednje ažuriranje:** 2026-06-10
+**Poslednje ažuriranje:** 2026-06-17
 
 Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/project-done.md` i ukloni odavde.
+
+---
+
+## STAGING VALIDATION PHASE (`https://bus-v2.kotor.me`)
+
+**Kontekst:** V2 je deployovan na staging na produkcijskom serveru (odvojena baza). V1 (`https://bus.kotor.me`) ostaje aktivna produkcija. Cut-over na V2 **nije** urađen — v. **`docs/production-runbook.md`** § Planirani cut-over.
+
+### Infrastruktura i deploy (završeno)
+
+- [x] Deploy aplikacije na **`https://bus-v2.kotor.me`** (odvojeno od V1).
+- [x] Zasebna staging baza (nema dijeljenja podataka sa V1 produkcijom).
+- [x] Bankart **simulaciono** test okruženje konfigurisano na serveru.
+- [x] Fiskalizacija **simulaciono** test okruženje konfigurisano na serveru.
+- [x] Plesk queue worker: **`queue-worker.php`** svake minute (bez `--stop-when-empty`, `--max-time=55`, lock).
+- [x] Scroll restore na rezervacionim formama (guest + agency panel).
+- [x] **Dnevna naknada / Daily fee** rollout (kod + staging deploy; v. `project-done.md` 2026-06).
+- [x] **Limo QR workflow** ukinut kao operativni model; legacy kod očuvan (`LIMO_QR_WORKFLOW_ENABLED=false`).
+
+### Preostale staging provjere (E2E na serveru)
+
+- [ ] **Rezervacija — plaćanje:** guest i agency checkout (Termini + Dnevna naknada), callback, rezervacija u bazi, `payments.log`.
+- [ ] **Avans — top-up:** `POST /panel/avans/topup` (ako je `ADVANCE_PAYMENTS_ENABLED=true`), povratak sa banke, ledger saldo.
+- [ ] **Bankart simulacija:** pun tok (create session → redirect → callback → `PaymentCallbackJob`); `APP_URL` / return URL na `bus-v2.kotor.me`; HMAC callback (v. `payment-callback-handling.md`).
+- [x] **Fiskalizacija simulacija:** uspješan `fiscalReceipt` + QR na stagingu (test seller/PIB); retry put preko `post-fiscalization:retry` po potrebi.
+- [ ] **PDF generisanje:** plaćeni fiskalni/ne-fiskalni račun, besplatna potvrda, admin PDF-ovi — pregled u browseru/download.
+- [ ] **Email isporuka:** potvrde rezervacije, računi, FZBR/admin obavijesti — stvarni SMTP na stagingu.
+- [ ] **Besplatne rezervacije (FZBR):** podnošenje zahtjeva, admin fulfill/reject, povezane `free` rezervacije.
+- [ ] **Control panel:** `GET/POST /control/dnevna-naknada` — lookup tablice za današnji `daily_ticket`.
+- [ ] **Admin analitika:** `/admin/analitika` — KPI, PDF izvještaj, Termini vs Dnevna naknada.
+- [ ] **Performanse / queue:** job obrada u roku ~1–2 s dok `queue-worker.php` radi; nema gomilanja u `jobs`; `failed_jobs` prazan poslije testova; scheduler (`schedule-run.php`) radi.
 
 ---
 
@@ -35,8 +65,8 @@ Stanje implementacije vs detalji: **[limo-service.md](./limo-service.md)**.
 
 ## 1. Produkcija / Bankart
 
-- [ ] **Operativna verifikacija** callback potpisa i header-a sa **pravim** Bankart okruženjem na **hostovanom** domenu (HMAC je u kodu — `RealCallbackSignatureValidator`; v. `docs/payment-callback-handling.md`, `docs/payment-state-machine.md`; ovde ostaje E2E / bankin režim).
-- [ ] **E2E** sa realnim callback scenarijima na **hostovanom** okruženju — v. `docs/project-status-next-steps.md` § Real E2E.
+- [ ] **Operativna verifikacija** callback potpisa i header-a sa **pravim** Bankart okruženjem na **hostovanom** domenu (HMAC je u kodu — `RealCallbackSignatureValidator`; v. `docs/payment-callback-handling.md`, `docs/payment-state-machine.md`; **staging** `https://bus-v2.kotor.me` — v. STAGING VALIDATION PHASE gore).
+- [ ] **E2E** sa realnim callback scenarijima na **hostovanom** okruženju — v. `docs/project-status-next-steps.md` § Real E2E i staging checklist.
 
 ---
 

@@ -1,6 +1,6 @@
 ﻿# Konvencije projekta (bus.kotor.me)
 
-**Poslednje ažuriranje:** 2026-05-28  
+**Poslednje ažuriranje:** 2026-06-17  
 
 Za AI i ljude: držati se ovoga pri novim izmenama da ostane konzistentno.
 
@@ -30,6 +30,17 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 - Blok **„bilo / zastarelo“** služi **samo** za uvid u razvoj i odbacivanje loših koncepata — ne implementirati po njemu.
 - Kad zastareli opis više niko ne koristi, može se **skratiti** (npr. jedna rečenica + „v. git istoriju“) da doc ne raste bez kontrole.
 - U `project-done.md` često je dovoljna **jedna** rečenica po promeni; duboki „pre/posle“ zapis ostaje u tematskom fajlu gde ima smisla.
+
+### 0.2 Okruženja i URL-ovi (2026-06-17)
+
+| Okruženje | Javni URL | Napomena |
+|-----------|-----------|----------|
+| **V1 produkcija** | `https://bus.kotor.me` | Aktivna produkcija — ne mijenjati bez cut-over plana |
+| **V2 staging** | `https://bus-v2.kotor.me` | Primarno server test okruženje; odvojena baza; Bankart/fiskal **simulacija** |
+| **Lokalno** | npr. `https://bus.kotor.me.test` (Laragon) | Razvoj, PHPUnit, fake driver |
+
+- **`APP_URL`** na svakom okruženju mora odgovarati stvarnom HTTPS originu u browseru. URL-ovi u Bankart return/callback toku, linkovima u mejlovima i generisanim putanjama zavise od **`config('app.url')`** / `APP_URL` — pri testiranju staginga koristiti **`https://bus-v2.kotor.me`**, ne V1 domen.
+- Topologija i cut-over: **`docs/production-runbook.md`**; staging checklist: **`docs/project-todo.md`** (STAGING VALIDATION PHASE).
 
 ---
 

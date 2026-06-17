@@ -24,7 +24,7 @@ Provjera prije/po puštanju u rad (checklist). Prilagoditi hosting (Plesk, syste
 | `APP_DEBUG` | `false` |
 | HTTPS | Uključen; validan certifikat; bez miješanog sadržaja gdje je zahtijevano |
 | Laravel scheduler | Jedan cron (ili ekvivalent) koji pokreće `php artisan schedule:run` svake minute ili prema uputstvu hosta |
-| Queue | Ako je `QUEUE_CONNECTION=database` — **jedan ili više** `queue:work` procesa (ili managed worker); bez toga poslovi (npr. fiskal/email) ne izvršavaju se |
+| Queue | Ako je `QUEUE_CONNECTION=database` — **jedan ili više** `queue:work` procesa (supervisor/systemd) ili **Plesk** `queue-worker.php` svake minute (v. [cron-commands.md](./cron-commands.md) § Plesk fallback); bez toga poslovi (npr. fiskal/email) ne izvršavaju se |
 | MySQL | Stabilna verzija; preporučen **strict** SQL način u skladu sa Laravel migracijama |
 | Vremenska zona aplikacije | `APP_TIMEZONE` / zakazani taskovi relevantni za **`Europe/Podgorica`** gdje je u kodu eksplicitno (v. [scheduled-tasks-overview.md](./scheduled-tasks-overview.md)) |
 | Plaćanje i fiskal | Pravi driveri u `.env` / config — **ne** `fake` u produkciji za banku/fiskal (v. `alerts:system-health` u [cron-commands.md](./cron-commands.md)) |

@@ -6,12 +6,38 @@
 
 ---
 
+## Trenutno stanje projekta (2026-06-17)
+
+| Okruženje | URL | Uloga |
+|-----------|-----|--------|
+| **V1 produkcija** | `https://bus.kotor.me` | Aktivna produkcija — plaćanja, fiskalizacija, korisnici; **nepromijenjena** |
+| **V2 staging** | `https://bus-v2.kotor.me` | Primarno test okruženje na serveru — simulacija Bankart + fiskal, odvojena baza |
+| **Lokalno (Laragon)** | npr. `*.test` | Razvoj, PHPUnit, fake driver QA |
+
+- **V2 staging deploy** je uspješan; **validacija u toku** (v. `docs/project-todo.md` → STAGING VALIDATION PHASE).
+- **Production cut-over** V1 → V2 **nije** planiran/izvršen — v. `docs/production-runbook.md` § Planirani cut-over.
+
+### Queue worker (Plesk staging)
+
+Plesk **nema** Supervisor niti Laravel Toolkit Queue. Obrada reda:
+
+- Scheduled task **`queue-worker.php`**, cron **`* * * * *`**
+- Worker **ostaje aktivan ~55 s** (`--max-time=55`, `--sleep=1`) — **bez** `--stop-when-empty`
+- Lock **`plesk_queue_worker_bus_v2`** (70 s, `Cache::lock` ili `storage/framework/queue-worker.lock`) sprječava preklapanje sa sljedećim cron tickom
+- Detalji: `docs/cron-commands.md` § Plesk fallback, `queue-worker.php`
+
+Paralelno: **`schedule-run.php`** za `php artisan schedule:run`.
+
+---
+
 ## 1) Tekst za prvu poruku u novom chatu (kopiraj–nalepi)
 
 Prilagodi putanju ako radni folder nije isti.
 
 ```
 Radiš na Laravel 12 (PHP 8.3) projektu bus.kotor.me (rezervacije autobusa, plaćanje, fiskalizacija).
+
+Okruženja: V1 produkcija https://bus.kotor.me (aktivna) | V2 staging https://bus-v2.kotor.me (primarno test okruženje, odvojena baza) | lokalno Laragon.
 
 Možeš priložiti folder docs/ (@docs) ili fajlove pojedinačno. Kratak indeks: docs/README.md
 
@@ -82,4 +108,4 @@ Duga jedna sesija (mnogo alata, terminal, kontekst) često **poveća potrošnju 
 
 ---
 
-Poslednje ažuriranje ovog fajla: 2026-05-13 (README u `docs/`, napomena o dugim Cursor sesijama)
+Poslednje ažuriranje ovog fajla: 2026-06-17 (V2 staging deploy, Plesk queue worker, status V1/V2)

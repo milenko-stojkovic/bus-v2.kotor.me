@@ -309,6 +309,25 @@ Sledeći scheduled job-ovi su kritični za produkciju jer imaju veze sa **stvarn
 - Queue worker: stabilno pokrenut (u produkciji se bank/fiscal tokovi ne smeju oslanjati na `sync`).
 - `storage/logs/payments-*.log` i alert email (ako je podešen) pokazuju očekivane događaje.
 
+### Plesk fallback queue worker (`queue-worker.php`)
+
+Kada **Laravel Toolkit Queue** nije dostupan (nema SSH/supervisor), koristi se root skripta **`queue-worker.php`** kao Plesk scheduled task:
+
+| Postavka | Vrijednost |
+|----------|------------|
+| Cron | `* * * * *` (svake minute) |
+| Tip zadatka | Run a PHP script |
+| Skripta | `bus-v2.kotor.me/queue-worker.php` (relativno od home domena) |
+
+**Ponašanje:**
+
+- Pokreće `queue:work` **bez** `--stop-when-empty` — worker ostaje aktivan do **`--max-time=55`** i provjerava red svake **`--sleep=1`** sekunde, pa job koji stigne nekoliko sekundi poslije starta crona ne čeka do sljedeće minute.
+- **`--tries=3`**, **`--timeout=130`**, **`--memory=512`** — ne mijenjati bez usklađivanja sa `docs/production-hardening.md`.
+- **Lock** `plesk_queue_worker_bus_v2` (TTL **70s**, malo iznad max-time) preko **`Cache::lock`** (`CACHE_STORE=database` + tabela `cache_locks`); ako cache lock nije dostupan, **`flock`** na `storage/framework/queue-worker.lock`. Drugi poziv dok prvi traje → **exit 0** (nema preklapanja).
+- Preferirano rješenje i dalje: **supervisor/systemd** sa trajnim `queue:work`; ova skripta je kompromis za Plesk-only hosting.
+
+Paralelno: **`schedule-run.php`** (isti cron pattern) za `php artisan schedule:run`.
+
 ### Verifikacija
 
 Na Windows/Laragon:
