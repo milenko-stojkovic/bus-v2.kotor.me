@@ -19,6 +19,12 @@ final class ReservationVehicleEligibilityService
     /** @var list<int>|null */
     private static ?array $dailyFeeOnlyIdsCache = null;
 
+    /** @var list<int>|null */
+    private static ?array $minibusEightPlusOneIdsCache = null;
+
+    /** @var list<int>|null */
+    private static ?array $controlDailyFeeListIdsCache = null;
+
     /**
      * Vehicle type IDs reserved for Daily fee (limo passenger categories).
      *
@@ -48,6 +54,64 @@ final class ReservationVehicleEligibilityService
         self::$dailyFeeOnlyIdsCache = $ids;
 
         return $ids;
+    }
+
+    /**
+     * Minibus 8+1 category for Control panel daily-fee list (resolved from translations).
+     *
+     * Baseline seed: vehicle_type_id = 2 (Mini bus / 8+1).
+     *
+     * @return list<int>
+     */
+    public function minibusEightPlusOneVehicleTypeIds(): array
+    {
+        if (self::$minibusEightPlusOneIdsCache !== null) {
+            return self::$minibusEightPlusOneIdsCache;
+        }
+
+        $matched = [];
+        /** @var Collection<int, VehicleTypeTranslation> $rows */
+        $rows = VehicleTypeTranslation::query()->get(['vehicle_type_id', 'name', 'description']);
+
+        foreach ($rows as $row) {
+            if ($this->translationMatchesMinibusEightPlusOne($row)) {
+                $matched[(int) $row->vehicle_type_id] = true;
+            }
+        }
+
+        $ids = array_map('intval', array_keys($matched));
+        sort($ids);
+
+        self::$minibusEightPlusOneIdsCache = $ids;
+
+        return $ids;
+    }
+
+    /**
+     * Vehicle types shown on Control → daily fee list (passenger/limo 4+1–7+1 + minibus 8+1).
+     *
+     * @return list<int>
+     */
+    public function controlDailyFeeListVehicleTypeIds(): array
+    {
+        if (self::$controlDailyFeeListIdsCache !== null) {
+            return self::$controlDailyFeeListIdsCache;
+        }
+
+        $ids = array_values(array_unique(array_merge(
+            $this->dailyFeeOnlyVehicleTypeIds(),
+            $this->minibusEightPlusOneVehicleTypeIds(),
+        )));
+        sort($ids);
+
+        self::$controlDailyFeeListIdsCache = $ids;
+
+        return $ids;
+    }
+
+    public function isMinibusEightPlusOneVehicleType(int $vehicleTypeId): bool
+    {
+        return in_array($vehicleTypeId, $this->minibusEightPlusOneVehicleTypeIds(), true);
     }
 
     public function isDailyFeeOnlyVehicleType(int $vehicleTypeId): bool
@@ -110,6 +174,8 @@ final class ReservationVehicleEligibilityService
     public static function clearCache(): void
     {
         self::$dailyFeeOnlyIdsCache = null;
+        self::$minibusEightPlusOneIdsCache = null;
+        self::$controlDailyFeeListIdsCache = null;
     }
 
     private function translationMatchesDailyFeeOnlyCategory(VehicleTypeTranslation $row): bool
@@ -125,6 +191,23 @@ final class ReservationVehicleEligibilityService
         }
 
         if (str_contains($name, 'putničko vozilo') || str_contains($name, 'personal vehicle')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function translationMatchesMinibusEightPlusOne(VehicleTypeTranslation $row): bool
+    {
+        $name = mb_strtolower(trim($row->name));
+        $desc = mb_strtolower(trim((string) $row->description));
+        $blob = $name.' '.$desc;
+
+        if (str_contains($blob, '8+1')) {
+            return true;
+        }
+
+        if (str_contains($name, 'minibus') || str_contains($name, 'mini bus')) {
             return true;
         }
 

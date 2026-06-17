@@ -35,6 +35,7 @@ Tekstovi u view-ima su **hardcoded CG stringovi** (nema `UiText` grupe za contro
 - **Servis:** `App\Services\Control\DailyFeeControlService` — normalizacija tablice (`DuplicateReservationAttemptService::normalizeLicensePlate`), pretraga **`reservation_kind = daily_ticket`**, **`status = paid`**, **`reservation_date` = danas** (`Europe/Podgorica`).
 - **Samo čitanje:** nema plaćanja, fiskalizacije, emaila, OCR-a, GPS-a, QR-a, izmjena rezervacija.
 - **Rezultat:** „Plaćena dnevna naknada: DA/NE“ + detalji (agencija, datum važenja, tip vozila, email, vrijeme kreiranja). Više pogodaka istog dana/tablice — lista.
+- **Lista za danas (dno stranice):** tabela svih **plaćenih** dnevnih naknada za **današnji** `reservation_date` (`Europe/Podgorica`) čiji je `vehicle_type_id` u kategorijama **putničko/limo 4+1–7+1** ili **minibus 8+1** (`ReservationVehicleEligibilityService::controlDailyFeeListVehicleTypeIds()` — ID-jevi iz `vehicle_type_translations`, ne hardkodirani). Sort: `license_plate` ASC. Prazno stanje: *Nema vozila sa plaćenom dnevnom naknadom za danas.* Ručna provjera tablice ostaje nepromijenjena.
 - **Ne provjerava:** termine (`time_slots`), historijske Limo QR tabele, druge datume.
 - **Testovi:** `tests/Feature/Control/DailyFeeControlTest.php`.
 

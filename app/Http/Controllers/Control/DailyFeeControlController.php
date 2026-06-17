@@ -9,12 +9,13 @@ use Illuminate\View\View;
 
 final class DailyFeeControlController extends Controller
 {
-    public function index(): View
+    public function index(DailyFeeControlService $service): View
     {
         return view('control.daily-fee-control', [
             'pageTitle' => 'Kontrola dnevne naknade',
             'result' => null,
             'submittedPlate' => null,
+            'todayList' => $service->paidDailyFeeVehiclesForToday(),
         ]);
     }
 
@@ -26,6 +27,7 @@ final class DailyFeeControlController extends Controller
             'pageTitle' => 'Kontrola dnevne naknade',
             'result' => $service->checkPlateForToday($plate),
             'submittedPlate' => $plate,
+            'todayList' => $service->paidDailyFeeVehiclesForToday(),
         ]);
     }
 }

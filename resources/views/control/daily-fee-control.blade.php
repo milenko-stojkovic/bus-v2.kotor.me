@@ -97,4 +97,49 @@
             @endif
         </section>
     @endif
+
+    @php
+        $todayList = $todayList ?? null;
+        $todayRows = is_array($todayList) ? ($todayList['rows'] ?? []) : [];
+    @endphp
+    <section id="control-daily-fee-today-list" class="mt-10 rounded-lg border border-red-100 bg-white p-4 shadow sm:p-6">
+        <h2 class="text-lg font-semibold text-gray-900">Vozila sa plaćenom dnevnom naknadom za danas</h2>
+        <p class="mt-1 text-sm text-gray-600">
+            Prikazana su putnička vozila 4+1–7+1 i minibus 8+1.
+            @if (! empty($todayList['validity_date_display'] ?? null))
+                Datum važenja: <span class="font-medium text-gray-900">{{ $todayList['validity_date_display'] }}</span>
+            @endif
+        </p>
+
+        @if ($todayRows === [])
+            <p class="mt-4 text-sm text-gray-600">Nema vozila sa plaćenom dnevnom naknadom za danas.</p>
+        @else
+            <div class="mt-4 overflow-x-auto">
+                <table class="min-w-full text-left text-sm">
+                    <thead>
+                        <tr class="border-b border-red-100 text-gray-600">
+                            <th class="py-2 pr-4">Registarska tablica</th>
+                            <th class="py-2 pr-4">Agencija / korisnik</th>
+                            <th class="py-2 pr-4">Tip vozila</th>
+                            <th class="py-2 pr-4">Email</th>
+                            <th class="py-2 pr-4">Vrijeme kupovine / kreiranja</th>
+                            <th class="py-2 pr-4">Datum važenja</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($todayRows as $row)
+                            <tr class="border-b border-red-100">
+                                <td class="py-2 pr-4 font-medium">{{ $row['license_plate'] }}</td>
+                                <td class="py-2 pr-4">{{ $row['user_name'] }}</td>
+                                <td class="py-2 pr-4">{{ $row['vehicle_type_label'] }}</td>
+                                <td class="py-2 pr-4 break-all">{{ $row['email'] }}</td>
+                                <td class="py-2 pr-4 whitespace-nowrap">{{ $row['created_at'] }}</td>
+                                <td class="py-2 pr-4 whitespace-nowrap">{{ $row['reservation_date'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
 </x-control-layout>
