@@ -66,6 +66,8 @@ final class LimoQrGenerationTest extends TestCase
         $this->assertStringContainsString('izlaz iz parking prostora Riva', $html);
         $this->assertStringContainsString('https://maps.app.goo.gl/BkmeQ1ZAo8XG1FDb6', $html);
         $this->assertStringContainsString('https://maps.app.goo.gl/qdy9YmTLRBsggPCD6', $html);
+        $this->assertStringContainsString('preko puta gradske pijace', $html);
+        $this->assertStringContainsString('Putničko vozilo (4+1, 5+1, 6+1 i 7+1 mjesta)', $html);
         $this->assertStringContainsString('nije dozvoljen ukrcaj niti iskrcaj putnika na lokaciji Benovo', $html);
         $this->assertStringNotContainsString('Autoboka', $html);
         $this->assertStringNotContainsString('Puč', $html);

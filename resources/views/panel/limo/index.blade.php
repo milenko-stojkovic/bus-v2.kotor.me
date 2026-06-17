@@ -13,8 +13,8 @@
     $pickupLinkText2 = $p(
         'limo_info_pickup_place_2',
         $locale === 'en'
-            ? 'exit from Riva parking area, across from the market'
-            : 'izlaz iz parking prostora Riva, preko puta pijace',
+            ? 'exit from Riva parking area, across from the city market'
+            : 'izlaz iz parking prostora Riva, preko puta gradske pijace',
     );
 
     $pickupLinkHtml1 = '<a href="' . e($pickupMapUrl1) . '" target="_blank" rel="noopener noreferrer" class="font-medium text-red-700 hover:text-red-600 underline decoration-red-200 underline-offset-2">' . e($pickupLinkText1) . '</a>';
@@ -79,8 +79,8 @@
                         {{ $p(
                             'limo_info_benovo_ban',
                             $locale === 'en'
-                                ? 'Limo vehicles may not pick up or drop off passengers at the Benovo location.'
-                                : 'Limo vozilima nije dozvoljen ukrcaj niti iskrcaj putnika na lokaciji Benovo.',
+                                ? 'Limo vehicles (Personal vehicle (4+1, 5+1, 6+1 and 7+1 seats)) may not pick up or drop off passengers at the Benovo location.'
+                                : 'Limo vozilima (Putničko vozilo (4+1, 5+1, 6+1 i 7+1 mjesta)) nije dozvoljen ukrcaj niti iskrcaj putnika na lokaciji Benovo.',
                         ) }}
                     </p>
 
