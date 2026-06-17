@@ -11,7 +11,7 @@
 ## Guest korisnici
 
 - Mogu napraviti rezervaciju **bez naloga** – `user_id` je **NULL** u `reservations` i `temp_data`.
-- Na **`/guest/reserve`**: **Termini** (slotovi, bez limo putničkih kategorija) ili **Dnevna naknada** (bez slotova, limo kategorija dozvoljena) — samo **kartica** (nema avansa).
+- Na **`/guest/reserve`**: **Termini** (slotovi, bez limo putničkih kategorija) ili **Dnevna naknada** (bez slotova, limo kategorija dozvoljena) — samo **kartica** (nema avansa). Izbor datuma, vrste, vozila ili termina osvježava formu GET submitom; scroll pozicija se vraća poslije reloada (**`reservationFormScroll.js`**, v. **`project-conventions.md`**).
 - Za guest rezervacije svi podaci koji se inače vežu za korisnika ostaju **snapshot** u rezervaciji / `temp_data`:
   - **`user_name`** (kolona u bazi — ime sa forme; u V2 guest formi polje se šalje kao **`name`**, backend mapira u snapshot `user_name`), `country`, `email`, `license_plate`, `vehicle_type_id`
 - Kada guest plati, podaci se čuvaju u tabeli, ali **nema veze sa `users`**.

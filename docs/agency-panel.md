@@ -1,6 +1,6 @@
 ﻿# Agency panel (ulogovani korisnik, `/panel`)
 
-**Poslednje ažuriranje:** 2026-06-10
+**Poslednje ažuriranje:** 2026-06-17
 
 Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navigacija: `resources/views/layouts/navigation.blade.php`.
 
@@ -10,7 +10,7 @@ Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navig
 
 | Ruta | Naziv rute (izbor) | Opis |
 |------|-------------------|------|
-| `GET /panel/reservations` | `panel.reservations` | Nova rezervacija (`ReservationBookingPageData`) — **Termini** (slotovi) ili **Dnevna naknada** (bez slotova; agencija kartica/avans) |
+| `GET /panel/reservations` | `panel.reservations` | Nova rezervacija (`ReservationBookingPageData`) — **Termini** (slotovi) ili **Dnevna naknada** (bez slotova; agencija kartica/avans). GET auto-refresh pri izboru datuma/vrste/vozila/termina; scroll pozicija se čuva u **`sessionStorage`** (v. **`project-conventions.md`** § Rezervacije — step forma). |
 | `GET /panel/upcoming` | `panel.upcoming` | **Promjena tablica** — promjena registarske tablice na budućim rezervacijama (samo Termini) |
 | `GET /panel/realized` | `panel.realized` | Realizovane, link na PDF u novom tabu |
 | `GET /panel/vehicles` | `panel.vehicles` | Vozila |

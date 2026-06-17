@@ -97,6 +97,16 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 - **Invariant (Phase 2+ checkout/admin):** `time_slots` → oba slot ID NOT NULL; `daily_ticket` → oba NULL (bez sentinel slotova; ne dira **`daily_parking_data`**).
 - **Phase 1 (2026-05-28):** samo šema/model; UI, checkout, PDF, analitika **nisu** još uključeni.
 
+### Rezervacije — step forma (GET auto-refresh i scroll)
+
+- **Stranice:** **`GET /guest/reserve`** (`#stepForm`) i **`GET /panel/reservations`** (`#panelStepForm`). Izbor datuma, vrste (`reservation_kind`), vozila ili termina **ponovo šalje istu GET formu** da se osvježe slotovi/cijene — **nije** AJAX checkout (`POST /checkout` ostaje nepromijenjen).
+- **Scroll restore (2026-06-17):** da korisnik ne skače na vrh posle svakog osvježavanja, forma nosi **`data-reservation-auto-scroll`** (`reservation_form_scroll_guest` | `reservation_form_scroll_panel`). Modul **`resources/js/reservationFormScroll.js`** (učitava se iz **`app.js`**):
+  - prije submita upisuje **`sessionStorage`** (Y koordinatu, opciono anchor `id`/`name` kontrole, offset ~80px iznad);
+  - poslije reloada na **`DOMContentLoaded`** vraća scroll i **briše** ključ;
+  - ako Blade postavi **`data-skip-scroll-restore`** (npr. `$errors->any()`), restore se preskače da validacione greške ostanu vidljive.
+- **Obuhvat:** samo ove dvije step forme; admin, FZBR i ostale stranice **ne** koriste isti helper.
+- **Deploy:** nakon izmjene JS pokrenuti **`npm run build`** na okruženju gdje se servira **`public/build`** (folder je u **`.gitignore`**).
+
 ---
 
 ## 3.1 Blade napomena (parse error)

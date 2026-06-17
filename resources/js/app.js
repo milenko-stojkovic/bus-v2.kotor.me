@@ -3,6 +3,7 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 import './dailyCapacityCharts';
 import './isoDateInput';
+import './reservationFormScroll';
 
 window.Alpine = Alpine;
 

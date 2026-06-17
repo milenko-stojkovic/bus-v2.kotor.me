@@ -75,7 +75,9 @@
                         </div>
                     @endif
 
-                    <form method="GET" action="{{ route('panel.reservations', [], false) }}" class="space-y-4" id="panelStepForm">
+                    <form method="GET" action="{{ route('panel.reservations', [], false) }}" class="space-y-4" id="panelStepForm"
+                        data-reservation-auto-scroll="reservation_form_scroll_panel"
+                        @if ($errors->any()) data-skip-scroll-restore="true" @endif>
                             @include('partials.reservation-date-calendar')
 
                             @php
@@ -316,24 +318,31 @@
         (function () {
             const stepForm = document.getElementById('panelStepForm');
             if (stepForm) {
+                const submitStep = (sourceEl) => {
+                    if (window.ReservationFormScroll) {
+                        window.ReservationFormScroll.submit(stepForm, sourceEl);
+                    } else {
+                        stepForm.submit();
+                    }
+                };
                 const dateInput = document.getElementById('reservation_date');
                 if (dateInput) {
                     stepForm.querySelectorAll('[data-reservation-date]').forEach((btn) => {
                         btn.addEventListener('click', () => {
                             const v = btn.getAttribute('data-reservation-date');
                             if (v) dateInput.value = v;
-                            stepForm.submit();
+                            submitStep(btn);
                         });
                     });
                 }
                 const arrival = document.getElementById('drop_off_time_slot_id');
                 const departure = document.getElementById('pick_up_time_slot_id');
                 const vehicle = document.getElementById('vehicle_id_panel');
-                if (arrival) arrival.addEventListener('change', () => stepForm.submit());
-                if (departure) departure.addEventListener('change', () => stepForm.submit());
-                if (vehicle) vehicle.addEventListener('change', () => stepForm.submit());
+                if (arrival) arrival.addEventListener('change', (e) => submitStep(e.target));
+                if (departure) departure.addEventListener('change', (e) => submitStep(e.target));
+                if (vehicle) vehicle.addEventListener('change', (e) => submitStep(e.target));
                 stepForm.querySelectorAll('input[name="reservation_kind"]').forEach((radio) => {
-                    radio.addEventListener('change', () => stepForm.submit());
+                    radio.addEventListener('change', (e) => submitStep(e.target));
                 });
             }
 

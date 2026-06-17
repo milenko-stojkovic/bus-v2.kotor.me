@@ -1,10 +1,14 @@
 ﻿# Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-06-10  
+**Poslednje ažuriranje:** 2026-06-17  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
 ---
+
+## 2026-06 — UX i operativa
+
+- **2026-06-17** — **Rezervacije — scroll poslije GET auto-refresh:** na **`/guest/reserve`** i **`/panel/reservations`** izbor datuma/vrste/vozila/termina više ne vraća korisnika na vrh stranice; **`resources/js/reservationFormScroll.js`** + `sessionStorage` (`reservation_form_scroll_guest` | `reservation_form_scroll_panel`); preskočeno kad ima validacionih grešaka; bez promjene checkout/poslovne logike; docs (`project-conventions.md`, `agency-panel.md`, `auth-and-guests.md`).
 
 ## 2026-06 — Preimenovanje korisničkog naziva (Dnevna naknada / Daily fee)
 
