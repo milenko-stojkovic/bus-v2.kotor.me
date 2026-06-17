@@ -98,15 +98,17 @@
                                             : 'Time slots — if you want reserved arrival and departure times at :benovo_link (mandatory location). If your preferred time slots are unavailable, choose the daily fee.',
                                     ),
                                 );
+                                $explDailyFallback = $locale === 'cg'
+                                    ? 'Dnevna naknada — ako vam nije bitan tačan termin ili planirate obilazak više lokacija tokom dana, npr. Perast, Risan, žičara Kotor - Lovćen... U slučaju da želite da posjetite Stari grad, za iskrcaj i ukrcaj putnika koriste se lokacije parkinga :autoboka_link i :puc_link.'
+                                    : 'Daily fee — if an exact time is not important or you plan to visit several locations during the day, e.g. Perast, Risan, the Kotor–Lovćen cable car… When visiting the Old Town, passenger pick-up and drop-off use the :autoboka_link and :puc_link parking areas.';
+                                $explDailyTemplate = $pn('booking_kind_expl_daily_ticket', $explDailyFallback);
+                                if (str_contains($explDailyTemplate, ':perast_link') || str_contains($explDailyTemplate, ':risan_link')) {
+                                    $explDailyTemplate = $explDailyFallback;
+                                }
                                 $explDaily = str_replace(
                                     [':autoboka_link', ':puc_link'],
                                     [$autobokaLink, $pucLink],
-                                    $pn(
-                                        'booking_kind_expl_daily_ticket',
-                                        $locale === 'cg'
-                                            ? 'Dnevna naknada — ako vam nije bitan tačan termin ili planirate obilazak više lokacija tokom dana, npr. Perast, Risan, žičara Kotor - Lovćen... U slučaju da želite da posjetite Stari grad, za iskrcaj i ukrcaj putnika koriste se lokacije parkinga :autoboka_link i :puc_link.'
-                                            : 'Daily fee — if an exact time is not important or you plan to visit several locations during the day, e.g. Perast, Risan, the Kotor–Lovćen cable car… When visiting the Old Town, passenger pick-up and drop-off use the :autoboka_link and :puc_link parking areas.',
-                                    ),
+                                    $explDailyTemplate,
                                 );
                             @endphp
                             <fieldset class="space-y-3" id="panelReservationKindFieldset">

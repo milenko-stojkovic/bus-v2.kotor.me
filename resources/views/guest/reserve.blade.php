@@ -32,15 +32,17 @@
                 ? 'Putnička vozila (4+1–7+1) nisu dostupna za Termini jer se ne mogu koristiti na Benovu.'
                 : 'Passenger vehicles (4+1–7+1) are not available for Time slots because they may not use Benovo.',
         );
+        $explDailyFallback = $locale === 'cg'
+            ? 'Dnevna naknada — ako vam nije bitan tačan termin ili planirate obilazak više lokacija tokom dana, npr. Perast, Risan, žičara Kotor - Lovćen... U slučaju da želite da posjetite Stari grad, za iskrcaj i ukrcaj putnika koriste se lokacije parkinga :autoboka_link i :puc_link.'
+            : 'Daily fee — if an exact time is not important or you plan to visit several locations during the day, e.g. Perast, Risan, the Kotor–Lovćen cable car… When visiting the Old Town, passenger pick-up and drop-off use the :autoboka_link and :puc_link parking areas.';
+        $explDailyTemplate = $pn('booking_kind_expl_daily_ticket', $explDailyFallback);
+        if (str_contains($explDailyTemplate, ':perast_link') || str_contains($explDailyTemplate, ':risan_link')) {
+            $explDailyTemplate = $explDailyFallback;
+        }
         $explDaily = str_replace(
             [':autoboka_link', ':puc_link'],
             [$autobokaLink, $pucLink],
-            $pn(
-                'booking_kind_expl_daily_ticket',
-                $locale === 'cg'
-                    ? 'Dnevna naknada — ako vam nije bitan tačan termin ili planirate obilazak više lokacija tokom dana, npr. Perast, Risan, žičara Kotor - Lovćen... U slučaju da želite da posjetite Stari grad, za iskrcaj i ukrcaj putnika koriste se lokacije parkinga :autoboka_link i :puc_link.'
-                    : 'Daily fee — if an exact time is not important or you plan to visit several locations during the day, e.g. Perast, Risan, the Kotor–Lovćen cable car… When visiting the Old Town, passenger pick-up and drop-off use the :autoboka_link and :puc_link parking areas.',
-            ),
+            $explDailyTemplate,
         );
     @endphp
 
