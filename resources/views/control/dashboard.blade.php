@@ -2,7 +2,6 @@
     <header class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-8">
         <h1 class="text-2xl font-semibold text-gray-900">Kontrola</h1>
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 text-sm">
-            <a href="{{ route('control.daily_fee.index', [], false) }}" class="font-medium text-red-700 underline">Kontrola dnevne naknade</a>
             <span class="text-gray-600">
                 Posljednje osvježavanje:
                 <time id="last-refresh-time" datetime=""></time>

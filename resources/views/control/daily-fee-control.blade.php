@@ -2,7 +2,6 @@
     <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <h1 class="text-2xl font-semibold text-gray-900">Kontrola dnevne naknade</h1>
         <div class="flex flex-wrap items-center gap-4 text-sm">
-            <a href="{{ route('control.dashboard', [], false) }}" class="font-medium text-red-700 underline">Nazad na kontrolu</a>
             <form method="POST" action="{{ route('control.logout', [], false) }}" class="inline">
                 @csrf
                 <button type="submit" class="font-medium text-red-700 underline">Odjava</button>
