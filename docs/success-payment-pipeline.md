@@ -27,6 +27,18 @@ Ne idu na banku i **ne** pokreću **ProcessReservationAfterPaymentJob** / fiskal
 
 ## ProcessReservationAfterPaymentJob
 
+### Fiskalni depozit (Primatech) ≠ agencijski avans
+
+Prije slanja **`fiscalReceipt`**, **`FiscalizationService`** poziva Primatech **`POST /api/efiscal/deposit`** sa **`DepositType: INITIAL`** i **`Amount: 0`**. To je **formalni tehnički korak** fiskalnog provajdera (inicijalizacija gotovinskog depozita na ENU-u za CARD/CASH račune) — **nema veze** sa:
+
+- **agencijskim avansom** (`/panel/avans`, `agency_advance_transactions`, `payment_method=advance` na checkout-u);
+- saldom koji agencija uplaćuje da bi lakše plaćala rezervacije;
+- Limo legacy tokom koji je oduzimao iz avansa.
+
+**Agencijski avans** je interni prepaid ledger Opštine prema agenciji; **top-up avansa se ne fiskalizuje** kao prodajni račun (v. **`agency-panel.md`** § Avans). **Fiskalizacija prodaje** nastaje tek kad se kreira **plaćena rezervacija** (kartica ili potrošnja avansa) — tada ide **deposit (formalan) → fiscalReceipt (stvarni račun)**.
+
+Greška depozita **56** („INITIAL cash deposit cannot be changed…”) znači da je formalni depozit na ENU-u već postavljen; aplikacija nastavlja na račun — to **nije** problem avansnog salda agencije.
+
 - **`failed()` (iscrpljeni pokušaji):** ako nema **`fiscal_jir`**, rezervacija nije **`free`**, i nema nerešenog **`post_fiscalization_data`**, upisuje se minimalni nerešen slog sa markerom **`job_failed_before_fiscal_completion`** u **`error`**, **`next_retry_at = now()`** (cron retry), log **`process_reservation_failed_marked_delayed`** — UX prelazi na **`fiscal_delayed_*`**.
 - **Pokušaj fiskalizacije** (poziv fiskalnog API-ja).
 - **Uspeh fiskalizacije:**

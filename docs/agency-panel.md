@@ -65,6 +65,7 @@ Ako je flag **ON**:
 **avansna uplata se NE fiskalizuje**
 - razlog: uplata avansa predstavlja povećanje obaveze Opštine prema agenciji (prepaid saldo), a ne realizovan prihod
 - fiskalizacija nastaje tek kada se avans iskoristi za kupovinu rezervacije ili dnevne naknade kroz standardni paid reservation pipeline
+- **ne miješati** sa Primatech **`/api/efiscal/deposit`** (`Amount=0`, `INITIAL`) — to je formalni fiskalni korak pri izdavanju računa, bez veze sa `agency_advance_*` tablicama (v. **`success-payment-pipeline.md`** § Fiskalni depozit)
 
 ### 2) Potvrda o evidentiranoj avansnoj uplati (PDF + email)
 

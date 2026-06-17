@@ -119,12 +119,20 @@ class FiscalizationService
                 ?? $depositData['message']
                 ?? $depositResp->reason()
                 ?? 'Fiscal deposit error';
-            $classified = app(ErrorClassifier::class)->classify('fiscal', $errorCode, is_string($errorMessage) ? $errorMessage : null, $depositData);
+            if ($this->depositAlreadyInitialized($errorCode, is_string($errorMessage) ? $errorMessage : null)) {
+                Log::channel('payments')->info('Fiscal deposit skipped (already initialized on ENU)', [
+                    'reservation_id' => $reservation->id,
+                    'merchant_transaction_id' => $reservation->merchant_transaction_id,
+                    'error_code' => $errorCode,
+                ]);
+            } else {
+                $classified = app(ErrorClassifier::class)->classify('fiscal', $errorCode, is_string($errorMessage) ? $errorMessage : null, $depositData);
 
-            return [
-                'error' => (string) $errorMessage,
-                ...$classified,
-            ];
+                return [
+                    'error' => (string) $errorMessage,
+                    ...$classified,
+                ];
+            }
         }
 
         $receiptResp = $this->fiscalHttpClient('receipt')->post($receiptUrl, $receiptPayload);
@@ -284,6 +292,7 @@ class FiscalizationService
             return $receiptPayload;
         }
 
+        // Formal Primatech INITIAL deposit (Amount=0) before receipt — NOT agency advance (avans).
         // Deposit must exist for CARD/CASH receipts. Safe approach: send Amount=0 before every receipt attempt.
         $depositResult = $this->callRealDeposit(
             reservation: $reservation,
@@ -610,6 +619,16 @@ class FiscalizationService
             'body' => $response->body(),
         ]);
 
+        if ($this->depositAlreadyInitialized($errorCode, is_string($errorMessage) ? $errorMessage : null)) {
+            Log::channel('payments')->info('Real fiscal deposit skipped (already initialized on ENU)', [
+                'reservation_id' => $reservation->id,
+                'merchant_transaction_id' => $reservation->merchant_transaction_id,
+                'error_code' => $errorCode,
+            ]);
+
+            return null;
+        }
+
         $status = $response->status();
         $classified = app(ErrorClassifier::class)->classify(
             'fiscal',
@@ -786,6 +805,24 @@ class FiscalizationService
     }
 
     /**
+     * Primatech ErrorCode 56: initial cash deposit already set on ENU; cannot resend after fiscalization.
+     * Safe to proceed to fiscalReceipt — deposit requirement is already satisfied.
+     */
+    private function depositAlreadyInitialized(mixed $errorCode, ?string $errorMessage): bool
+    {
+        if ((string) $errorCode === '56') {
+            return true;
+        }
+
+        $message = $errorMessage !== null ? strtolower($errorMessage) : '';
+
+        return str_contains($message, 'initial cash deposit cannot be changed');
+    }
+
+    /**
+     * Primatech {@see self::FISCAL_DEPOSIT_ENDPOINT} — formal INITIAL cash deposit on the fiscal ENU.
+     * Unrelated to agency advance payments (panel avans / agency_advance_transactions).
+     *
      * @return array<string, mixed>
      */
     private function buildDepositPayload(string $merchantTransactionId): array

@@ -12,7 +12,7 @@ Helper: **`App\Support\HttpOutboundConfig`** spaja root vrednosti sa opcionim pe
 |---------------|---------------|--------|
 | **Bankart** create session | `HttpOutboundConfig::bankart('create_session')` — fallback na `bankart.connect_timeout` / `bankart.timeout` | **Nema** automatskog HTTP retry-a na debit. |
 | **Bankart** status inquiry | `HttpOutboundConfig::bankart('status_inquiry')` | Nema HTTP retry u servisu; cron throttle po transakciji; ishod ide na **`PaymentCallbackJob`**. |
-| **Fiskal** deposit | `HttpOutboundConfig::fiscal('deposit')` | **Jedan** unutrašnji retry para deposit+receipt na grešku **58**; deposit `Amount=0` je idempotentan. |
+| **Fiskal** deposit | `HttpOutboundConfig::fiscal('deposit')` | **Jedan** unutrašnji retry para deposit+receipt na grešku **58**; `Amount=0` / `INITIAL` je formalni Primatech korak (≠ agencijski avans). Greška **56** = depozit već postavljen na ENU → nastavi na receipt. |
 | **Fiskal** receipt | `HttpOutboundConfig::fiscal('receipt')` | Isto. |
 | **Laravel jobovi** | N/A | Eksplicitan **`backoff()`**; idempotentnost: job komentari + `ShouldBeUnique` gde postoji. |
 
