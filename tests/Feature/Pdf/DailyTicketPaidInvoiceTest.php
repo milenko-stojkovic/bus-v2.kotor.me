@@ -54,13 +54,16 @@ final class DailyTicketPaidInvoiceTest extends TestCase
         $this->assertStringNotContainsString('kupovini termina', $html);
     }
 
-    public function test_invoice_email_for_daily_ticket_mentions_daily_ticket_and_date(): void
+    public function test_invoice_email_for_daily_ticket_uses_unified_paid_confirmation_copy(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-06-17 14:30:00', 'Europe/Podgorica'));
+
         $user = User::factory()->create(['lang' => 'en', 'email_verified_at' => now()]);
         $reservation = $this->makeDailyTicketReservation([
             'user_id' => $user->id,
             'email' => $user->email,
             'preferred_locale' => 'en',
+            'user_name' => 'Test Agency',
         ]);
 
         $job = new SendInvoiceEmailJob($reservation->id, false);
@@ -68,10 +71,37 @@ final class DailyTicketPaidInvoiceTest extends TestCase
         $ref->setAccessible(true);
         $body = $ref->invoke($job, $reservation->fresh(), 'en');
 
-        $this->assertStringContainsString('daily fee', strtolower($body));
-        $this->assertStringContainsString($reservation->reservation_date->format('Y-m-d'), $body);
+        $this->assertStringContainsString('Dear, Test Agency', $body);
+        $this->assertStringContainsString('successfully confirmed', $body);
+        $this->assertStringContainsString('Invoice for the payment', $body);
+        $this->assertStringContainsString('Municipality of Kotor', $body);
+        $this->assertStringContainsString('generated automatically 17.06.2026 14:30', $body);
+        $this->assertStringNotContainsString('daily fee', strtolower($body));
         $this->assertStringNotContainsString('arrival', strtolower($body));
-        $this->assertStringNotContainsString('departure', strtolower($body));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_invoice_email_cg_uses_unified_paid_confirmation_copy(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-17 09:15:00', 'Europe/Podgorica'));
+
+        $reservation = $this->makeDailyTicketReservation([
+            'user_name' => 'Agencija Test',
+            'preferred_locale' => 'cg',
+        ]);
+
+        $job = new SendInvoiceEmailJob($reservation->id, false);
+        $ref = new \ReflectionMethod($job, 'buildConfirmationText');
+        $ref->setAccessible(true);
+        $body = $ref->invoke($job, $reservation->fresh(), 'cg');
+
+        $this->assertStringContainsString('Poštovani, Agencija Test', $body);
+        $this->assertStringContainsString('uspješno potvrđena', $body);
+        $this->assertStringContainsString('Opština Kotor', $body);
+        $this->assertStringContainsString('automatski generisana 17.06.2026 09:15', $body);
+
+        Carbon::setTestNow();
     }
 
     private function makeDailyTicketReservation(array $overrides = []): Reservation

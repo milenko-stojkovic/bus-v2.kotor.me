@@ -121,13 +121,12 @@ class SendInvoiceEmailJob implements ShouldQueue
         $fromAddress = config('mail.from.address');
         $fromName = config('mail.from.name');
 
-        $subjectTemplate = UiText::t(
+        $subject = UiText::t(
             'emails',
             'paid_invoice_email_subject',
-            'Reservation confirmation #%1$d',
+            'Confirmation of reservation payment - Municipality of Kotor',
             $emailLocale
         );
-        $subject = sprintf($subjectTemplate, $reservation->id);
 
         $body = $this->buildConfirmationText($reservation, $emailLocale);
 
@@ -191,32 +190,22 @@ class SendInvoiceEmailJob implements ShouldQueue
 
     private function buildConfirmationText(Reservation $reservation, string $emailLocale): string
     {
-        $jirSuffix = '';
-        if ($reservation->fiscal_jir) {
-            $jirSuffix = "\n\n".sprintf(
-                UiText::t('emails', 'paid_invoice_email_jir_line', 'JIR: %1$s', $emailLocale),
-                $reservation->fiscal_jir
-            );
+        $name = trim((string) ($reservation->user_name ?? ''));
+        if ($name === '') {
+            $name = $emailLocale === 'cg' ? 'korisniče' : 'customer';
         }
 
-        $bodyKey = $reservation->isDailyTicket()
-            ? 'paid_invoice_email_body_daily_ticket'
-            : 'paid_invoice_email_body';
+        $generatedAt = now('Europe/Podgorica')->format('d.m.Y H:i');
 
         $bodyTemplate = UiText::t(
             'emails',
-            $bodyKey,
-            $reservation->isDailyTicket()
-                ? "Hello,\n\nYour daily fee reservation #%1\$d is confirmed. Valid on: %2\$s.%3\$s\n\nA PDF copy of your invoice or confirmation is attached.\n\nThank you."
-                : "Hello,\n\nYour paid parking reservation #%1\$d is confirmed for date %2\$s.%3\$s\n\nA PDF copy of your invoice or confirmation is attached.\n\nThank you.",
+            'paid_invoice_email_body',
+            $emailLocale === 'cg'
+                ? "Poštovani, %1\$s\n\nVaša rezervacija je uspješno potvrđena!\n\nUz ovu poruku u prilogu se nalazi Vaš račun za plaćanje.\n\nMolimo Vas da ga sačuvate radi evidencije.\n\nS poštovanjem,\nOpština Kotor\nOva poruka je automatski generisana %2\$s"
+                : "Dear, %1\$s\n\nYour reservation has been successfully confirmed!\n\nAttached to this email you will find your Invoice for the payment.\n\nPlease keep it for your records.\n\nBest regards,\nMunicipality of Kotor\nThis message was generated automatically %2\$s",
             $emailLocale
         );
 
-        return sprintf(
-            $bodyTemplate,
-            $reservation->id,
-            $reservation->reservation_date->format('Y-m-d'),
-            $jirSuffix
-        );
+        return sprintf($bodyTemplate, $name, $generatedAt);
     }
 }
