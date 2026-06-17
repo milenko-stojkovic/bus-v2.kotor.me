@@ -53,6 +53,7 @@
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php tools/patch-vendor-database-config.php",
             "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [

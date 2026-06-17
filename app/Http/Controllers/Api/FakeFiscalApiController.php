@@ -39,15 +39,27 @@ class FakeFiscalApiController extends Controller
     {
         // Keep fake simulation close to real: Operator should come from request identity (ENUIdentifier),
         // not from server-side config.
-        $operator = $request->input('ENUIdentifier')
+        // Operator code on receipt = User.UserCode (Primatech); fallback to ENU for legacy payloads.
+        $operator = data_get($request->all(), 'User.UserCode')
+            ?? $request->input('ENUIdentifier')
             ?? $request->json('ENUIdentifier')
             ?? null;
 
         $documentNumber = $request->input('DocumentNumber') ?? $request->json('DocumentNumber') ?? null;
         $documentNumber = is_numeric($documentNumber) ? (int) $documentNumber : null;
-        $createdAt = $request->input('CreatedAt') ?? $request->json('CreatedAt') ?? null;
+        $createdAt = $request->input('DateSend')
+            ?? $request->json('DateSend')
+            ?? $request->input('CreatedAt')
+            ?? $request->json('CreatedAt')
+            ?? null;
         $createdAt = is_string($createdAt) && $createdAt !== '' ? $createdAt : now()->toIso8601String();
         $price = $request->input('Price') ?? $request->json('Price') ?? null;
+        if (! is_numeric($price)) {
+            $paymentRows = data_get($request->all(), 'Payments.PaymentRow');
+            if (is_array($paymentRows) && isset($paymentRows[0]['PaymentAmount']) && is_numeric($paymentRows[0]['PaymentAmount'])) {
+                $price = $paymentRows[0]['PaymentAmount'];
+            }
+        }
         $price = is_numeric($price) ? number_format((float) $price, 2, '.', '') : '50.00';
 
         $buildVerifyUrl = function (string $iic, string $operator, ?int $documentNumber, string $createdAt, string $price): string {

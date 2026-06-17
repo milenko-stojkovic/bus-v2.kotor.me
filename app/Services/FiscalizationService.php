@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Reservation;
 use App\Models\SystemConfig;
+use App\Models\VehicleType;
 use App\Services\Payment\ErrorClassifier;
 use App\Support\HttpOutboundConfig;
 use Illuminate\Http\Client\PendingRequest;
@@ -52,19 +53,22 @@ class FiscalizationService
     {
         $documentNumber = $this->nextDocumentNumber();
 
-        // Fake driver MUST mirror real API contract (success: ResponseCode=JIR, UIDRequest=IKOF, Url.Value=QR, Operator; errors: Error.ErrorCode / ErrorMessage).
-        // Align fake flow with real provider contract: deposit -> receipt (same shape as real).
-        $payload = [
-            ...$this->buildFiscalPayload($reservation),
-            // Real provider identity; include in fake payload so the fake service can echo it back.
-            'ENUIdentifier' => (string) config('services.fiscal.enu_identifier'),
-            // Make fake closer to real: pass document number so fiscal_qr can include ord=...
-            'DocumentNumber' => $documentNumber,
-            // Used by fake verify URL to embed year (crtd=...).
-            'CreatedAt' => ($reservation->created_at ?? now())->toIso8601String(),
-            // Used by fake verify URL (prc=...); not critical for internal number parsing, but keeps URL realistic.
-            'Price' => (float) ($reservation->invoice_amount ?? $reservation->vehicleType?->price ?? 0),
-        ];
+        $receiptPayload = $this->buildFiscalReceiptPayload($reservation, $documentNumber);
+        if (isset($receiptPayload['error'])) {
+            return $receiptPayload;
+        }
+
+        $merchantTxId = trim((string) ($reservation->merchant_transaction_id ?? ''));
+        if ($merchantTxId === '') {
+            $classified = app(ErrorClassifier::class)->classify('fiscal', 11, 'Missing merchant transaction id for fiscal deposit.', null);
+
+            return [
+                'error' => 'Missing merchant transaction id for fiscal deposit.',
+                ...$classified,
+            ];
+        }
+
+        // Fake driver MUST mirror real API contract (deposit -> receipt, same Primatech JSON shape).
 
         $scenario = '';
         if ($forcedFakeScenario !== null && trim($forcedFakeScenario) !== '') {
@@ -92,7 +96,9 @@ class FiscalizationService
             $receiptUrl .= '?scenario='.urlencode($scenario);
         }
 
-        $depositResp = $this->fiscalHttpClient('deposit')->post($depositUrl, $payload);
+        $depositPayload = $this->buildDepositPayload($merchantTxId);
+
+        $depositResp = $this->fiscalHttpClient('deposit')->post($depositUrl, $depositPayload);
 
         $depositData = $depositResp->json();
         if (! $depositResp->successful() || ! is_array($depositData)) {
@@ -121,7 +127,7 @@ class FiscalizationService
             ];
         }
 
-        $receiptResp = $this->fiscalHttpClient('receipt')->post($receiptUrl, $payload);
+        $receiptResp = $this->fiscalHttpClient('receipt')->post($receiptUrl, $receiptPayload);
 
         $data = $receiptResp->json();
         if (! $receiptResp->successful() || ! is_array($data)) {
@@ -152,7 +158,7 @@ class FiscalizationService
                 'fiscal_jir' => $jir,
                 'fiscal_ikof' => $ikof,
                 'fiscal_qr' => is_string($qr) ? $qr : null,
-                'fiscal_operator' => $data['Operator'] ?? null,
+                'fiscal_operator' => $data['Operator'] ?? (string) config('services.fiscal.enu_identifier') ?: null,
                 'fiscal_date' => now(),
             ];
         }
@@ -168,10 +174,10 @@ class FiscalizationService
 
         // Same semantics as real: if 58, retry deposit + receipt once.
         if ((string) $errorCode === '58') {
-            $retryDeposit = $this->fiscalHttpClient('deposit')->post($depositUrl, $payload);
+            $retryDeposit = $this->fiscalHttpClient('deposit')->post($depositUrl, $depositPayload);
             $retryDepositData = $retryDeposit->json();
             if ($retryDeposit->successful() && is_array($retryDepositData)) {
-                $retryReceipt = $this->fiscalHttpClient('receipt')->post($receiptUrl, $payload);
+                $retryReceipt = $this->fiscalHttpClient('receipt')->post($receiptUrl, $receiptPayload);
                 $retryData = $retryReceipt->json();
                 if ($retryReceipt->successful() && is_array($retryData)) {
                     $retryIsSuccess = $retryData['IsSucccess'] ?? $retryData['IsSuccess'] ?? null;
@@ -185,7 +191,7 @@ class FiscalizationService
                                 'fiscal_jir' => $jir,
                                 'fiscal_ikof' => $ikof,
                                 'fiscal_qr' => is_string($qr) ? $qr : null,
-                                'fiscal_operator' => $retryData['Operator'] ?? null,
+                                'fiscal_operator' => $retryData['Operator'] ?? (string) config('services.fiscal.enu_identifier') ?: null,
                                 'fiscal_date' => now(),
                             ];
                         }
@@ -210,6 +216,9 @@ class FiscalizationService
         $enuIdentifier = (string) config('services.fiscal.enu_identifier');
         $userCode = (string) config('services.fiscal.user_code');
         $userName = (string) config('services.fiscal.user_name');
+        $sellerName = (string) config('services.fiscal.seller_name');
+        $sellerIdValue = (string) config('services.fiscal.seller_id_value');
+        $sellerAddress = (string) config('services.fiscal.seller_address');
 
         if ($apiUrl === '' || $token === '') {
             Log::channel('payments')->warning('Real fiscalization missing configuration', [
@@ -244,6 +253,23 @@ class FiscalizationService
             ];
         }
 
+        if ($sellerName === '' || $sellerIdValue === '' || $sellerAddress === '') {
+            Log::channel('payments')->warning('Real fiscalization missing seller configuration', [
+                'reservation_id' => $reservation->id,
+                'merchant_transaction_id' => $reservation->merchant_transaction_id,
+                'has_seller_name' => $sellerName !== '',
+                'has_seller_id_value' => $sellerIdValue !== '',
+                'has_seller_address' => $sellerAddress !== '',
+            ]);
+
+            $classified = app(ErrorClassifier::class)->classify('fiscal', 11, 'Fiscal seller not configured.', null);
+
+            return [
+                'error' => 'Fiscal seller not configured.',
+                ...$classified,
+            ];
+        }
+
         $depositEndpoint = $apiUrl.self::FISCAL_DEPOSIT_ENDPOINT;
         $receiptEndpoint = $apiUrl.self::FISCAL_RECEIPT_ENDPOINT;
         $documentNumber = $this->nextDocumentNumber();
@@ -253,11 +279,10 @@ class FiscalizationService
             'document_number' => $documentNumber,
         ]);
 
-        $receiptPayload = [
-            ...$this->buildFiscalPayload($reservation),
-            'DocumentType' => 'INVOICE',
-            'DocumentNumber' => $documentNumber,
-        ];
+        $receiptPayload = $this->buildFiscalReceiptPayload($reservation, $documentNumber);
+        if (isset($receiptPayload['error'])) {
+            return $receiptPayload;
+        }
 
         // Deposit must exist for CARD/CASH receipts. Safe approach: send Amount=0 before every receipt attempt.
         $depositResult = $this->callRealDeposit(
@@ -276,6 +301,9 @@ class FiscalizationService
             'reservation_id' => $reservation->id,
             'merchant_transaction_id' => $reservation->merchant_transaction_id,
             'endpoint' => $receiptEndpoint,
+            'document_number' => $documentNumber,
+            'payment_type' => $receiptPayload['Payments']['PaymentRow'][0]['PaymentType'] ?? null,
+            'payment_amount' => $receiptPayload['Payments']['PaymentRow'][0]['PaymentAmount'] ?? null,
         ]);
 
         try {
@@ -303,6 +331,7 @@ class FiscalizationService
                 'reservation_id' => $reservation->id,
                 'merchant_transaction_id' => $reservation->merchant_transaction_id,
                 'status' => $response->status(),
+                'body' => $response->body(),
             ]);
 
             $classified = app(ErrorClassifier::class)->classify('fiscal', 500, 'Invalid fiscal service response.', null);
@@ -348,7 +377,7 @@ class FiscalizationService
                 'fiscal_jir' => $jir,
                 'fiscal_ikof' => $ikof,
                 'fiscal_qr' => is_string($qr) ? $qr : null,
-                'fiscal_operator' => $data['Operator'] ?? null,
+                'fiscal_operator' => $data['Operator'] ?? $enuIdentifier ?: null,
                 'fiscal_date' => now(),
             ];
         }
@@ -368,9 +397,16 @@ class FiscalizationService
             'status' => $response->status(),
             'error_code' => $errorCode,
             'error' => $errorMessage,
+            'body' => $response->body(),
         ]);
 
-        $classified = app(ErrorClassifier::class)->classify('fiscal', $errorCode, is_string($errorMessage) ? $errorMessage : null, null);
+        $status = $response->status();
+        $classified = app(ErrorClassifier::class)->classify(
+            'fiscal',
+            ($errorCode === null && $status >= 500) ? 500 : $errorCode,
+            is_string($errorMessage) ? $errorMessage : null,
+            null
+        );
 
         // Provider: ErrorCode 58 = deposit missing. Try deposit once more then retry receipt once.
         if ((string) $errorCode === '58') {
@@ -428,7 +464,7 @@ class FiscalizationService
                             'fiscal_jir' => $jir,
                             'fiscal_ikof' => $ikof,
                             'fiscal_qr' => is_string($qr) ? $qr : null,
-                            'fiscal_operator' => $retryData['Operator'] ?? null,
+                            'fiscal_operator' => $retryData['Operator'] ?? $enuIdentifier ?: null,
                             'fiscal_date' => now(),
                         ];
                     }
@@ -491,19 +527,18 @@ class FiscalizationService
         string $userCode,
         string $userName
     ): ?array {
-        $uid = (string) \Illuminate\Support\Str::uuid();
-        $payload = [
-            'UID' => $uid,
-            'ENUIdentifier' => $enuIdentifier,
-            'Type' => 'json',
-            'DepositType' => 'INITIAL',
-            'Amount' => 0,
-            'DateSend' => now()->toIso8601String(),
-            'User' => [
-                'UserCode' => $userCode,
-                'UserName' => $userName,
-            ],
-        ];
+        $merchantTxId = trim((string) ($reservation->merchant_transaction_id ?? ''));
+        if ($merchantTxId === '') {
+            $classified = app(ErrorClassifier::class)->classify('fiscal', 11, 'Missing merchant transaction id for fiscal deposit.', null);
+
+            return [
+                'error' => 'Missing merchant transaction id for fiscal deposit.',
+                ...$classified,
+            ];
+        }
+
+        $payload = $this->buildDepositPayload($merchantTxId);
+        $uid = $merchantTxId;
 
         Log::channel('payments')->info('Real fiscal deposit request start', [
             'reservation_id' => $reservation->id,
@@ -537,6 +572,7 @@ class FiscalizationService
                 'reservation_id' => $reservation->id,
                 'merchant_transaction_id' => $reservation->merchant_transaction_id,
                 'status' => $response->status(),
+                'body' => $response->body(),
             ]);
             $classified = app(ErrorClassifier::class)->classify('fiscal', 500, 'Invalid fiscal deposit response.', null);
 
@@ -571,9 +607,16 @@ class FiscalizationService
             'status' => $response->status(),
             'error_code' => $errorCode,
             'error' => $errorMessage,
+            'body' => $response->body(),
         ]);
 
-        $classified = app(ErrorClassifier::class)->classify('fiscal', $errorCode, is_string($errorMessage) ? $errorMessage : null, null);
+        $status = $response->status();
+        $classified = app(ErrorClassifier::class)->classify(
+            'fiscal',
+            ($errorCode === null && $status >= 500) ? 500 : $errorCode,
+            is_string($errorMessage) ? $errorMessage : null,
+            null
+        );
 
         return [
             'error' => (string) $errorMessage,
@@ -598,25 +641,166 @@ class FiscalizationService
     }
 
     /**
-     * Osnovni JSON deo koji ide i na fake i na real receipt (proširenje u callFakeFiscalization / callRealFiscalization).
-     * Fake driver MUST mirror real API contract — dodavanje polja ovde zahteva isto polje u real payload-u gde je primenljivo.
+     * Primatech {@see self::FISCAL_RECEIPT_ENDPOINT} payload (isti oblik za fake i real).
+     *
+     * @return array<string, mixed>|array{error: string, resolution_reason?: string, category?: string, notify_admin?: bool, user_message_key?: string, retryable?: bool}
      */
-    private function buildFiscalPayload(object $reservation): array
+    private function buildFiscalReceiptPayload(object $invoice, int $documentNumber): array
     {
-        $dateStr = null;
-        if (isset($reservation->reservation_date) && $reservation->reservation_date !== null) {
-            $d = $reservation->reservation_date;
-            $dateStr = $d instanceof \Carbon\CarbonInterface ? $d->format('Y-m-d') : (string) $d;
+        $enuIdentifier = (string) config('services.fiscal.enu_identifier');
+        $userCode = (string) config('services.fiscal.user_code');
+        $userName = (string) config('services.fiscal.user_name');
+        $sellerName = (string) config('services.fiscal.seller_name');
+        $sellerIdType = (string) config('services.fiscal.seller_id_type', 'TIN');
+        $sellerIdValue = (string) config('services.fiscal.seller_id_value');
+        $sellerAddress = (string) config('services.fiscal.seller_address');
+        $taxRate = (int) config('services.fiscal.tax_rate', 0);
+
+        $merchantTxId = trim((string) ($invoice->merchant_transaction_id ?? ''));
+        if ($merchantTxId === '') {
+            $classified = app(ErrorClassifier::class)->classify('fiscal', 11, 'Missing merchant transaction id for fiscal receipt.', null);
+
+            return [
+                'error' => 'Missing merchant transaction id for fiscal receipt.',
+                ...$classified,
+            ];
         }
 
+        if ($enuIdentifier === '' || $userCode === '' || $userName === '') {
+            $classified = app(ErrorClassifier::class)->classify('fiscal', 11, 'Fiscal identity not configured.', null);
+
+            return [
+                'error' => 'Fiscal identity not configured.',
+                ...$classified,
+            ];
+        }
+
+        if ($sellerName === '' || $sellerIdValue === '' || $sellerAddress === '') {
+            $classified = app(ErrorClassifier::class)->classify('fiscal', 11, 'Fiscal seller not configured.', null);
+
+            return [
+                'error' => 'Fiscal seller not configured.',
+                ...$classified,
+            ];
+        }
+
+        $amount = round((float) ($invoice->invoice_amount ?? 0), 2);
+        if ($amount <= 0) {
+            $classified = app(ErrorClassifier::class)->classify('fiscal', 11, 'Fiscal receipt amount must be positive.', null);
+
+            return [
+                'error' => 'Fiscal receipt amount must be positive.',
+                ...$classified,
+            ];
+        }
+
+        if (! in_array($taxRate, [0, 7, 21], true)) {
+            $classified = app(ErrorClassifier::class)->classify('fiscal', 11, 'Invalid fiscal tax rate configuration.', null);
+
+            return [
+                'error' => 'Invalid fiscal tax rate configuration.',
+                ...$classified,
+            ];
+        }
+
+        // v1 produkcija: online kartica = gotovinski račun (IsNoCashReceipt false), PaymentType CARD, bez Buyer bloka.
+        $dateSend = now('Europe/Podgorica')->format('Y-m-d\TH:i:sP');
+
         return [
-            'reservation_id' => $reservation->id,
-            'merchant_transaction_id' => $reservation->merchant_transaction_id,
-            'reservation_date' => $dateStr,
-            'user_name' => $reservation->user_name ?? null,
-            'email' => $reservation->email ?? null,
-            'license_plate' => $reservation->license_plate ?? null,
-            'country' => $reservation->country ?? null,
+            'UID' => $merchantTxId,
+            'ENUIdentifier' => $enuIdentifier,
+            'DocumentType' => 'INVOICE',
+            'DocumentNumber' => $documentNumber,
+            'BasePriceIsWithoutTax' => false,
+            'IsNoCashReceipt' => false,
+            'DateSend' => $dateSend,
+            'User' => [
+                'UserCode' => $userCode,
+                'UserName' => $userName,
+            ],
+            'Seller' => [
+                'Name' => $sellerName,
+                'IDType' => $sellerIdType,
+                'IDValue' => $sellerIdValue,
+                'Address' => $sellerAddress,
+            ],
+            'Sales' => [
+                'ItemSaleRow' => [
+                    [
+                        'ItemCode' => $this->resolveFiscalItemCode($invoice),
+                        'ItemName' => $this->resolveFiscalItemName($invoice),
+                        'Price' => $amount,
+                        'DiscountPercentage' => 0,
+                        'DiscountAmount' => 0,
+                        'Quantity' => 1,
+                        'TaxRate' => $taxRate,
+                    ],
+                ],
+            ],
+            'Payments' => [
+                'PaymentRow' => [
+                    [
+                        'PaymentAmount' => $amount,
+                        'PaymentType' => 'CARD',
+                    ],
+                ],
+            ],
+            'Type' => 'json',
+        ];
+    }
+
+    private function resolveFiscalItemName(object $invoice): string
+    {
+        if (isset($invoice->vehicleLine) && is_string($invoice->vehicleLine) && trim($invoice->vehicleLine) !== '') {
+            return trim($invoice->vehicleLine);
+        }
+
+        if ($invoice instanceof Reservation) {
+            $invoice->loadMissing(['vehicleType.translations']);
+            if ($invoice->vehicleType) {
+                return $invoice->vehicleType->getTranslatedDescription('cg')
+                    ?: $invoice->vehicleType->getTranslatedName('cg')
+                    ?: 'Naknada';
+            }
+        } elseif (isset($invoice->vehicle_type_id) && $invoice->vehicle_type_id) {
+            $vehicleType = VehicleType::query()
+                ->with('translations')
+                ->find($invoice->vehicle_type_id);
+            if ($vehicleType) {
+                return $vehicleType->getTranslatedDescription('cg')
+                    ?: $vehicleType->getTranslatedName('cg')
+                    ?: 'Naknada';
+            }
+        }
+
+        return 'Naknada';
+    }
+
+    private function resolveFiscalItemCode(object $invoice): string
+    {
+        if (isset($invoice->vehicle_type_id) && $invoice->vehicle_type_id) {
+            return (string) $invoice->vehicle_type_id;
+        }
+
+        return '0';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildDepositPayload(string $merchantTransactionId): array
+    {
+        return [
+            'UID' => $merchantTransactionId,
+            'ENUIdentifier' => (string) config('services.fiscal.enu_identifier'),
+            'Type' => 'json',
+            'DepositType' => 'INITIAL',
+            'Amount' => 0,
+            'DateSend' => now('Europe/Podgorica')->format('Y-m-d'),
+            'User' => [
+                'UserCode' => (string) config('services.fiscal.user_code'),
+                'UserName' => (string) config('services.fiscal.user_name'),
+            ],
         ];
     }
 

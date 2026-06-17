@@ -64,6 +64,11 @@ return [
         'enu_identifier' => env('FISCAL_ENU_IDENTIFIER'),
         'user_code' => env('FISCAL_USER_CODE'),
         'user_name' => env('FISCAL_USER_NAME'),
+        'seller_name' => env('FISCAL_SELLER_NAME'),
+        'seller_id_type' => env('FISCAL_SELLER_ID_TYPE', 'TIN'),
+        'seller_id_value' => env('FISCAL_SELLER_ID_VALUE', env('FISCAL_SELLER_TIN')),
+        'seller_address' => env('FISCAL_SELLER_ADDRESS'),
+        'tax_rate' => (int) env('FISCAL_TAX_RATE', 0),
         'driver' => env('FISCALIZATION_DRIVER', 'real'),
     ],
 
