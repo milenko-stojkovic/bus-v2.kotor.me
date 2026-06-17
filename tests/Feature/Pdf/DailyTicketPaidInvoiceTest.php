@@ -27,8 +27,9 @@ final class DailyTicketPaidInvoiceTest extends TestCase
         $this->assertStringContainsString('Dnevna naknada', $html);
         $this->assertStringContainsString('Vrsta rezervacije:', $html);
         $this->assertStringContainsString('Datum važenja:', $html);
-        $this->assertStringContainsString('Lokacije korišćenja:', $html);
-        $this->assertStringContainsString('Autoboka i Puč', $html);
+        $this->assertStringContainsString('Lokacija:', $html);
+        $this->assertStringContainsString('teritorija opštine Kotor', $html);
+        $this->assertStringNotContainsString('Autoboka i Puč', $html);
     }
 
     public function test_paid_invoice_daily_ticket_does_not_contain_slot_labels(): void

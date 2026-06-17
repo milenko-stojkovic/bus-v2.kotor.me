@@ -35,6 +35,8 @@ final class PaidInvoicePdfRegressionTest extends TestCase
         $this->assertStringContainsString('Datum rezervacije', $html);
         $this->assertStringContainsString('Vrijeme dolaska', $html);
         $this->assertStringContainsString('Vrijeme odlaska', $html);
+        $this->assertStringContainsString('Lokacija:', $html);
+        $this->assertStringContainsString('Benovo', $html);
         $this->assertStringNotContainsString('Detalji limo usluge', $html);
         $this->assertStringNotContainsString('Tip usluge:', $html);
     }

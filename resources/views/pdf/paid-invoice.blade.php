@@ -171,7 +171,7 @@
                 <span class="bold">Datum važenja:</span> {{ $validityDateDisplay ?? '—' }}
             </div>
             <div class="small" style="margin-bottom:4px;">
-                <span class="bold">Lokacije korišćenja:</span> Autoboka i Puč
+                <span class="bold">Lokacija:</span> teritorija opštine Kotor
             </div>
         @else
             <div class="bold" style="font-size:13px; margin-bottom:4px; border-bottom:1px dashed #000; padding-bottom:2px;">
@@ -186,8 +186,11 @@
             <div class="small" style="margin-bottom:2px;">
                 <span class="bold">Vrijeme dolaska:</span> {{ $reservation->dropOffTimeSlot?->time_slot ?? 'N/A' }}
             </div>
-            <div class="small" style="margin-bottom:4px;">
+            <div class="small" style="margin-bottom:2px;">
                 <span class="bold">Vrijeme odlaska:</span> {{ $reservation->pickUpTimeSlot?->time_slot ?? 'N/A' }}
+            </div>
+            <div class="small" style="margin-bottom:4px;">
+                <span class="bold">Lokacija:</span> Benovo
             </div>
         @endif
     </div>
