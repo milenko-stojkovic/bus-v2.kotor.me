@@ -5,6 +5,7 @@ namespace App\Services\Reservation;
 use App\Exceptions\DuplicateTerminiReservationException;
 use App\Models\Reservation;
 use App\Models\TempData;
+use App\Models\Vehicle;
 use App\Support\ReservationKind;
 use App\Support\UiText;
 use Illuminate\Database\Eloquent\Builder;
@@ -100,6 +101,94 @@ class DuplicateReservationAttemptService
         if ($this->existsConflict($date, $licensePlate, $dropOffSlotId, $pickUpSlotId, $exceptReservationId, $exceptTempDataId)) {
             throw new DuplicateTerminiReservationException($this->conflictMessage($locale));
         }
+    }
+
+    /**
+     * Normalized plates that already hold a same-day Termini slot conflict for the given arrival/departure.
+     *
+     * @return list<string>
+     */
+    public function conflictingNormalizedPlatesForTermini(
+        string $date,
+        int $dropOffSlotId,
+        int $pickUpSlotId,
+        ?int $exceptReservationId = null,
+        ?int $exceptTempDataId = null,
+    ): array {
+        $plates = [];
+
+        $reservationQuery = $this->timeSlotsReservationQuery($date, $dropOffSlotId, $pickUpSlotId);
+        if ($exceptReservationId !== null) {
+            $reservationQuery->whereKeyNot($exceptReservationId);
+        }
+        foreach ($reservationQuery->get(['license_plate']) as $row) {
+            $normalized = self::normalizeLicensePlate($row->license_plate);
+            if ($normalized !== '') {
+                $plates[$normalized] = true;
+            }
+        }
+
+        $tempQuery = TempData::query()
+            ->where('status', TempData::STATUS_PENDING)
+            ->whereDate('reservation_date', $date)
+            ->where(function (Builder $q): void {
+                $q->where('reservation_kind', ReservationKind::TIME_SLOTS)
+                    ->orWhereNull('reservation_kind');
+            })
+            ->where(function (Builder $q) use ($dropOffSlotId, $pickUpSlotId): void {
+                $q->where('drop_off_time_slot_id', $dropOffSlotId)
+                    ->orWhere('pick_up_time_slot_id', $pickUpSlotId);
+            });
+
+        if ($exceptTempDataId !== null) {
+            $tempQuery->whereKeyNot($exceptTempDataId);
+        }
+
+        foreach ($tempQuery->get(['license_plate']) as $row) {
+            $normalized = self::normalizeLicensePlate($row->license_plate);
+            if ($normalized !== '') {
+                $plates[$normalized] = true;
+            }
+        }
+
+        return array_keys($plates);
+    }
+
+    /**
+     * @param  iterable<Vehicle>  $vehicles
+     * @return array{vehicles: \Illuminate\Support\Collection<int, Vehicle>, hidden_count: int}
+     */
+    public function filterVehiclesAllowedForTerminiSlots(
+        iterable $vehicles,
+        string $date,
+        int $dropOffSlotId,
+        int $pickUpSlotId,
+        ?int $exceptReservationId = null,
+        ?int $exceptTempDataId = null,
+    ): array {
+        $blocked = array_flip($this->conflictingNormalizedPlatesForTermini(
+            $date,
+            $dropOffSlotId,
+            $pickUpSlotId,
+            $exceptReservationId,
+            $exceptTempDataId,
+        ));
+
+        $collection = $vehicles instanceof \Illuminate\Support\Collection
+            ? $vehicles
+            : collect($vehicles);
+
+        $before = $collection->count();
+        $filtered = $collection->filter(function (Vehicle $vehicle) use ($blocked): bool {
+            $plate = self::normalizeLicensePlate($vehicle->license_plate);
+
+            return $plate === '' || ! isset($blocked[$plate]);
+        })->values();
+
+        return [
+            'vehicles' => $filtered,
+            'hidden_count' => $before - $filtered->count(),
+        ];
     }
 
     private function hasReservationConflict(

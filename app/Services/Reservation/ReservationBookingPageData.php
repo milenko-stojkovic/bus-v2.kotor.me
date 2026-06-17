@@ -19,6 +19,7 @@ final class ReservationBookingPageData
 {
     public function __construct(
         private readonly ReservationVehicleEligibilityService $vehicleEligibility,
+        private readonly DuplicateReservationAttemptService $duplicateReservation,
     ) {}
 
     /**
@@ -198,7 +199,7 @@ final class ReservationBookingPageData
         $slotPayload = $this->buildSlotPayload($selectedDate, $arrivalId, $departureId, $locale);
         $departureId = $slotPayload['effective_departure_id'];
 
-        $vehicles = $this->vehicleEligibility->filterVehiclesForKind(
+        $eligibleVehicles = $this->vehicleEligibility->filterVehiclesForKind(
             $user->vehicles()
                 ->where('status', \App\Models\Vehicle::STATUS_ACTIVE)
                 ->with(['vehicleType.translations'])
@@ -206,6 +207,25 @@ final class ReservationBookingPageData
                 ->get(),
             $reservationKind,
         );
+
+        $terminiVehiclesHiddenCount = 0;
+        if (
+            ! $isDailyTicketBooking
+            && $selectedDate !== null
+            && $arrivalId !== null
+            && $departureId !== null
+        ) {
+            $filterResult = $this->duplicateReservation->filterVehiclesAllowedForTerminiSlots(
+                $eligibleVehicles,
+                $selectedDate->toDateString(),
+                $arrivalId,
+                $departureId,
+            );
+            $vehicles = $filterResult['vehicles'];
+            $terminiVehiclesHiddenCount = $filterResult['hidden_count'];
+        } else {
+            $vehicles = $eligibleVehicles;
+        }
 
         $vehicleId = $this->asIntOrNull($request->query('vehicle_id'));
         $selectedVehicle = null;
@@ -218,7 +238,19 @@ final class ReservationBookingPageData
                     ->with(['vehicleType.translations'])
                     ->find($vehicleId);
                 if ($candidate !== null
-                    && $this->vehicleEligibility->isVehicleTypeAllowedForKind((int) $candidate->vehicle_type_id, $reservationKind)) {
+                    && $this->vehicleEligibility->isVehicleTypeAllowedForKind((int) $candidate->vehicle_type_id, $reservationKind)
+                    && (
+                        $isDailyTicketBooking
+                        || $selectedDate === null
+                        || $arrivalId === null
+                        || $departureId === null
+                        || ! $this->duplicateReservation->existsConflict(
+                            $selectedDate->toDateString(),
+                            (string) $candidate->license_plate,
+                            $arrivalId,
+                            $departureId,
+                        )
+                    )) {
                     $selectedVehicle = $candidate;
                     $vehicles = $vehicles->push($selectedVehicle)->unique('id')->sortBy('license_plate')->values();
                 }
@@ -258,6 +290,7 @@ final class ReservationBookingPageData
             'booking_mode' => 'auth',
             'vehicles' => $vehicles,
             'vehicle_id' => $selectedVehicle?->id,
+            'termini_vehicles_hidden_count' => $terminiVehiclesHiddenCount,
         ]);
     }
 

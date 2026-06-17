@@ -183,6 +183,11 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                @if (! $isDailyTicketBooking && ($termini_vehicles_hidden_count ?? 0) > 0)
+                                    <p id="panelTerminiVehiclesHiddenHint" class="mt-1 text-xs text-gray-500">
+                                        {{ \App\Support\UiText::t('booking', 'termini_vehicles_hidden_hint') }}
+                                    </p>
+                                @endif
                             </div>
                         </form>
 
