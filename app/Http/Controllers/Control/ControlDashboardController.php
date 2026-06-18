@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\VehicleType;
 use App\Services\Control\ControlArrivalSlots;
 use App\Services\Operations\DailyCapacityChartService;
+use App\Support\ReservationKind;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -56,7 +57,11 @@ class ControlDashboardController extends Controller
     {
         $q = Reservation::query()
             ->with(['pickUpTimeSlot', 'dropOffTimeSlot', 'vehicleType.translations'])
-            ->whereDate('reservation_date', '>=', now()->startOfDay());
+            ->whereDate('reservation_date', '>=', now()->startOfDay())
+            ->where(function ($query): void {
+                $query->where('reservation_kind', ReservationKind::TIME_SLOTS)
+                    ->orWhereNull('reservation_kind');
+            });
 
         if ($request->filled('date')) {
             $q->whereDate('reservation_date', $request->date('date'));

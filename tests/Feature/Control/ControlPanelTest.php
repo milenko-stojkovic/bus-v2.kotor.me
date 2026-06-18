@@ -7,6 +7,7 @@ use App\Models\ListOfTimeSlot;
 use App\Models\Reservation;
 use App\Models\VehicleType;
 use App\Models\VehicleTypeTranslation;
+use App\Support\ReservationKind;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -182,6 +183,50 @@ class ControlPanelTest extends TestCase
         $response->assertOk();
         $response->assertSee('unique-find@example.test', false);
         $response->assertSee('Search Me', false);
+    }
+
+    public function test_search_excludes_daily_ticket_reservations(): void
+    {
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+        $date = now()->addDays(4)->format('Y-m-d');
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => $date,
+            'user_name' => 'Termini User',
+            'country' => 'ME',
+            'license_plate' => 'PG SLOT1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'shared-search@example.test',
+            'status' => 'paid',
+            'reservation_kind' => ReservationKind::TIME_SLOTS,
+        ]);
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => null,
+            'pick_up_time_slot_id' => null,
+            'reservation_date' => $date,
+            'user_name' => 'Daily Fee User',
+            'country' => 'ME',
+            'license_plate' => 'PG DAILY1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'shared-search@example.test',
+            'status' => 'paid',
+            'reservation_kind' => ReservationKind::DAILY_TICKET,
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+        $response = $this->get('/control?search=1&email=shared-search&date='.$date);
+
+        $response->assertOk();
+        $response->assertSee('Termini User', false);
+        $response->assertSee('PG SLOT1', false);
+        $response->assertDontSee('Daily Fee User', false);
+        $response->assertDontSee('PG DAILY1', false);
     }
 
     public function test_search_with_empty_criteria_shows_validation_error(): void
