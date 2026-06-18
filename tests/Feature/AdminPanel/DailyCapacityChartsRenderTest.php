@@ -69,6 +69,8 @@ final class DailyCapacityChartsRenderTest extends TestCase
         $this->assertStringContainsString('"reserved":2', $html);
         $this->assertStringContainsString('"pending":4', $html);
         $this->assertStringContainsString('"total":6', $html);
+        $this->assertStringContainsString('Ukupno rezervacija', $html);
+        $this->assertStringContainsString('"reservations_total":0', $html);
     }
 }
 

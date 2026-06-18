@@ -1,6 +1,6 @@
 @php
-    /** @var array{date:string,capacity:int,slots:array<int,array<string,mixed>>,meta:array{max_total:int}} $dataset */
-    $dataset = $dataset ?? ['date' => '', 'capacity' => 0, 'slots' => [], 'meta' => ['max_total' => 0]];
+    /** @var array{date:string,capacity:int,slots:array<int,array<string,mixed>>,meta:array{max_total:int,reservations_total:int}} $dataset */
+    $dataset = $dataset ?? ['date' => '', 'capacity' => 0, 'slots' => [], 'meta' => ['max_total' => 0, 'reservations_total' => 0]];
     $title = $title ?? 'Kapacitet';
     $chartId = $chartId ?? ('daily-capacity-'.\Illuminate\Support\Str::random(8));
     $scriptId = $scriptId ?? ($chartId.'-data');
@@ -23,8 +23,14 @@
                 Datum: <span class="font-medium">{{ $dateLabel }}</span>
             </div>
         </div>
-        <div class="text-xs text-gray-500">
-            Kapacitet: <span class="font-semibold">{{ (int) ($dataset['capacity'] ?? 0) }}</span>
+        <div class="text-xs text-gray-500 text-right">
+            <div>
+                Kapacitet: <span class="font-semibold">{{ (int) ($dataset['capacity'] ?? 0) }}</span>
+            </div>
+            <div class="mt-0.5">
+                Ukupno rezervacija: <span class="font-semibold">{{ (int) ($dataset['meta']['reservations_total'] ?? 0) }}</span>
+                <span class="text-gray-400">(plaćene + besplatne)</span>
+            </div>
         </div>
     </div>
 

@@ -4,7 +4,9 @@ namespace App\Services\Operations;
 
 use App\Models\DailyParkingData;
 use App\Models\ListOfTimeSlot;
+use App\Models\Reservation;
 use App\Models\SystemConfig;
+use App\Support\ReservationKind;
 use Carbon\Carbon;
 
 /**
@@ -26,7 +28,7 @@ final class DailyCapacityChartService
      *     pending: int,
      *     total: int
      *   }>,
-     *   meta: array{max_total:int}
+     *   meta: array{max_total:int, reservations_total:int}
      * }
      */
     public function forDate(Carbon $day): array
@@ -34,6 +36,7 @@ final class DailyCapacityChartService
         $date = $day->copy()->startOfDay()->toDateString();
 
         $capacity = $this->capacity();
+        $reservationsTotal = $this->confirmedTimeSlotsReservationsCount($date);
 
         $slots = ListOfTimeSlot::query()->orderBy('id')->get();
         $dailyBySlotId = DailyParkingData::query()
@@ -66,8 +69,22 @@ final class DailyCapacityChartService
             'slots' => $out,
             'meta' => [
                 'max_total' => $maxTotal,
+                'reservations_total' => $reservationsTotal,
             ],
         ];
+    }
+
+    /** Confirmed Termini reservations (paid + free) for the given calendar day. */
+    private function confirmedTimeSlotsReservationsCount(string $date): int
+    {
+        return (int) Reservation::query()
+            ->whereDate('reservation_date', $date)
+            ->whereIn('status', ['paid', 'free'])
+            ->where(function ($query): void {
+                $query->where('reservation_kind', ReservationKind::TIME_SLOTS)
+                    ->orWhereNull('reservation_kind');
+            })
+            ->count();
     }
 
     private function capacity(): int
