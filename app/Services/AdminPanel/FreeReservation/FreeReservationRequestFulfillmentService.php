@@ -181,16 +181,16 @@ class FreeReservationRequestFulfillmentService
                     throw new RuntimeException('tempnam failed for multi free reservation PDF attachment.');
                 }
                 file_put_contents($tmp, $pdfBinary);
-                $tmpPaths[] = [$tmp, $r->id];
+                $tmpPaths[] = [$tmp, $r->freeConfirmationPdfFilename()];
             }
 
             Mail::raw($body, function ($message) use ($email, $fromAddress, $fromName, $subject, $tmpPaths): void {
                 $message->to($email)
                     ->from($fromAddress, $fromName)
                     ->subject($subject);
-                foreach ($tmpPaths as [$path, $id]) {
+                foreach ($tmpPaths as [$path, $filename]) {
                     $message->attach($path, [
-                        'as' => 'potvrda-besplatna-rezervacija-'.$id.'.pdf',
+                        'as' => $filename,
                         'mime' => 'application/pdf',
                     ]);
                 }

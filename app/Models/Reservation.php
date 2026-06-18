@@ -101,11 +101,22 @@ class Reservation extends Model
      */
     public function invoicePdfFilename(): string
     {
-        $date = $this->reservation_date?->format('Y-m-d')
+        return sprintf('invoice-%d-%s.pdf', (int) $this->id, $this->pdfFilenameDateSegment());
+    }
+
+    /**
+     * Attachment / download filename for free reservation confirmation PDF.
+     */
+    public function freeConfirmationPdfFilename(): string
+    {
+        return sprintf('free-confirmation-%d-%s.pdf', (int) $this->id, $this->pdfFilenameDateSegment());
+    }
+
+    private function pdfFilenameDateSegment(): string
+    {
+        return $this->reservation_date?->format('Y-m-d')
             ?? $this->created_at?->format('Y-m-d')
             ?? now()->format('Y-m-d');
-
-        return sprintf('invoice-%d-%s.pdf', (int) $this->id, $date);
     }
 
     /**

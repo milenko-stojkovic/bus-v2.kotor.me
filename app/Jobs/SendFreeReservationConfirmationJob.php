@@ -129,7 +129,7 @@ class SendFreeReservationConfirmationJob implements ShouldQueue
                     ->from($fromAddress, $fromName)
                     ->subject($subject);
                 $message->attach($tmpPath, [
-                    'as' => 'potvrda-besplatna-rezervacija-'.$reservation->id.'.pdf',
+                    'as' => $reservation->freeConfirmationPdfFilename(),
                     'mime' => 'application/pdf',
                 ]);
             });

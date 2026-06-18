@@ -52,7 +52,7 @@ class UserReservationController extends Controller
             static function () use ($binary): void {
                 echo $binary;
             },
-            $reservation->invoicePdfFilename(),
+            $this->pdfFilenameForReservation($reservation),
             [
                 'Content-Type' => 'application/pdf',
             ]
@@ -74,7 +74,7 @@ class UserReservationController extends Controller
 
         return response($binary, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.$reservation->invoicePdfFilename().'"',
+            'Content-Disposition' => 'inline; filename="'.$this->pdfFilenameForReservation($reservation).'"',
         ]);
     }
 
@@ -99,6 +99,13 @@ class UserReservationController extends Controller
         }
 
         abort(404);
+    }
+
+    private function pdfFilenameForReservation(Reservation $reservation): string
+    {
+        return $reservation->status === 'free'
+            ? $reservation->freeConfirmationPdfFilename()
+            : $reservation->invoicePdfFilename();
     }
 
     public function updateVehicle(UpdateReservationVehicleRequest $request, int $id): RedirectResponse

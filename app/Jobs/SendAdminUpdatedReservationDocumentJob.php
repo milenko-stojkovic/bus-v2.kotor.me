@@ -122,7 +122,7 @@ class SendAdminUpdatedReservationDocumentJob implements ShouldQueue
         try {
             if ($reservation->status === 'free') {
                 $pdfBinary = $freePdfGenerator->renderBinary($reservation);
-                $attachmentName = 'potvrda-besplatna-rezervacija-'.$reservation->id.'.pdf';
+                $attachmentName = $reservation->freeConfirmationPdfFilename();
             } else {
                 $isFiscal = $reservation->fiscal_jir !== null;
                 $pdfBinary = $paidPdfGenerator->renderBinary($reservation, $isFiscal);
