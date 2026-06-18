@@ -4,7 +4,7 @@
 
 **Završena tranzicija (2026-06):** Dnevna naknada / Daily fee (korisnički naziv), Limo QR workflow ukinut, Control provjera dnevne naknade, Termini bez limo putničkih kategorija 4+1–7+1, **Promjena tablica** (bivše Predstojeće rezervacije). Sažetak: `project-done.md` sekcija 2026-06.
 
-**Produkcija V2 (2026-06-19):** E2E validacija na **`https://bus-v2.kotor.me`** završena; produkcijski rad na **`https://bus.kotor.me`**. Bankart callback na hostovanom domenu verifikovan. Otvoreno: `project-todo.md`.
+**Produkcija V2 (2026-06-19):** **`https://bus.kotor.me`** (folder `bus-v2.kotor.me`, baza `bus`). V1 rezerva: **`https://bus-v1.kotor.me`**. Cut-over + migracija 21.342 rezervacija: **`production-runbook.md`**. Otvoreno: **`project-todo.md`**.
 
 Ovaj fajl je **kratak smerač**. Detalji su podeljeni da bi novi chat mogao da učita samo ono što treba. Ako prilažeš samo folder **`docs/`**, počni od **[README.md](./README.md)** pa ovde.
 

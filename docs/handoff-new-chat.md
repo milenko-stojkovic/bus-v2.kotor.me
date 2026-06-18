@@ -8,25 +8,24 @@
 
 ## Trenutno stanje projekta (2026-06-19)
 
-| Okruženje | URL | Uloga |
-|-----------|-----|--------|
-| **V2 produkcija** | `https://bus.kotor.me` | **Aktivna produkcija** — V2 kod, pravi Bankart + fiskal |
-| **V2 staging (validacija)** | `https://bus-v2.kotor.me` | E2E validacija **završena** (2026-06-19); odvojena baza |
-| **Lokalno (Laragon)** | npr. `*.test` | Razvoj, PHPUnit, fake driver QA |
+| Okruženje | URL | Folder / baza |
+|-----------|-----|---------------|
+| **V2 produkcija** | `https://bus.kotor.me` | `bus-v2.kotor.me` → docroot `…/public`; MySQL **`bus`** |
+| **V1 rezerva** | `https://bus-v1.kotor.me` | stari folder **`bus.kotor.me`**; MySQL **`opstinakotor_busnova`** |
+| **V2 staging** | `https://bus-v2.kotor.me` | E2E validacija završena; odvojena baza |
+| **Lokalno** | npr. `*.test` | Laragon, PHPUnit |
 
-- **STAGING VALIDATION PHASE** završena; **produkcijski rad V2 započet** — v. `docs/project-done.md` (2026-06-19).
+- **Cut-over završen** — 21.342 rezervacija migrirana iz V1; detalji: `docs/production-runbook.md`, `docs/project-done.md`.
 - **Otvoreno:** `docs/project-todo.md` (`late_success`, operativni audit, fiskalni PDF poslije retry-a, mobile plan…).
 
-### Queue worker (Plesk staging)
+### Queue / scheduler (produkcija)
 
-Plesk **nema** Supervisor niti Laravel Toolkit Queue. Obrada reda:
+Plesk cron na **`bus-v2.kotor.me/`**:
 
-- Scheduled task **`queue-worker.php`**, cron **`* * * * *`**
-- Worker **ostaje aktivan ~55 s** (`--max-time=55`, `--sleep=1`) — **bez** `--stop-when-empty`
-- Lock **`plesk_queue_worker_bus_v2`** (70 s, `Cache::lock` ili `storage/framework/queue-worker.lock`) sprječava preklapanje sa sljedećim cron tickom
-- Detalji: `docs/cron-commands.md` § Plesk fallback, `queue-worker.php`
+- **`schedule-run.php`** → `schedule:run`
+- **`queue-worker.php`** → `queue:work --stop-when-empty` (sprečava gomilanje worker procesa)
 
-Paralelno: **`schedule-run.php`** za `php artisan schedule:run`.
+Repozitorijumska `queue-worker.php` za staging koristi drugačiju politiku (`--max-time=55`, bez `--stop-when-empty`) — v. `cron-commands.md`.
 
 ---
 
@@ -37,7 +36,7 @@ Prilagodi putanju ako radni folder nije isti.
 ```
 Radiš na Laravel 12 (PHP 8.3) projektu bus.kotor.me (rezervacije autobusa, plaćanje, fiskalizacija).
 
-Okruženja: V2 produkcija https://bus.kotor.me (aktivna) | V2 staging https://bus-v2.kotor.me (E2E validacija završena) | lokalno Laragon.
+Okruženja: V2 produkcija https://bus.kotor.me (folder bus-v2.kotor.me, baza bus) | V1 rezerva https://bus-v1.kotor.me (folder bus.kotor.me) | staging https://bus-v2.kotor.me | lokalno Laragon.
 
 Možeš priložiti folder docs/ (@docs) ili fajlove pojedinačno. Kratak indeks: docs/README.md
 
@@ -108,4 +107,4 @@ Duga jedna sesija (mnogo alata, terminal, kontekst) često **poveća potrošnju 
 
 ---
 
-Poslednje ažuriranje ovog fajla: 2026-06-19 (produkcija V2, staging validacija završena, Plesk queue worker)
+Poslednje ažuriranje ovog fajla: 2026-06-19 (cut-over V1→V2, hosting topologija, migracija 21.342 rezervacija)

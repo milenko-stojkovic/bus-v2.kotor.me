@@ -35,14 +35,16 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 
 ### 0.2 Okruženja i URL-ovi (2026-06-19)
 
-| Okruženje | Javni URL | Napomena |
-|-----------|-----------|----------|
-| **V2 produkcija** | `https://bus.kotor.me` | **Aktivna** produkcija (V2 kod); pravi Bankart + fiskal |
-| **V2 staging (validacija)** | `https://bus-v2.kotor.me` | E2E validacija **završena** (2026-06-19); odvojena baza; ranije simulacija Bankart/fiskal |
-| **Lokalno** | npr. `https://bus.kotor.me.test` (Laragon) | Razvoj, PHPUnit, fake driver |
+| Okruženje | Javni URL | Folder / baza | Napomena |
+|-----------|-----------|---------------|----------|
+| **V2 produkcija** | `https://bus.kotor.me` | Plesk docroot → `bus-v2.kotor.me/public`; app folder **`bus-v2.kotor.me`**; MySQL **`bus`** | Aktivna produkcija; pravi Bankart + fiskal |
+| **V1 rezerva** | `https://bus-v1.kotor.me` | Stari folder **`bus.kotor.me`**; MySQL **`opstinakotor_busnova`** | Rollback / arhiva — ne dirati bez plana |
+| **V2 staging** | `https://bus-v2.kotor.me` | Odvojena staging instanca/baza | E2E validacija završena; ranije simulacija |
+| **Lokalno** | npr. `https://bus.kotor.me.test` | Laragon | Razvoj, PHPUnit, fake driver |
 
-- **`APP_URL`** na svakom okruženju mora odgovarati stvarnom HTTPS originu u browseru.
-- Topologija i operativa: **`docs/production-runbook.md`**; završeni zadaci: **`docs/project-done.md`**; otvoreno: **`docs/project-todo.md`**.
+- **`APP_URL=https://bus.kotor.me`** na produkciji (bez `www`; `www.bus.kotor.me` nije u upotrebi).
+- Cut-over, migracija rezervacija, `.env`, queue: **`docs/production-runbook.md`** § Cut-over V1 → V2.
+- Završeni zadaci: **`docs/project-done.md`**; otvoreno: **`docs/project-todo.md`**.
 
 ---
 

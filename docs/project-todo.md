@@ -4,7 +4,13 @@
 
 Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/project-done.md` i ukloni odavde.
 
-**Produkcija V2 je u hodu** — završena staging validacija i Bankart callback na hostovanom domenu v. `project-done.md` (2026-06-19). Ovaj fajl sadrži **samo preostalo**.
+**Produkcija V2 je u hodu** na `https://bus.kotor.me` (folder `bus-v2.kotor.me`, baza `bus`). V1 rezerva: `https://bus-v1.kotor.me`. Cut-over rezime: `production-runbook.md`. Ovaj fajl sadrži **samo preostalo**.
+
+---
+
+## 1. Post-cut-over operativa
+
+- [ ] Ukloniti privremene migracione tabele **`v1_reservations`** i **`v1_vehicle_types`** iz baze **`bus`** nakon nekoliko dana provjere (rollback rezerva dok stoje).
 
 ---
 
