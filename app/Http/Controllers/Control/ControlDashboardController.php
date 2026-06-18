@@ -44,7 +44,7 @@ class ControlDashboardController extends Controller
             'arrivalGroups' => $arrivalGroups,
             'searchResults' => $searchResults,
             'vehicleTypes' => $vehicleTypes,
-            'searchInput' => $request->only(['date', 'name', 'email', 'vehicle_type_id', 'license_plate']),
+            'searchInput' => $request->only(['date', 'name', 'email', 'vehicle_type_id', 'license_plate', 'status']),
             'capacityCharts' => $capacityCharts->todayAndTomorrow(),
         ]);
     }
@@ -79,6 +79,10 @@ class ControlDashboardController extends Controller
         if ($request->filled('license_plate')) {
             $raw = (string) $request->input('license_plate');
             $q->whereRaw('LOWER(license_plate) like ?', ['%'.strtolower(str_replace(['%', '_'], ['\\%', '\\_'], $raw)).'%']);
+        }
+
+        if ($request->filled('status')) {
+            $q->where('status', (string) $request->input('status'));
         }
 
         return $q

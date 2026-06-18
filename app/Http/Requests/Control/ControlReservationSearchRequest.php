@@ -23,12 +23,13 @@ class ControlReservationSearchRequest extends FormRequest
             'email' => ['nullable', 'string', 'max:255'],
             'vehicle_type_id' => ['nullable', 'integer', 'exists:vehicle_types,id'],
             'license_plate' => ['nullable', 'string', 'max:64'],
+            'status' => ['nullable', 'string', 'in:paid,free'],
         ];
     }
 
     public function hasSearchCriteria(): bool
     {
-        foreach (['date', 'name', 'email', 'vehicle_type_id', 'license_plate'] as $key) {
+        foreach (['date', 'name', 'email', 'vehicle_type_id', 'license_plate', 'status'] as $key) {
             $v = $this->input($key);
             if ($v !== null && $v !== '') {
                 return true;

@@ -103,6 +103,14 @@
                 <x-input-label for="c_plate" value="Registarske oznake" />
                 <x-text-input id="c_plate" class="block mt-1 w-full" type="text" name="license_plate" :value="old('license_plate', $searchInput['license_plate'] ?? '')" />
             </div>
+            <div>
+                <x-input-label for="c_status" value="Status" />
+                <select id="c_status" name="status" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500">
+                    <option value="" @selected((string) old('status', $searchInput['status'] ?? '') === '')>— Bilo koji —</option>
+                    <option value="paid" @selected((string) old('status', $searchInput['status'] ?? '') === 'paid')>Plaćena</option>
+                    <option value="free" @selected((string) old('status', $searchInput['status'] ?? '') === 'free')>Besplatna</option>
+                </select>
+            </div>
             <div class="flex items-end">
                 <x-primary-button type="submit" name="search" value="1" class="w-full sm:w-auto justify-center">
                     Pretraži
@@ -127,6 +135,7 @@
                                 <th class="py-2 pr-4">Email</th>
                                 <th class="py-2 pr-4">Registarske oznake</th>
                                 <th class="py-2 pr-4">Tip vozila</th>
+                                <th class="py-2 pr-4">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -139,6 +148,7 @@
                                     <td class="py-2 pr-4">{{ $r->email }}</td>
                                     <td class="py-2 pr-4 font-medium">{{ $r->license_plate }}</td>
                                     <td class="py-2 pr-4">{{ $r->vehicleType->formatLabel('cg', 'EUR') }}</td>
+                                    <td class="py-2 pr-4">{{ $r->status === 'free' ? 'Besplatna' : 'Plaćena' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

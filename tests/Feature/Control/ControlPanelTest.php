@@ -156,6 +156,62 @@ class ControlPanelTest extends TestCase
         $response->assertSessionHasErrors('search');
     }
 
+    public function test_search_filters_by_paid_or_free_status(): void
+    {
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+        $date = now()->addDays(3)->format('Y-m-d');
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => $date,
+            'user_name' => 'Paid User',
+            'country' => 'ME',
+            'license_plate' => 'PG PAID1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'paid@example.test',
+            'status' => 'paid',
+        ]);
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => $date,
+            'user_name' => 'Free User',
+            'country' => 'ME',
+            'license_plate' => 'PG FREE1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'free@example.test',
+            'status' => 'free',
+        ]);
+
+        $admin = Admin::where('email', 'field@example.test')->first();
+        $this->actingAs($admin, 'control');
+
+        $this->get('/control?search=1&status=paid&date='.$date)
+            ->assertOk()
+            ->assertSee('PG PAID1', false)
+            ->assertDontSee('PG FREE1', false);
+
+        $this->get('/control?search=1&status=free&date='.$date)
+            ->assertOk()
+            ->assertSee('PG FREE1', false)
+            ->assertDontSee('PG PAID1', false);
+    }
+
+    public function test_search_by_status_alone_is_valid_criteria(): void
+    {
+        $this->createControlAdmin();
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $this->get('/control?search=1&status=free')
+            ->assertOk()
+            ->assertSessionDoesntHaveErrors('search');
+    }
+
     private function createControlAdmin(): Admin
     {
         return Admin::query()->create([
