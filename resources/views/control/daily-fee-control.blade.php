@@ -120,7 +120,6 @@
                             <th class="py-2 pr-4">Registarska tablica</th>
                             <th class="py-2 pr-4">Agencija / korisnik</th>
                             <th class="py-2 pr-4">Tip vozila</th>
-                            <th class="py-2 pr-4">Email</th>
                             <th class="py-2 pr-4">Vrijeme kupovine / kreiranja</th>
                             <th class="py-2 pr-4">Datum važenja</th>
                         </tr>
@@ -131,7 +130,6 @@
                                 <td class="py-2 pr-4 font-medium">{{ $row['license_plate'] }}</td>
                                 <td class="py-2 pr-4">{{ $row['user_name'] }}</td>
                                 <td class="py-2 pr-4">{{ $row['vehicle_type_label'] }}</td>
-                                <td class="py-2 pr-4 break-all">{{ $row['email'] }}</td>
                                 <td class="py-2 pr-4 whitespace-nowrap">{{ $row['created_at'] }}</td>
                                 <td class="py-2 pr-4 whitespace-nowrap">{{ $row['reservation_date'] }}</td>
                             </tr>
