@@ -95,15 +95,74 @@ class VehicleType extends Model
         $desc = trim((string) ($translatedDescription ?? ''));
         $price = is_numeric((string) $this->price) ? number_format((float) $this->price, 2, '.', '') : null;
 
-        $label = $name;
-        if ($desc !== '') {
-            $label .= ' ('.$desc.')';
-        }
+        $label = $this->composeNameAndDescription($name, $desc);
         if ($price !== null) {
             $label .= ' - '.$price.' '.$currency;
         }
 
         return $label;
+    }
+
+    /**
+     * Control panel label: localized name + description, without price.
+     * When description is already a full label (production format), it is shown as-is.
+     */
+    public function formatControlLabel(string $locale): string
+    {
+        $translatedName = $this->getTranslatedName($locale);
+        $translatedDescription = $this->getTranslatedDescription($locale);
+
+        $name = trim($translatedName);
+        $desc = trim((string) ($translatedDescription ?? ''));
+
+        if ($name === '' && $desc === '') {
+            Log::warning('vehicle_type_translation_missing', [
+                'vehicle_type_id' => $this->id,
+                'locale' => $locale,
+                'has_name_translation' => $translatedName !== '',
+                'has_description_translation' => trim((string) ($translatedDescription ?? '')) !== '',
+            ]);
+
+            return '#'.$this->id;
+        }
+
+        if ($desc === '') {
+            return $name !== '' ? $name : '#'.$this->id;
+        }
+
+        if ($this->descriptionAlreadyIncludesName($name, $desc)) {
+            return $desc;
+        }
+
+        if (preg_match('/\([^)]+\)/', $desc) === 1) {
+            return $desc;
+        }
+
+        return $name !== '' ? $this->composeNameAndDescription($name, $desc) : $desc;
+    }
+
+    private function composeNameAndDescription(string $name, string $desc): string
+    {
+        if ($desc === '') {
+            return $name;
+        }
+
+        if ($this->descriptionAlreadyIncludesName($name, $desc)) {
+            return $desc;
+        }
+
+        return $name.' ('.$desc.')';
+    }
+
+    private function descriptionAlreadyIncludesName(string $name, string $desc): bool
+    {
+        if ($name === '') {
+            return false;
+        }
+
+        return $desc === $name
+            || str_starts_with($desc, $name.' (')
+            || str_starts_with($desc, $name.'(');
     }
 
     private function translationFor(string $locale): ?VehicleTypeTranslation

@@ -62,6 +62,44 @@ class ControlPanelTest extends TestCase
         $this->assertGuest('control');
     }
 
+    public function test_arrivals_shows_vehicle_type_without_duplicate_name_or_price(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-10 12:00:00', 'Europe/Belgrade'));
+
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '13:00 - 13:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '20:00 - 20:20']);
+        $vehicleType = VehicleType::query()->create(['price' => 15]);
+        VehicleTypeTranslation::query()->create([
+            'vehicle_type_id' => $vehicleType->id,
+            'locale' => 'cg',
+            'name' => 'Putničko vozilo',
+            'description' => 'Putničko vozilo (4+1, 5+1, 6+1 i 7+1 mjesta)',
+        ]);
+        $this->createControlAdmin();
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-06-10',
+            'user_name' => 'Test User',
+            'country' => 'ME',
+            'license_plate' => 'PG AA 123',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'guest@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+        $response = $this->get('/control');
+
+        $response->assertOk();
+        $response->assertSee('13:00 - 13:20', false);
+        $response->assertSee('PG AA 123', false);
+        $response->assertSee('Putničko vozilo (4+1, 5+1, 6+1 i 7+1 mjesta)', false);
+        $response->assertDontSee('Putničko vozilo (Putničko vozilo', false);
+        $response->assertDontSee('15.00 EUR', false);
+    }
+
     public function test_arrivals_lists_reservation_in_next_one_hour_window(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-06-10 12:00:00', 'Europe/Belgrade'));
