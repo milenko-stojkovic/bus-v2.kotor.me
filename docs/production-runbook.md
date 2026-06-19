@@ -204,6 +204,6 @@ php artisan event:cache
 
 - [x] ~~Ukloniti privremene tabele `v1_reservations`, `v1_vehicle_types`~~ — **urađeno** (2026-06-19, v. `project-done.md`)
 - [ ] Backup / rollback plan: V1 dostupan na `https://bus-v1.kotor.me` (folder `bus.kotor.me`, baza `opstinakotor_busnova`)
-- [ ] Monitoring: `payments.log`, `failed_jobs`, `post_fiscalization_data`, `admin_alerts`
+- [ ] Monitoring (rutina): `payments.log`, `failed_jobs`, `post_fiscalization_data`, `admin_alerts` — operativni pregled; finiji pragovi alerta = post-production hardening u **`project-todo.md`** §1
 
 Detaljna operativna checklista: **`docs/production-readiness-and-disaster-recovery.md`**.

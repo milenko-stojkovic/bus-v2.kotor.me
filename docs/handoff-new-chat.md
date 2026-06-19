@@ -17,7 +17,7 @@
 
 - **Cut-over završen** — 21.342 rezervacija migrirana iz V1; detalji: `docs/production-runbook.md`, `docs/project-done.md`.
 - **Dokumentacija = izvor istine:** produkcijski audit docs↔kod završen **2026-06-19** (`project-done.md`); canonical payment: `payment-state-machine.md`.
-- **Otvoreno:** `docs/project-todo.md` (operativni audit, fiskalni PDF poslije retry-a, mobile plan…).
+- **Otvoreno:** `docs/project-todo.md` — **post-production hardening** (operativno fino podešavanje), fiskalni PDF poslije retry-a, mobile plan… (nije produkcijska blokada).
 
 ### Nedavno u `main` (2026-06-19, detalji u `project-done.md` § Admin / UX)
 

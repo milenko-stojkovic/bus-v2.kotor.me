@@ -4,7 +4,7 @@
 
 **Završena tranzicija (2026-06):** Dnevna naknada / Daily fee (korisnički naziv), Limo QR workflow ukinut, Control provjera dnevne naknade, Termini bez limo putničkih kategorija 4+1–7+1, **Promjena tablica** (bivše Predstojeće rezervacije). Sažetak: `project-done.md` sekcija 2026-06.
 
-**Produkcija V2 (2026-06-19):** **`https://bus.kotor.me`** (folder `bus-v2.kotor.me`, baza `bus`). V1 rezerva: **`https://bus-v1.kotor.me`**. Cut-over + migracija 21.342 rezervacija: **`production-runbook.md`**. Otvoreno: **`project-todo.md`**.
+**Produkcija V2 (2026-06-19):** **`https://bus.kotor.me`** (folder `bus-v2.kotor.me`, baza `bus`). V1 rezerva: **`https://bus-v1.kotor.me`**. Cut-over + migracija 21.342 rezervacija: **`production-runbook.md`**. Otvoreno u **`project-todo.md`**: post-go-live **operational tuning / production hardening** (npr. retencija `temp_data`, alert pragovi) — **ne** blokada za rad produkcije.
 
 Ovaj fajl je **kratak smerač**. Detalji su podeljeni da bi novi chat mogao da učita samo ono što treba. Ako prilažeš samo folder **`docs/`**, počni od **[README.md](./README.md)** pa ovde.
 
@@ -16,7 +16,7 @@ Ovaj fajl je **kratak smerač**. Detalji su podeljeni da bi novi chat mogao da u
 |----------|--------|
 | **[README.md](./README.md)** | **Ulaz u `docs/`** za novi chat (`@docs`) — redosled čitanja + linkovi |
 | **[handoff-new-chat.md](./handoff-new-chat.md)** | Tekst za **kopiranje u prvu poruku** novog Cursor chata + kako održavati liste + napomena o dugim sesijama |
-| **[project-todo.md](./project-todo.md)** | Šta je **otvoreno** (čekiraj / briši kad završiš) |
+| **[project-todo.md](./project-todo.md)** | Šta je **otvoreno** — uključujući **post-production hardening** (operativno fino podešavanje, ne blokada produkcije) |
 | **[project-done.md](./project-done.md)** | Šta je **urađeno** (dodaj datum kad premestiš iz TODO) |
 | **[project-conventions.md](./project-conventions.md)** | Pravila: prevodi, mail, queue, rute, parking |
 

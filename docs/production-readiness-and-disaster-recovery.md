@@ -8,7 +8,7 @@
 
 ## 1. Svrha dokumenta
 
-- **Operativna spremnost:** jasno šta mora raditi u produkciji (scheduler, queue, okruženje, integracije) prije nego što se očekuju prave uplate i fiskalizacija.
+- **Operativna spremnost:** jasno šta mora raditi u produkciji (scheduler, queue, okruženje, integracije). **V2 je u produkciji** (`https://bus.kotor.me`) — baseline monitoring, alerti, recovery i payment/fiskal tok su operativni; finija politika retencije/alerta i audit granice = **post-go-live hardening** u [`project-todo.md`](./project-todo.md) §1 (nije blokada).
 - **Spremnost za obnovu:** šta treba imati (backup, konfiguracija, znanje) da se servis vrati nakon kvara ili gubitka servera — bez oslanjanja na „poznato je samo jednom čovjeku”.
 - **Izbjegavanje implicitnih pretpostavki:** credentials, cron, worker procesi i privatni disk nisu vidljivi iz samog Git repozitorijuma; ovaj dokument navodi **šta operativno treba evidentirati** izvan koda.
 
@@ -114,7 +114,7 @@ Provjera prije/po puštanju u rad (checklist). Prilagoditi hosting (Plesk, syste
 | **Raspored cron / systemd / supervisor** | Da novi server zna kako pokretati `schedule:run` i `queue:work` |
 | **nginx / Apache / Plesk** | Virtual host, SSL, putanje do `public/`, limiti uploada |
 
-**Politika zadržavanja:** dogovoriti retenciju (npr. dnevni + sedmični + mjesečni) i gdje se čuvaju kopije (odvojeni medij / drugi region).
+**Politika zadržavanja:** dogovoriti retenciju (npr. dnevni + sedmični + mjesečni) i gdje se čuvaju kopije (odvojeni medij / drugi region). Detaljna dorada **`temp_data`** i srodnih operativnih podataka — **post-production hardening**, v. [`project-todo.md`](./project-todo.md) §1 (ne blokada za trenutni rad).
 
 ---
 

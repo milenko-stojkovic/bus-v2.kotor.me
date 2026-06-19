@@ -8,9 +8,11 @@ Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/pr
 
 ---
 
-## 1. Operativno / audit
+## 1. Operativno / audit — post-production hardening
 
-*(Nadogradnja politika i rubnih slučajeva — **ne** podrazumijeva da monitoring/recovery nedostaje; v. `admin-panel.md`, `cron-commands.md`.)*
+Ove stavke **nisu blokada za produkciju**. Predviđene su za **doradu nakon prvih dana ili sedmica** realnog rada V2, kada bude jasno šta predstavlja normalan produkcijski šum, koje operativne podatke treba trajno čuvati, a koje arhivirati ili uklanjati.
+
+**Već postoji u produkciji (ne čeka ove stavke):** monitoring i alerti (`admin-panel.md`, `alerts:system-health`), recovery (`failed_jobs`, MEGA retry, fiskal retry), scheduler i queue, payment/fiskal tok, **`late_success`** staff workflow. Ovdje su samo **operativno fino podešavanje** i **production hardening** po iskustvu.
 
 - [ ] Politika retencije `temp_data` i povezanih operativnih podataka (cleanup / audit granice).
 - [ ] Dodatno fino podešavanje alerting politike (`admin_alerts`, severity, kanali, pragovi) po realnom produkcijskom iskustvu.
