@@ -180,6 +180,7 @@ php artisan event:cache
 - [ ] **`GET /up`** (health) — 200.
 - [ ] Jedan test checkout (staging ili mali iznos): callback → rezervacija u bazi → `payments.log` bez greške.
 - [ ] **`storage/logs/payments.log`** — proveriti `payment_reservation_created`, po potrebi `payment_fiscal_success` / `invoice_email_sent`.
+- [ ] **Uputstvo za agencije (PDF):** `GET /docs/cgbuskotor.pdf` i `/docs/engbuskotor.pdf` vraćaju 200 (fajlovi u `public/docs/`, v. **`docs/agency-user-guide.md`**).
 
 ---
 

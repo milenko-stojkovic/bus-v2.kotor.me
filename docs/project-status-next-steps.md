@@ -60,7 +60,7 @@ Ovi fajlovi treba da prate trenutni kod; v. `project-conventions.md` § 8.
 | Jezik, PDF, callback | [language-and-invoice-rules.md](./language-and-invoice-rules.md) |
 | Auth vs guest | [auth-and-guests.md](./auth-and-guests.md) |
 | Agency panel (rezervacije, Promjena tablica, realized, user) | [agency-panel.md](./agency-panel.md) |
-| Korisničko uputstvo agencija (CG+EN, PDF) | [agency-panel.md](./agency-panel.md) — `config/user-guides.php`, `public/docs/*.pdf` |
+| Korisničko uputstvo agencija (PDF, CG+EN) | [agency-user-guide.md](./agency-user-guide.md) |
 | Limo service (legacy QR + informativna stranica) | [limo-service.md](./limo-service.md) |
 | Control panel (dolasci, **dnevna naknada**, guard `control`) | [control-panel.md](./control-panel.md) |
 | Admin (spec + šta je urađeno) | [admin-panel.md](./admin-panel.md) |

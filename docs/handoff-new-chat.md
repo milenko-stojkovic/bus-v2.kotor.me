@@ -22,7 +22,7 @@
 ### Nedavno u `main` (2026-06-19, detalji u `project-done.md` § Admin / UX)
 
 - **Admin Uvid → Avansna uplata** — `/admin/uvid/avans` (`agency_advance_topups` + payments log); tab pored Uvida za rezervacije.
-- **PDF uputstvo** — landing + agency panel (`config/user-guides.php`, fajlovi u `public/docs/` ručno na serveru).
+- **PDF uputstvo za agencije** — `public/docs/cgbuskotor.pdf` (CG), `engbuskotor.pdf` (EN); v. **`docs/agency-user-guide.md`**; link na landing-u i u panelu (`config/user-guides.php`).
 - **`temp_data` pending** — istek nakon **5 min** (`RESERVATIONS_PENDING_EXPIRE_MINUTES`, cron svakih 5 min).
 - Admin dashboard: kartice **dnevne naknade** danas/sutra; Control lista: **Ukupno vozila**; heuristička pretraga **agencija**; uppercase **tablica** u admin pretrazi rezervacija.
 

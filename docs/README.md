@@ -23,7 +23,7 @@
 | Admin panel | [admin-panel.md](./admin-panel.md) (Uvid: rezervacije §8.1 + avans §8.2) |
 | Limo (stanje u kodu) | [limo-service.md](./limo-service.md) |
 | Agencijski panel | [agency-panel.md](./agency-panel.md) |
-| Korisničko uputstvo za agencije (CG+EN, PDF) | [agency-panel.md](./agency-panel.md) — `public/docs/cgbuskotor.pdf` / `engbuskotor.pdf` (ručni upload na server) |
+| Korisničko uputstvo za agencije (CG+EN, PDF) | [agency-user-guide.md](./agency-user-guide.md) → `public/docs/cgbuskotor.pdf`, `engbuskotor.pdf` |
 | Šalter / dolasci | [control-panel.md](./control-panel.md) |
 | Zakazani zadaci | [scheduled-tasks-overview.md](./scheduled-tasks-overview.md) |
 | Operativna spremnost, backup, DR | [production-readiness-and-disaster-recovery.md](./production-readiness-and-disaster-recovery.md) |

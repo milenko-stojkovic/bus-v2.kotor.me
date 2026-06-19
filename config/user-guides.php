@@ -1,10 +1,12 @@
 <?php
 
 /**
- * Javna uputstva (PDF) — fajlovi u public/docs/, serviraju se direktno preko web servera.
+ * Javna uputstva za agencije (PDF) — fajlovi u public/docs/, serviraju se direktno preko web servera.
  *
- * Produkcija (Plesk): bus-v2.kotor.me/public/docs/cgbuskotor.pdf
- * URL: https://bus.kotor.me/docs/cgbuskotor.pdf
+ * Sadržaj: nastalo iz bivšeg docs/agency-user-guide.txt (uklonjen 2026-06-19).
+ * Dokumentacija: docs/agency-user-guide.md
+ *
+ * Produkcija: https://bus.kotor.me/docs/cgbuskotor.pdf | .../engbuskotor.pdf
  */
 return [
     'cg' => 'docs/cgbuskotor.pdf',

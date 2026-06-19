@@ -246,5 +246,6 @@ U **`docs/`** postoje dubiji opisi po domenima (payment, fiskal, cron, auth, adm
 ## 9. Agency panel (kratko)
 
 - Rute pod prefiksom **`/panel`**, vidi **`docs/agency-panel.md`** (rezervacije, vozila, upcoming/realized, korisnik, invoice).
+- **Korisničko uputstvo (PDF):** **`docs/agency-user-guide.md`** — `public/docs/cgbuskotor.pdf`, `engbuskotor.pdf`.
 - **Control:** prefiks **`/control`**, vidi **`docs/control-panel.md`**.
 - Korisnički tab: **`/panel/user`** — forma u `panel/partials/user-settings-form.blade.php`, **`PATCH /profile`**; brisanje naloga koristi **`user.delete_account_*`** u **`ui_translations`**.
