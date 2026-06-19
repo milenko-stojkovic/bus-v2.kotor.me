@@ -11,8 +11,10 @@
 
 <x-admin-panel-layout :page-title="$pageTitle ?? 'Uvid'" nav-active="insight">
     <div class="space-y-6">
+        @include('admin-panel.insight._tabs', ['insightTab' => $insightTab ?? 'reservations'])
+
         <div>
-            <h1 class="text-lg font-semibold text-gray-900">Uvid</h1>
+            <h1 class="text-lg font-semibold text-gray-900">Uvid — plaćanje rezervacije</h1>
             <p class="text-sm text-gray-600 mt-1">Read-only uvid u payment pokušaje (primarni izvor: temp_data). Osnovna jedinica je merchant_transaction_id.</p>
         </div>
 

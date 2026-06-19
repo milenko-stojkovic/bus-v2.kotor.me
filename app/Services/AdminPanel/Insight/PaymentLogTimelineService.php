@@ -121,7 +121,10 @@ final class PaymentLogTimelineService
     private function extractLabel(string $line): string
     {
         $l = mb_strtolower($line);
-        if (str_contains($l, 'createSession') || str_contains($l, 'createsession')) {
+        if (str_contains($l, 'advance_topup')) {
+            return 'advance topup';
+        }
+        if (str_contains($l, 'createsession')) {
             return 'createSession';
         }
         if (str_contains($l, 'callback')) {

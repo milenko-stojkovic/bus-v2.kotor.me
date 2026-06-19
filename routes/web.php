@@ -13,6 +13,7 @@ use App\Http\Controllers\AdminPanel\BlockingController as AdminPanelBlockingCont
 use App\Http\Controllers\AdminPanel\FailedExternalArchiveController;
 use App\Http\Controllers\AdminPanel\FreeReservationController as AdminPanelFreeReservationController;
 use App\Http\Controllers\AdminPanel\FzbrAttachmentPreviewController;
+use App\Http\Controllers\AdminPanel\AdvanceInsightController as AdminPanelAdvanceInsightController;
 use App\Http\Controllers\AdminPanel\InsightController as AdminPanelInsightController;
 use App\Http\Controllers\AdminPanel\ReportsController as AdminPanelReportsController;
 use App\Http\Controllers\AdminPanel\ReservationController as AdminPanelReservationController;
@@ -84,6 +85,8 @@ Route::prefix('admin')->name('panel_admin.')->group(function () {
         Route::post('agencije/{user}/avans/korekcija', [AdminPanelAgencyController::class, 'storeAdvanceCorrection'])->name('agencies.advance.correction.store');
         Route::post('agencije/{user}/avans/topups/{topup}/confirmation/resend', [AdminPanelAgencyController::class, 'resendAdvanceTopupConfirmation'])->name('agencies.advance.topups.confirmation.resend');
 
+        Route::get('uvid/avans', [AdminPanelAdvanceInsightController::class, 'index'])->name('insight.advance');
+        Route::get('uvid/avans/{merchantTransactionId}', [AdminPanelAdvanceInsightController::class, 'show'])->name('insight.advance.show');
         Route::get('uvid', [AdminPanelInsightController::class, 'index'])->name('insight');
         Route::get('uvid/{merchantTransactionId}', [AdminPanelInsightController::class, 'show'])->name('insight.show');
 

@@ -24,6 +24,7 @@ class InsightController extends Controller
 
         return view('admin-panel.insight.index', [
             'navActive' => 'insight',
+            'insightTab' => 'reservations',
             'pageTitle' => 'Uvid',
             'countries' => (array) config('countries', []),
             'statuses' => [
@@ -56,6 +57,7 @@ class InsightController extends Controller
 
         return view('admin-panel.insight.show', [
             'navActive' => 'insight',
+            'insightTab' => 'reservations',
             'pageTitle' => 'Uvid — '.$merchantTransactionId,
             'case' => $case,
         ]);

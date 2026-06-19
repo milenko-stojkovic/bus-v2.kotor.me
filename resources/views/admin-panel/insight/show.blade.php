@@ -46,6 +46,8 @@
 
 <x-admin-panel-layout :page-title="$pageTitle ?? 'Uvid'" nav-active="insight">
     <div class="space-y-6" x-data="{copied:false}">
+        @include('admin-panel.insight._tabs', ['insightTab' => $insightTab ?? 'reservations'])
+
         @php
             $rq = (string) request()->query('rq', '');
             $backUrl = route('panel_admin.insight', [], false);
