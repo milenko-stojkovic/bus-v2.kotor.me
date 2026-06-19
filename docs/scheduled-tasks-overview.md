@@ -66,9 +66,8 @@ Možeš ih pokrenuti pojedinačno. Na **Windowsu** u Cursor terminalu često **`
 
 ## Napomena za late_success
 
-- Trenutno je `reservations:assign-late-success` u V1 režimu definisan kao stub:
-  - ne kreira automatski rezervaciju,
-  - služi da redovi ostanu dostupni za admin manual review flow.
+- **`reservations:assign-late-success`** je **namjerno no-op stub** — ne kreira automatski rezervaciju.
+- **`late_success`** redovi ostaju u **`temp_data`** za **ručni** staff pregled: **`/staff/late-success`** (force / reject). V. **`payment-state-machine.md`** §4b, **`payment-states.md`**.
 
 ## Dodatno (nije scheduled task)
 

@@ -67,11 +67,11 @@ Puna tabela rasporeda: **`docs/scheduled-tasks-overview.md`**.
 
 **Komanda:** `reservations:assign-late-success`
 
-**Opis:** Proverava temp_data slogove sa statusom **late_success**. **Trenutno stub** — v. `AssignLateSuccessReservations.php`. Planirani/automatski tok treba da bude usklađen sa admin flow-om (`LateSuccessController`) i politikom audit trail-a (`temp_data` se ne briše bez eksplicitnog pravila).
+**Opis:** Proverava temp_data slogove sa statusom **late_success**. **Namjerno no-op stub** — `handle()` ne kreira rezervacije i ne mijenja redove (`AssignLateSuccessReservations.php`). **`late_success` obrada je ručna:** staff workflow **`/staff/late-success`** (`LateSuccessController`: force / reject). Automatska dodjela nije u planu (slot/kapacitet posle expire-a). V. **`payment-state-machine.md`** §4b, **`project-done.md`** (2026-06-19).
 
-**Frekvencija:** po potrebi (ručno ili svakih 5–15 minuta).
+**Frekvencija:** nije zakazana u produkciji (stub; ručno po potrebi samo za dijagnostiku).
 
-**Tabele:** temp_data, reservations.
+**Tabele:** temp_data (samo čitanje u stubu).
 
 ---
 
@@ -265,7 +265,7 @@ Sledeći job-ovi su **namerno izostavljeni** iz lokalnog scheduler-a (ne pojavlj
 
 Sledeće komande su **nezakazane** jer frekvencija u dokumentu nije striktno definisana (navedeno je opseg ili “po potrebi”):
 
-- `reservations:assign-late-success` — **Reason**: “po potrebi / 5–15 minuta” (nije striktna frekvencija)
+- `reservations:assign-late-success` — **Reason**: no-op stub; **`late_success`** se rješava ručno preko **`/staff/late-success`**, ne automatskim cron-om (v. `payment-state-machine.md` §4b)
 - `parking:update-availability` — **Reason**: “svakih 5–10 minuta” (nije striktna frekvencija)
 - `reservations:send-emails` — **Reason**: “svakih 5–10 minuta” (nije striktna frekvencija)
 

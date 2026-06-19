@@ -55,10 +55,10 @@ Datum provjere: prema checklisti. Cilj: potvrditi da je implementacija stabilna,
 | failed: oznaka failed, nema upisa u reservations, dozvoljen retry | ✅ | status canceled/expired; retry_token i GET /api/reservations/retry/{token}; novi pokušaj = novi merchant_transaction_id |
 | late_success: sistem prepoznaje kasni odgovor banke | ✅ | `PaymentCallbackJob` → `applyLateSuccess` **samo** ako je `temp_data` bio **`expired`** (ne i `canceled`); temp_data → late_success |
 | late_success: ako nije validna – incident za manual review | ⚠️ | **AssignLateSuccessReservations** je namjerno **stub**: late_success redovi ostaju u temp_data za admin pregled; automatsko kreiranje rezervacije nije u V1 (v. „Namjerna odstupanja“). |
-| late_success: ako validna – normalan success flow | ⚠️ | Isto: cron ne kreira rezervaciju u V1; planirano za kasniju fazu ili ručnu obradu. |
+| late_success: ako validna – normalan success flow | ✅ (ručno) | Cron **ne** kreira rezervaciju; staff **`/staff/late-success`** → **`force`** pokreće normalan success pipeline kad slot/kapacitet još važe. V. **`payment-state-machine.md`** §4b (2026-06). |
 | UI: late_success ne prikazuje se kao "pending" | ✅ | `PaymentResultResolver` vraća `status: 'late_success'`; `PaymentReturnController` radi **redirect** sa **`checkout_banner`** (info), ne meša se u pending ekran. |
 
-**Zaključak:** Cancel/error i failed flow su konzistentni. late_success je prepoznat i prikazan; obrada (kreiranje rezervacije / incident) je u planu (cron stub).
+**Zaključak:** Cancel/error i failed flow su konzistentni. **`late_success`** je prepoznat i prikazan; **kreiranje rezervacije je ručno** (staff force/reject), ne automatski cron — v. **`project-done.md`** (2026-06-19).
 
 ---
 
@@ -137,7 +137,7 @@ Datum provjere: prema checklisti. Cilj: potvrditi da je implementacija stabilna,
 
 - **Stabilno i konzistentno za V1:** generisanje merchant_transaction_id, callback na API ruti, state machine (pending → processed/failed/late_success), oslobađanje lock-ova, snapshot u reservations, success flow (fiskalizacija, PDF, email), retry za gosta, logovanje (uključujući init), queue worker dokumentovan u `docs/payment-architecture.md`.
 - **Prije produkcije s pravim gatewayom:** potvrditi da je `BANKART_SHARED_SECRET` set i da callback dolazi sa očekivanim header-ima (validator je već implementiran).
-- **Opciono:** implementirati **AssignLateSuccessReservations** (kreiranje rezervacije ili incident); dodati prijevode za late_success poruku (cg/en) ako treba.
+- **`late_success` obrada:** **`reservations:assign-late-success`** ostaje no-op stub; ručni tok **`/staff/late-success`** — v. **`payment-state-machine.md`** §4b (nije otvoreni TODO).
 
 ---
 
@@ -149,7 +149,7 @@ Sljedeća odstupanja od „idealnog“ checklist ponašanja su **namjerna** u V1
 |------------|--------|
 | **createSession poziv sync u web requestu** (točka 2) | V1 zahtjev: korisnik odmah dobija redirect na banku. Async job za createSession zahtijevao bi drugi mehanizam (npr. polling za payment_url), što mijenja UX. Zadržano sync u CheckoutController prema `docs/payment-architecture.md`. |
 | **Gateway poziv nije isključivo kroz Queue Job** | Isti razlog: init flow je sync; samo **obrada callbacka** ide kroz PaymentCallbackJob. |
-| **AssignLateSuccessReservations stub** (točka 4) | late_success redovi ostaju u temp_data; admin može pregledati. Automatsko kreiranje rezervacije ili „incident“ za manual review nije u opsegu V1; cron je placeholder za kasniju implementaciju. |
+| **AssignLateSuccessReservations stub** (točka 4) | **Finalno (2026-06):** no-op stub; **`late_success`** se rješava ručno preko **`/staff/late-success`** (force/reject). Automatska dodjela nije u planu (slot/kapacitet posle expire-a). V. **`payment-state-machine.md`** §4b. |
 | **temp_data redovi se ne brišu (na success)** (točka 7) | Namjerno: audit trail. „Briše se“ u smislu „završava grana“ = status prelazi u processed/canceled/expired/late_success. Fizičko brisanje je ograničeno na retention cleanup (brišu se samo stari ne-pending redovi). |
 
 **Usklađenost (2026-05):** Raniji red u ovoj tabeli koji je tvrdio da je **`RealCallbackSignatureValidator` „uvijek false“** bio je **zastario** i u kontradikciji sa §3 i §9 u ovom fajlu. Provjera Bankart HMAC potpisa na callbacku je **implementirana** (`RealCallbackSignatureValidator`, `BANKART_SHARED_SECRET`); za test se koristi fake validator. Kanonski opis: **`docs/payment-callback-handling.md`**, **`docs/payment-state-machine.md`**, te stavke u **`docs/project-done.md`** (Bankart inquiry / HMAC).

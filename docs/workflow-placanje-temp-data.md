@@ -92,7 +92,7 @@ Ako je `late_success` za **ulogovanu agenciju** i avans je uključen (`config('f
 | **processed** | Red u `temp_data` ostaje; rezervacija u `reservations`. |
 | **canceled** | Terminalno (bankovni neuspjeh); kasni SUCCESS ne menja status (v. §4). |
 | **expired** | Terminalno (cron istek pending); kasni SUCCESS → `late_success`. Red ostaje za audit; `temp-data:cleanup` briše stare ne-pending redove (default 180 dana). |
-| **late_success** / **late_manual_review** | Samo nakon **`expired`** + kasni SUCCESS; admin (`LateSuccessController`, `/staff/late-success`) ili cron stub (`reservations:assign-late-success`). |
+| **late_success** / **late_manual_review** | Samo nakon **`expired`** + kasni SUCCESS; **ručna** obrada preko **`/staff/late-success`** (`LateSuccessController`: force/reject). Komanda **`reservations:assign-late-success`** je **no-op stub** — nema automatske dodjele (v. `payment-state-machine.md` §4b). |
 | **pending → expired (cron)** | Komanda **`reservations:expire-pending`** (svakih **5 min**): pending stariji od **`pending_expire_minutes`** (default **5**, env `RESERVATIONS_PENDING_EXPIRE_MINUTES`) → **`expired`** + decrement `daily_parking_data.pending` (**samo Termini**). Oslobađa dupli-checkout lock ako `createSession` padne a red ostane `pending`. V. `cron-commands.md`. |
 
 **Napomena:** `reservations:process-pending` je **no-op stub** — ne mijenja `temp_data` (v. `cron-commands.md` §1).

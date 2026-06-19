@@ -8,19 +8,7 @@ Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/pr
 
 ---
 
-## 1. Post-cut-over operativa
-
-- [ ] Ukloniti privremene migracione tabele **`v1_reservations`** i **`v1_vehicle_types`** iz baze **`bus`** nakon nekoliko dana provjere (rollback rezerva dok stoje).
-
----
-
-## 2. `late_success` automatska obrada
-
-- [ ] Komanda `reservations:assign-late-success` je **stub** — definisati pravila: kada automatski kreirati rezervaciju iz `temp_data`, kada ostaviti incident / admin (`AssignLateSuccessReservations.php`).
-
----
-
-## 3. Operativno / audit
+## 1. Operativno / audit
 
 *(Nadogradnja politika i rubnih slučajeva — **ne** podrazumijeva da monitoring/recovery nedostaje; v. `admin-panel.md`, `cron-commands.md`.)*
 
@@ -31,19 +19,19 @@ Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/pr
 
 ---
 
-## 4. Fiskalni račun posle retry-a (ne žuriti implementaciju)
+## 2. Fiskalni račun posle retry-a (ne žuriti implementaciju)
 
 - [ ] Posle uspešne **naknadne fiskalizacije:** generisati **kompletan fiskalizovani PDF**, poslati korisniku; jasno razdvojiti od ranije poslatog **nefiskalnog** fallbacka; ne blokirati fiskal ako je nefiskal već poslat.
 
 ---
 
-## 5. Tehničke optimizacije (opciono)
+## 3. Tehničke optimizacije (opciono)
 
 - [ ] Migracija **`createSession`** sa sync web zahtjeva na async init preko queue-a.
 
 ---
 
-## 6. Future mobile platform readiness (plan / bez izmjena koda sada)
+## 4. Future mobile platform readiness (plan / bez izmjena koda sada)
 
 - [ ] **Android (agencije):** planirati Android aplikaciju za agency tokove (ulogovani `/panel`).
 - [ ] **Android (admin + control):** planirati Android aplikaciju za admin panel i control funkcionalnosti.

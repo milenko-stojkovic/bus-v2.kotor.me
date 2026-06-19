@@ -46,6 +46,12 @@ Stanja plaćanja i fiskalizacije. Rezervacija se **uvek** kreira na **success**;
 - **`canceled`** je **terminalno**: banka je već vratila neuspeh / otkaz; **`temp_data` ostaje `canceled`**. Ako banka naknadno pošalje **SUCCESS** (webhook ili inquiry → **`PaymentCallbackJob`**), sistem **ne** prelazi u **`late_success`** — log **`payment_success_after_canceled_ignored`** (`payments`), bez promene statusa, i **email administratoru** (**`AdminFiscalizationAlertService::notifyPaymentSuccessAfterCanceled`**, `payment.operations_alert_email`).
 - **`expired`**: cron je oslobodio lock (`reservations:expire-pending`). Kasni **SUCCESS** → **`applyLateSuccess`** → **`late_success`** (bez kreiranja rezervacije; audit + UX „kontaktirajte podršku“). V. **`PaymentCallbackJob`**.
 
+### Ručna obrada (`late_success` → staff)
+
+Automatsko kreiranje rezervacije iz **`late_success`** **nije** u upotrebi. Komanda **`reservations:assign-late-success`** je **namjerno no-op stub** — v. `AssignLateSuccessReservations.php`, `cron-commands.md` §3.
+
+Operativni tok: **`/staff/late-success`** (`LateSuccessController`) — pregled redova, **`POST …/force`** (ručno kreiranje rezervacije kad staff potvrdi), **`POST …/reject`** → `late_rejected`. Razlog: posle **`expired`** slot/kapacitet može biti zauzet drugom rezervacijom; automatska dodjela rizikuje pogrešan upis. Canonical: **`payment-state-machine.md`** §4b.
+
 ### Agency late_success → avans (feature-flag)
 
 Ako je `temp_data.status = late_success`, `temp_data.user_id` je set (agencija) i `config('features.advance_payments')` je ON:

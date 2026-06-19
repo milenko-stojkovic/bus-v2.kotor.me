@@ -93,6 +93,19 @@ Glavni tok checkout-a: **`pending` → …** (prelazi ispod).
 
 ---
 
+## 4b. `late_success` posle callback-a — ručna obrada (važeće)
+
+Nakon **`applyLateSuccess`**, **`temp_data` ostaje `late_success`** — callback **ne** kreira rezervaciju (v. tabela §4: `expired` + `success` → `late_success`).
+
+| Aspekt | Ponašanje |
+|--------|-----------|
+| **`reservations:assign-late-success`** | **Namjerno no-op stub** (`AssignLateSuccessReservations.php`). Nije otvorena implementacija automatske dodjele; nije u `project-todo.md`. |
+| **Staff workflow** | **`/staff/late-success`** — `LateSuccessController` (middleware `admin` na operativnom `User` nalogu): `GET` lista, `GET /{id}` detalj, `POST /{id}/force` (ručno kreiranje rezervacije), `POST /{id}/reject` → `late_rejected`. |
+| **Zašto nema automatske dodjele** | Posle **`expired`** slot/kapacitet može biti promijenjen; automatsko kreiranje rezervacije iz `late_success` rizikuje pogrešan upis u **`daily_parking_data`** / konflikt termina. |
+| **Agencija + avans** | Iznuzetak unutar callback grane: **`late_success` → avans** (feature `advance_payments`) — v. tabela §4; i dalje **bez** rezervacije. |
+
+---
+
 ## 5. Invarijante
 
 - HTTP checkout **ne** odlučuje konačan ishod plaćanja — samo kreira `pending` + session + redirect.
@@ -126,5 +139,7 @@ Glavni tok checkout-a: **`pending` → …** (prelazi ispod).
 - `app/Services/AdminFiscalizationAlertService.php` (payment + fiskal alerti, `Mail::raw`)
 - `app/Console/Commands/ExpirePendingReservations.php`
 - `app/Console/Commands/CheckPendingPaymentStatus.php` (samo dispatch joba)
+- `app/Console/Commands/AssignLateSuccessReservations.php` (no-op stub; nema automatske dodjele)
+- `app/Http/Controllers/Admin/LateSuccessController.php` (`/staff/late-success`)
 
 **Poslednje usklađivanje sa kodom:** dokument uveden kao canonical guardrail; pri promeni pravila u kodu **ažuriraj ovaj fajl** ili ispravi kod.

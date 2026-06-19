@@ -49,10 +49,10 @@ Prije finalnog puštanja uključen je Laravel **Maintenance Mode** da korisnici 
 
 ### Migracija rezervacija iz V1
 
-Podaci preneseni iz V1 tabele `reservations` u V2 bazu **`bus`**, preko privremenih tabela:
+Podaci preneseni iz V1 tabele `reservations` u V2 bazu **`bus`**, preko privremenih tabela (uklonjene nakon provjere — v. **`project-done.md`** 2026-06-19):
 
-- `v1_reservations`
-- `v1_vehicle_types`
+- `v1_reservations` *(uklonjena)*
+- `v1_vehicle_types` *(uklonjena)*
 
 **Ukupno preneseno:** **21.342** rezervacije.
 
@@ -76,7 +76,7 @@ Podaci preneseni iz V1 tabele `reservations` u V2 bazu **`bus`**, preko privreme
 
 **`daily_parking_data`:** ažurirana samo za datume koji **već postoje** u toj tabeli; istorijske rezervacije za prošle datume nisu uticale na kapacitet. Provjera `reserved > capacity` — **nijedan problem**.
 
-**Privremene tabele** `v1_reservations` / `v1_vehicle_types`: preporučljivo **zadržati nekoliko dana** radi provjere i rollback mogućnosti, zatim ukloniti (v. `project-todo.md`).
+**Privremene tabele** `v1_reservations` / `v1_vehicle_types`: korištene samo tokom migracije; **uklonjene** iz baze **`bus`** nakon potvrde stabilnog rada V2 (operativno, 2026-06-19). Rollback i dalje preko V1 rezerve na **`opstinakotor_busnova`**, ne preko ovih tabela.
 
 ### Seeder / referentni podaci
 
@@ -202,7 +202,7 @@ php artisan event:cache
 
 ## Produkcija V2 — operativa (kontinuirano)
 
-- [ ] Ukloniti privremene tabele `v1_reservations`, `v1_vehicle_types` nakon perioda provjere (nekoliko dana poslije cut-over-a) — v. `project-todo.md`
+- [x] ~~Ukloniti privremene tabele `v1_reservations`, `v1_vehicle_types`~~ — **urađeno** (2026-06-19, v. `project-done.md`)
 - [ ] Backup / rollback plan: V1 dostupan na `https://bus-v1.kotor.me` (folder `bus.kotor.me`, baza `opstinakotor_busnova`)
 - [ ] Monitoring: `payments.log`, `failed_jobs`, `post_fiscalization_data`, `admin_alerts`
 
