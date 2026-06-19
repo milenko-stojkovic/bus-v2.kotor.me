@@ -6,6 +6,16 @@ Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj
 
 ---
 
+## 2026-06 — Admin / UX (post cut-over)
+
+- **2026-06-19** — **Admin Uvid — avansna uplata:** tab **Avansna uplata** na **`GET /admin/uvid/avans`** (pretraga `agency_advance_topups`, detalj + ledger + bank payload + payments log timeline); tab **Plaćanje rezervacije** ostaje **`/admin/uvid`**; partial `_tabs.blade.php`; **`AdvanceInsightController`**, **`AdminAdvanceInsightService`**, **`AdminPanelAdvanceInsightSearchRequest`**; testovi **`AdminPanelAdvanceInsightTest`**; docs (`admin-panel.md` §8.2).
+- **2026-06-19** — **User guide PDF (landing + panel):** link pored jezičkih zastavica (prikaz samo ako fajl postoji); `config/user-guides.php` → `public/docs/cgbuskotor.pdf` / `engbuskotor.pdf` (PDF **nije** u gitu — ručni upload na server); partial `user-guide-pdf-link`; migracija UI prevoda; testovi **`UserGuidePdfLinkTest`**; docs (`agency-panel.md`).
+- **2026-06-19** — **temp_data pending expire 5 min:** default **`RESERVATIONS_PENDING_EXPIRE_MINUTES=5`**; cron **`reservations:expire-pending`** svakih **5 min** (`everyFiveMinutes`); oslobađa dupli-checkout lock brže nakon neuspjelog `createSession`; docs (`cron-commands.md`, `scheduled-tasks-overview.md`, `.env.example`).
+- **2026-06-19** — **Admin dashboard — dnevne naknade danas/sutra:** kartice **`DailyFeeReservationSummaryService`** na **`GET /admin`** (broj plaćenih `daily_ticket` za danas i sutra, Podgorica); testovi prošireni u **`AdminWarningsDashboardTest`**; docs (`admin-panel.md`).
+- **2026-06-19** — **Control — ukupan broj na listi dnevnih naknada:** naslov sekcije prikazuje **Ukupno vozila** (`DailyFeeControlService::total`); docs (`control-panel.md`).
+- **2026-06-19** — **Admin agencije — heuristička pretraga:** `GET /admin/agencije?q=` preko **`AdminAgencySearchService`** (isto kao admin pretraga rezervacija + space-insensitive ime); testovi **`AdminAgenciesTest`**; docs (`admin-panel.md` §9.1).
+- **2026-06-19** — **Admin rezervacije — uppercase tablica u pretrazi:** polje tablice u formi pretrage automatski **A–Z0–9**; docs (`admin-panel.md` §1.2).
+
 ## 2026-06 — Produkcija V2
 
 - **2026-06-19** — **Cut-over V1 → V2 (produkcija):** V2 na **`https://bus.kotor.me`** (Plesk docroot `bus-v2.kotor.me/public`, app folder **`bus-v2.kotor.me`**, baza **`bus`**). V1 rezerva: **`https://bus-v1.kotor.me`** → folder **`bus.kotor.me`**, baza **`opstinakotor_busnova`**. Maintenance mode tokom migracije, zatim isključen. Migracija **21.342** rezervacija (`paid` 20.934, `free` 408) preko `v1_reservations` / `v1_vehicle_types`; cijene po V1 tipu 1–4 → 15/20/40/50 €; `created_by_admin=0`; `daily_parking_data` ažuriran samo za postojeće datume (`reserved > capacity` OK). Seeder tabele zadržane, test podaci uklonjeni. `.env`: `APP_NAME=KotorBus`, `APP_URL=https://bus.kotor.me`. Laravel **12.52.0**, PHP **8.3.31**. SSL reissue za `bus.kotor.me`. Produkcioni tok potvrđen: Bankart → callback → rezervacija → fiskal → QR → PDF → email. Detalji: **`production-runbook.md`** § Cut-over.

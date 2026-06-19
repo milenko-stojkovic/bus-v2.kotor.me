@@ -4,7 +4,7 @@
 
 Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navigacija: `resources/views/layouts/navigation.blade.php`.
 
-**Uputstvo (PDF):** u navigaciji pored jezičkih zastavica — link se prikazuje samo ako fajl postoji na serveru. Putanja: **`public/docs/engbuskotor.pdf`** (EN) / **`public/docs/cgbuskotor.pdf`** (CG); konfiguracija `config/user-guides.php`. Detaljniji tekst uputstva za agencije: **`docs/agency-user-guide.txt`** (nije isti fajl kao javni PDF).
+**Uputstvo (PDF):** u navigaciji pored jezičkih zastavica — link se prikazuje samo ako fajl postoji na serveru. Putanja: **`public/docs/engbuskotor.pdf`** (EN) / **`public/docs/cgbuskotor.pdf`** (CG); konfiguracija **`config/user-guides.php`**; partial **`user-guide-pdf-link`** (landing/guest layout + agency nav). Detaljniji tekst uputstva za agencije: **`docs/agency-user-guide.txt`** (nije isti fajl kao javni PDF). Testovi: **`UserGuidePdfLinkTest`**.
 
 ---
 

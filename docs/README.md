@@ -20,7 +20,7 @@
 | Tema | Fajl |
 |------|------|
 | Payment / stanja / callback | [payment-state-machine.md](./payment-state-machine.md) (canonical), ostalo v. mapu iznad |
-| Admin panel | [admin-panel.md](./admin-panel.md) |
+| Admin panel | [admin-panel.md](./admin-panel.md) (Uvid: rezervacije §8.1 + avans §8.2) |
 | Limo (stanje u kodu) | [limo-service.md](./limo-service.md) |
 | Agencijski panel | [agency-panel.md](./agency-panel.md) |
 | Korisničko uputstvo za agencije (CG+EN) | [agency-user-guide.txt](./agency-user-guide.txt) |

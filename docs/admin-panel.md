@@ -147,6 +147,7 @@ Kontroler: **`WarningsController::index`**. Stranica ima tri bloka: **Upozorenja
 - **Vrsta rezervacije (filter):** **Sve** (podrazumijevano), **Termini** (`reservation_kind = time_slots`), **Dnevna naknada** (`daily_ticket`); kombinuje se sa ostalim kriterijumima (AND).
 - **Limo putnička vozila (4+1–7+1):** admin pretraga/uredi/PDF/analitika **ne mijenjaju** prikaz historijskih rezervacija sa tim kategorijama; nova ograničenja važe samo za **booking** (Termini isključuju tip; dnevna naknada u agenciji ga zadržava) — v. `docs/agency-panel.md`.
 - **Heuristika imena/emaila:** `AdminReservationSearchHeuristic` — jednostavne LIKE varijante (jedno izostavljeno slovo, zamena dva susedna; za ime normalizacija **doo** / **d.o.o.**).
+- **Tablica u pretrazi:** polje `license_plate` normalizuje unos na **A–Z0–9** (`oninput` uppercase u formi).
 - **Povratak sa edit strane:** query parametar **`rq`** čuva enkodiran prethodni query string pretrage; **`Odkaži`** i uspešan **`PUT`** vode na `GET /admin/rezervacije?{rq}`.
 - **Izmena termina po tipu:** `AdminReservationSlotRules` — **paid** i **free + `created_by_admin`** mogu na bilo koje validne termine; **free bez admin kreacije** samo u besplatnom prozoru (`FreeReservationRules::isFreeReservation`, npr. 1/41). **Paid** ostaje paid i pri premještaju u free termine; **`invoice_amount` se ne preračunava**. Status, MTID, `reservation_kind` i fiskalno stanje se **ne** mijenjaju. **Termini duplicate check** pri izmjeni datuma/slotova/tablice (`DuplicateReservationAttemptService`, isključuje trenutnu rezervaciju).
 - **Posle prošlog dolaska (isti dan):** `AdminReservationEditPolicy::isPickUpOnlyMode` — dozvoljena je izmjena samo pick-up termina i ostalih polja (ne datuma ni drop-off).
@@ -321,14 +322,21 @@ UI sekcija na dnu Analytics strane: **“Stanje avansa po agencijama”** (samo 
 
 ## 8. Uvid (admin panel) — implementirano
 
-Read-only modul, payment-centric (osnovna jedinica prikaza je `merchant_transaction_id`).
+Read-only modul, payment-centric (osnovna jedinica prikaza je `merchant_transaction_id`). U navigaciji **Uvid**; unutar modula **dva taba** (partial `admin-panel.insight._tabs`):
+
+| Tab | Ruta (index) | Primarni izvor |
+|-----|--------------|----------------|
+| **Plaćanje rezervacije** | `GET /admin/uvid` | `temp_data` |
+| **Avansna uplata** | `GET /admin/uvid/avans` | `agency_advance_topups` (samo ako je `advance_payments` ON) |
+
+Zajedničko: **log timeline** iz `payments-YYYY-MM-DD.log` (linije koje sadrže MTID), retention `config('logging.channels.payments.days')`; povratak sa detalja čuva query (`rq`).
+
+### 8.1 Plaćanje rezervacije (`temp_data`)
 
 - **Source of truth (search):** `temp_data`
 - **Dopuna:** `reservations` se pridružuje po istom MTID (ako postoji)
 - **Admin-free rezervacije:** ne pripadaju payment lifecycle-u; ako admin unese MTID koji postoji samo kao admin-free rezervacija, prikazuje se kratka napomena (bez payment detalja).
-- **Log timeline:** parsirana lista događaja iz `payments-YYYY-MM-DD.log` (samo linije koje eksplicitno sadrže MTID). Retention je usklađen sa `config('logging.channels.payments.days')`. Ako nema dostupnih logova u retention periodu: prikazuje se poruka *„Detaljni payment logovi nisu dostupni u retention periodu.“*
 - **Search UX:** polja `Država`, `Status (temp_data)` i `Resolution reason` su dropdown; `Tablica` se normalizuje na `A–Z0–9` (ALL CAPS); datumi se prikazuju kao `DD.MM.YYYY.`.
-- **Navigacija:** povratak sa detalja na listu čuva query string (`Nazad` vraća prethodne rezultate pretrage).
 
 | Ruta | Namena |
 |------|--------|
@@ -338,9 +346,32 @@ Read-only modul, payment-centric (osnovna jedinica prikaza je `merchant_transact
 - **Kontroler:** `App\Http\Controllers\AdminPanel\InsightController`.
 - **Validacija:** `App\Http\Requests\AdminPanel\AdminPanelInsightSearchRequest`.
 - **Servis:** `App\Services\AdminPanel\Insight\AdminInsightService`.
-- **Timeline parser:** `App\Services\AdminPanel\Insight\PaymentLogTimelineService`.
+- **Timeline parser:** `App\Services\AdminPanel\Insight\PaymentLogTimelineService` (labeli uključuju `createSession`, `callback`, `inquiry`, `advance topup`, …).
 
 **Testovi:** `tests/Feature/AdminPanel/AdminPanelInsightTest.php`.
+
+### 8.2 Avansna uplata (`agency_advance_topups`)
+
+Vidljivo samo kada je **`config('features.advance_payments')`** true; inače rute vraćaju **404**.
+
+- **Source of truth (search):** `agency_advance_topups`
+- **Dopuna na detalju:** agencija (`users`), ledger redovi (`agency_advance_transactions` po MTID), opciono `reservations` sa istim MTID (npr. `late_success` → avans konverzija), `bank_payload`, timeline iz payments loga (`advance_topup_*` ključevi).
+- **Search UX:** MTID (partial), datum od/do (`created_at`), agencija (ime ili email — `AdminAgencySearchService`), status topup-a (`pending` / `paid` / `failed` / `expired`).
+
+| Ruta | Namena |
+|------|--------|
+| `GET /admin/uvid/avans` | `panel_admin.insight.advance` — lista topup pokušaja + link `Detalji`. |
+| `GET /admin/uvid/avans/{merchantTransactionId}` | `panel_admin.insight.advance.show` — sekcije: topup, agencija (link na `panel_admin.agencies.show`), ledger, rezervacija (ako postoji), bank payload, timeline, Copy details. |
+
+- **Kontroler:** `App\Http\Controllers\AdminPanel\AdvanceInsightController`.
+- **Validacija:** `App\Http\Requests\AdminPanel\AdminPanelAdvanceInsightSearchRequest`.
+- **Servis:** `App\Services\AdminPanel\Insight\AdminAdvanceInsightService`.
+
+**Alternativa:** ista topup istorija (bez timeline-a) na **`GET /admin/agencije/{user}`** — §9.2; ponovno slanje potvrde — §9.4.
+
+**Testovi:** `tests/Feature/AdminPanel/AdminPanelAdvanceInsightTest.php`.
+
+**Napomena:** Plaćanje rezervacije **iz postojećeg avansa** (`payment_method=advance`) **ne** ide kroz Bankart ni ovaj Uvid — vidi odmah **`reservations`** (admin pretraga rezervacija) i ledger na detalju agencije.
 
 ## 6. Istorija plaćanja (registrovani korisnici)
 

@@ -18,6 +18,13 @@
 - **Cut-over završen** — 21.342 rezervacija migrirana iz V1; detalji: `docs/production-runbook.md`, `docs/project-done.md`.
 - **Otvoreno:** `docs/project-todo.md` (`late_success`, operativni audit, fiskalni PDF poslije retry-a, mobile plan…).
 
+### Nedavno u `main` (2026-06-19, detalji u `project-done.md` § Admin / UX)
+
+- **Admin Uvid → Avansna uplata** — `/admin/uvid/avans` (`agency_advance_topups` + payments log); tab pored Uvida za rezervacije.
+- **PDF uputstvo** — landing + agency panel (`config/user-guides.php`, fajlovi u `public/docs/` ručno na serveru).
+- **`temp_data` pending** — istek nakon **5 min** (`RESERVATIONS_PENDING_EXPIRE_MINUTES`, cron svakih 5 min).
+- Admin dashboard: kartice **dnevne naknade** danas/sutra; Control lista: **Ukupno vozila**; heuristička pretraga **agencija**; uppercase **tablica** u admin pretrazi rezervacija.
+
 ### Queue / scheduler (produkcija)
 
 Plesk cron na **`bus-v2.kotor.me/`**:
@@ -107,4 +114,4 @@ Duga jedna sesija (mnogo alata, terminal, kontekst) često **poveća potrošnju 
 
 ---
 
-Poslednje ažuriranje ovog fajla: 2026-06-19 (cut-over V1→V2, hosting topologija, migracija 21.342 rezervacija)
+Poslednje ažuriranje ovog fajla: 2026-06-19 (Uvid avans, user guide PDF, pending expire 5 min, admin/control UX)

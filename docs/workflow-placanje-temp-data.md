@@ -68,6 +68,7 @@ Ako je `late_success` za **ulogovanu agenciju** i avans je uključen (`config('f
 | **canceled** | Terminalno; kasni SUCCESS ne menja status (v. §4). |
 | **late_success** / **late_manual_review** | Samo nakon **`expired`** + kasni SUCCESS; admin ili cron stub (`reservations:assign-late-success`) — v. `AssignLateSuccessReservations`, `LateSuccessController`. |
 | **failed** / **expired** | Red ostaje za audit (Admin “Uvid”); `temp-data:cleanup` briše samo **stare ne-pending** redove po retention pravilu (default 180 dana). |
+| **pending → expired (cron)** | Komanda **`reservations:expire-pending`** (svakih **5 min**): pending stariji od **`pending_expire_minutes`** (default **5**, env `RESERVATIONS_PENDING_EXPIRE_MINUTES`) → **`expired`** + decrement `daily_parking_data.pending` (Termini). Oslobađa dupli-checkout lock ako `createSession` padne a red ostane `pending`. V. `cron-commands.md`. |
 
 ---
 
