@@ -5,6 +5,7 @@ namespace App\Http\Controllers\AdminPanel;
 use App\Jobs\ArchiveVehicleCategoryChangeRequestAttachmentsJob;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AdminPanel\AdminAgencyAdvanceCorrectionRequest;
+use App\Http\Requests\AdminPanel\RejectVehicleCategoryChangeRequestRequest;
 use App\Models\AdminAlert;
 use App\Models\AgencyAdvanceTopup;
 use App\Models\AgencyAdvanceTransaction;
@@ -15,6 +16,7 @@ use App\Models\VehicleCategoryChangeRequestAttachment;
 use App\Services\AgencyAdvance\AdvanceTopupConfirmationService;
 use App\Services\AgencyAdvance\AgencyAdvanceService;
 use App\Services\AdminPanel\Agency\AdminAgencySearchService;
+use App\Services\VehicleCategoryChange\VehicleCategoryChangeDecisionNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -161,8 +163,11 @@ final class AgencyController extends Controller
         ]);
     }
 
-    public function approveVehicleCategoryChangeRequest(User $user, VehicleCategoryChangeRequest $request): RedirectResponse
-    {
+    public function approveVehicleCategoryChangeRequest(
+        User $user,
+        VehicleCategoryChangeRequest $request,
+        VehicleCategoryChangeDecisionNotificationService $notifier,
+    ): RedirectResponse {
         if ((int) $request->user_id !== (int) $user->id) {
             abort(404);
         }
@@ -220,19 +225,24 @@ final class AgencyController extends Controller
         });
 
         ArchiveVehicleCategoryChangeRequestAttachmentsJob::dispatch((int) $request->id);
+        $notifier->notifyApproved((int) $request->id);
 
         return redirect()
             ->to(route('panel_admin.agencies.show', $user, false))
             ->with('status', 'Zahtjev je prihvaćen i vozilo je reaktivirano.');
     }
 
-    public function rejectVehicleCategoryChangeRequest(User $user, VehicleCategoryChangeRequest $request): RedirectResponse
-    {
+    public function rejectVehicleCategoryChangeRequest(
+        User $user,
+        VehicleCategoryChangeRequest $request,
+        RejectVehicleCategoryChangeRequestRequest $formRequest,
+        VehicleCategoryChangeDecisionNotificationService $notifier,
+    ): RedirectResponse {
         if ((int) $request->user_id !== (int) $user->id) {
             abort(404);
         }
 
-        DB::transaction(function () use ($user, $request): void {
+        DB::transaction(function () use ($user, $request, $formRequest): void {
             /** @var VehicleCategoryChangeRequest $locked */
             $locked = VehicleCategoryChangeRequest::query()
                 ->whereKey($request->id)
@@ -258,6 +268,7 @@ final class AgencyController extends Controller
                 'status' => VehicleCategoryChangeRequest::STATUS_REJECTED,
                 'reviewed_by_admin_id' => request()->user('panel_admin')?->id,
                 'reviewed_at' => now(),
+                'rejection_reason' => (string) $formRequest->validated('reason'),
             ]);
 
             AdminAlert::query()
@@ -276,6 +287,7 @@ final class AgencyController extends Controller
         });
 
         ArchiveVehicleCategoryChangeRequestAttachmentsJob::dispatch((int) $request->id);
+        $notifier->notifyRejected((int) $request->id);
 
         return redirect()
             ->to(route('panel_admin.agencies.show', $user, false))

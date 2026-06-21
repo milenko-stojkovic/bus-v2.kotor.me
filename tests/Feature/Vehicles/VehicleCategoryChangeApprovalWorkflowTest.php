@@ -328,7 +328,9 @@ final class VehicleCategoryChangeApprovalWorkflowTest extends TestCase
             ],
         ]);
 
-        $this->post(route('panel_admin.agencies.vehicle_category_change_requests.reject', ['user' => $user->id, 'request' => $req2->id], false))
+        $this->post(route('panel_admin.agencies.vehicle_category_change_requests.reject', ['user' => $user->id, 'request' => $req2->id], false), [
+            'reason' => 'Dokument nije validan.',
+        ])
             ->assertRedirect(route('panel_admin.agencies.show', $user, false));
 
         $req2->refresh();

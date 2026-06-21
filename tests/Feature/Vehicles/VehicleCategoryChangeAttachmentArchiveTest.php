@@ -132,7 +132,9 @@ final class VehicleCategoryChangeAttachmentArchiveTest extends TestCase
         $this->post(route('panel_admin.agencies.vehicle_category_change_requests.reject', [
             'user' => $fixtures['user']->id,
             'request' => $req->id,
-        ], false))->assertRedirect(route('panel_admin.agencies.show', $fixtures['user'], false));
+        ], false), [
+            'reason' => 'Dokument nije validan.',
+        ])->assertRedirect(route('panel_admin.agencies.show', $fixtures['user'], false));
 
         Queue::assertPushed(ArchiveVehicleCategoryChangeRequestAttachmentsJob::class, function (ArchiveVehicleCategoryChangeRequestAttachmentsJob $job) use ($req): bool {
             return $job->vehicleCategoryChangeRequestId === (int) $req->id;

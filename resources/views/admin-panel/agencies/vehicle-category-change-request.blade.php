@@ -66,6 +66,24 @@
                         <dd class="mt-1 text-gray-900">{{ $req->reviewed_at->format('d.m.Y. H:i') }}</dd>
                     </div>
                 @endif
+                @if ($req->approved_notification_sent_at || $req->rejected_notification_sent_at)
+                    <div>
+                        <dt class="font-medium text-gray-600">Obavještenje agenciji</dt>
+                        <dd class="mt-1 text-gray-900">
+                            @if ($req->approved_notification_sent_at)
+                                Poslato (odobrenje) {{ $req->approved_notification_sent_at->format('d.m.Y. H:i') }}
+                            @elseif ($req->rejected_notification_sent_at)
+                                Poslato (odbijanje) {{ $req->rejected_notification_sent_at->format('d.m.Y. H:i') }}
+                            @endif
+                        </dd>
+                    </div>
+                @endif
+                @if ($req->status === \App\Models\VehicleCategoryChangeRequest::STATUS_REJECTED && $req->rejection_reason)
+                    <div class="sm:col-span-2">
+                        <dt class="font-medium text-gray-600">Razlog odbijanja</dt>
+                        <dd class="mt-1 text-gray-900 whitespace-pre-wrap">{{ $req->rejection_reason }}</dd>
+                    </div>
+                @endif
                 <div class="sm:col-span-2">
                     <dt class="font-medium text-gray-600">Prilozi</dt>
                     <dd class="mt-1">
@@ -84,8 +102,12 @@
                             Prihvati
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('panel_admin.agencies.vehicle_category_change_requests.reject', ['user' => $user->id, 'request' => $req->id], false) }}">
+                    <form method="POST" action="{{ route('panel_admin.agencies.vehicle_category_change_requests.reject', ['user' => $user->id, 'request' => $req->id], false) }}" class="space-y-2">
                         @csrf
+                        <label class="block text-sm font-medium text-gray-700" for="reject-reason-{{ $req->id }}">Razlog odbijanja</label>
+                        <textarea id="reject-reason-{{ $req->id }}" name="reason" rows="2" required
+                                  class="block w-full max-w-md rounded-md border-gray-300 shadow-sm text-sm"
+                                  placeholder="Obrazloženje za agenciju">{{ old('reason') }}</textarea>
                         <button type="submit"
                                 class="inline-flex items-center rounded-md bg-red-700 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-600"
                                 onclick="return confirm('Odbiti zahtjev?');">

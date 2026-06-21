@@ -73,8 +73,12 @@
                                                         Prihvati
                                                     </button>
                                                 </form>
-                                                <form method="POST" action="{{ route('panel_admin.agencies.vehicle_category_change_requests.reject', ['user' => $user->id, 'request' => $req->id], false) }}">
+                                                <form method="POST" action="{{ route('panel_admin.agencies.vehicle_category_change_requests.reject', ['user' => $user->id, 'request' => $req->id], false) }}" class="inline-flex flex-col items-end gap-1">
                                                     @csrf
+                                                    <input type="text" name="reason" required maxlength="2000" minlength="3"
+                                                           placeholder="Razlog odbijanja"
+                                                           class="rounded border-gray-300 text-xs w-48"
+                                                           value="{{ old('reason') }}">
                                                     <button type="submit"
                                                             class="inline-flex items-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-600"
                                                             onclick="return confirm('Odbiti zahtjev?');">

@@ -29,6 +29,9 @@ final class VehicleCategoryChangeRequest extends Model
         'locale',
         'reviewed_by_admin_id',
         'reviewed_at',
+        'rejection_reason',
+        'approved_notification_sent_at',
+        'rejected_notification_sent_at',
     ];
 
     protected function casts(): array
@@ -41,6 +44,8 @@ final class VehicleCategoryChangeRequest extends Model
             'document_size_bytes' => 'integer',
             'reviewed_by_admin_id' => 'integer',
             'reviewed_at' => 'datetime',
+            'approved_notification_sent_at' => 'datetime',
+            'rejected_notification_sent_at' => 'datetime',
         ];
     }
 
