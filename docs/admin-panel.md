@@ -432,7 +432,7 @@ Ovaj workflow postoji da bi se sprečila zloupotreba ponovnog unosa iste regista
 **Gdje se vidi:**
 
 - Admin vidi **pending** zahtjeve na detalju agencije: **Admin → Agencije → detalj agencije**.
-- Warning u **Upozorenja / Informacije** je samo **pointer** (operativni podsjetnik).
+- Warning u **Upozorenja / Informacije** vodi direktno na **pregled zahtjeva** (`GET /admin/agencije/{user}/vehicle-category-change-requests/{request}`): klik na naslov alerta ili **Otvori zahtjev**. Pending: Prihvati/Odbij; već obrađen: read-only sa konačnim statusom.
 
 **Source of truth:**
 

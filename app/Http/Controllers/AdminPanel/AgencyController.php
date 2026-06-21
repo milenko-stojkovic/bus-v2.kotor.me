@@ -88,6 +88,20 @@ final class AgencyController extends Controller
         ]);
     }
 
+    public function showVehicleCategoryChangeRequest(User $user, VehicleCategoryChangeRequest $request): View
+    {
+        if ((int) $request->user_id !== (int) $user->id) {
+            abort(404);
+        }
+
+        $request->load(['oldVehicleType.translations', 'requestedVehicleType.translations']);
+
+        return view('admin-panel.agencies.vehicle-category-change-request', [
+            'user' => $user,
+            'categoryChangeRequest' => $request,
+        ]);
+    }
+
     public function previewVehicleCategoryChangeDocument(User $user, VehicleCategoryChangeRequest $request): Response
     {
         if ((int) $request->user_id !== (int) $user->id) {

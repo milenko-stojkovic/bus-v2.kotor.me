@@ -76,6 +76,8 @@ Route::prefix('admin')->name('panel_admin.')->group(function () {
 
         Route::get('agencije', [AdminPanelAgencyController::class, 'index'])->name('agencies.index');
         Route::get('agencije/{user}', [AdminPanelAgencyController::class, 'show'])->name('agencies.show');
+        Route::get('agencije/{user}/vehicle-category-change-requests/{request}', [AdminPanelAgencyController::class, 'showVehicleCategoryChangeRequest'])
+            ->name('agencies.vehicle_category_change_requests.show');
         Route::get('agencije/{user}/vehicle-category-change-requests/{request}/document', [AdminPanelAgencyController::class, 'previewVehicleCategoryChangeDocument'])
             ->name('agencies.vehicle_category_change_requests.document');
         Route::post('agencije/{user}/vehicle-category-change-requests/{request}/approve', [AdminPanelAgencyController::class, 'approveVehicleCategoryChangeRequest'])

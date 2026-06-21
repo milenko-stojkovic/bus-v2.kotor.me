@@ -46,6 +46,29 @@ class AdminAlert extends Model
     }
 
     /**
+     * Direct admin action URL when the alert type supports deep-link navigation.
+     */
+    public function actionUrl(): ?string
+    {
+        if ($this->type !== 'vehicle_category_change_request') {
+            return null;
+        }
+
+        $payload = $this->payload_json ?? [];
+        $requestId = (int) ($payload['vehicle_category_change_request_id'] ?? 0);
+        $userId = (int) ($payload['user_id'] ?? 0);
+
+        if ($requestId <= 0 || $userId <= 0) {
+            return null;
+        }
+
+        return route('panel_admin.agencies.vehicle_category_change_requests.show', [
+            'user' => $userId,
+            'request' => $requestId,
+        ], false);
+    }
+
+    /**
      * Tekst za dugme Copy details (naslov, poruka, JSON payload).
      */
     public function copyDetailsText(): string

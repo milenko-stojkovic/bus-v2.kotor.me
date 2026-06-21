@@ -28,10 +28,17 @@
             @else
                 <ul class="space-y-4">
                     @foreach ($alerts as $alert)
+                        @php $alertActionUrl = $alert->actionUrl(); @endphp
                         <li class="bg-white shadow rounded-lg p-5 border border-red-100">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="font-medium text-gray-900">{{ $alert->title }}</h3>
+                                    @if ($alertActionUrl)
+                                        <h3 class="font-medium text-gray-900">
+                                            <a href="{{ $alertActionUrl }}" class="text-red-800 hover:underline">{{ $alert->title }}</a>
+                                        </h3>
+                                    @else
+                                        <h3 class="font-medium text-gray-900">{{ $alert->title }}</h3>
+                                    @endif
                                     <p class="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{{ $alert->message }}</p>
                                     <dl class="mt-3 text-xs text-gray-500 space-y-1">
                                         <div><span class="font-medium text-gray-600">Status:</span> {{ $statusLabel($alert->status) }}</div>
@@ -39,6 +46,12 @@
                                     </dl>
                                 </div>
                                 <div class="flex flex-col sm:flex-row flex-wrap gap-2 shrink-0 items-start">
+                                    @if ($alertActionUrl)
+                                        <a href="{{ $alertActionUrl }}"
+                                           class="inline-flex justify-center items-center px-3 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-900 uppercase tracking-widest hover:bg-red-50">
+                                            Otvori zahtjev
+                                        </a>
+                                    @endif
                                     <button type="button"
                                         class="inline-flex justify-center items-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50"
                                         data-b64="{{ base64_encode($alert->copyDetailsText()) }}"
