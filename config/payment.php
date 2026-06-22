@@ -27,12 +27,21 @@ return [
     | Pending inquiry: temp_data pending starije od ovog broja minuta proveravaju se kod banke (status inquiry).
     | Ako banka kaže SUCCESS → pokreće se isti flow kao callback. Timeout callback-a (callback nikad ne stigne).
     */
-    'pending_inquiry_after_minutes' => (int) env('PAYMENT_PENDING_INQUIRY_AFTER_MINUTES', 10),
+    'pending_inquiry_after_minutes' => (int) env('PAYMENT_PENDING_INQUIRY_AFTER_MINUTES', 3),
 
     /*
     | Minimalni interval između dva status inquiry poziva za isti merchant_transaction_id (keš).
     */
-    'status_inquiry_throttle_minutes' => (int) env('PAYMENT_STATUS_INQUIRY_THROTTLE_MINUTES', 20),
+    'status_inquiry_throttle_minutes' => (int) env('PAYMENT_STATUS_INQUIRY_THROTTLE_MINUTES', 3),
+
+    /*
+    | Bankart inquiry: "Transaction not found" može biti privremeno stanje iako je createSession uspio.
+    | U tom slučaju ne treba odmah otkazati temp_data, već sačekati još malo.
+    |
+    | Kada age_minutes < not_found_grace_minutes: ostaje pending (samo log).
+    | Nakon toga: tretira se kao init failure (canceled + release lock).
+    */
+    'status_inquiry_not_found_grace_minutes' => (int) env('PAYMENT_STATUS_INQUIRY_NOT_FOUND_GRACE_MINUTES', 15),
 
     /*
     | temp_data u pending duže od ovoga: log WARNING `payment_pending_too_long` (bez promene statusa).

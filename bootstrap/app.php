@@ -47,7 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
         if (app()->environment('production')) {
             // Prioritet: fiskalizacija → parking → email
             $schedule->command('reservations:process-pending')->everyFiveMinutes();
-            $schedule->command('payment:check-pending-inquiry')->everyFiveMinutes();
+            $schedule->command('payment:check-pending-inquiry')->everyMinute();
             $schedule->command('post-fiscalization:retry')->everyTenMinutes();
         }
     })

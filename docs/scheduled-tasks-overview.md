@@ -41,7 +41,7 @@ Ovi taskovi su **namerno zakazani samo u produkciji** (da se lokalno izbegnu rea
 | Command | Schedule | Command file | Kratko |
 |---|---|---|---|
 | `reservations:process-pending` | every 5 minutes | `app/Console/Commands/ProcessPendingReservations.php` | **No-op (stub):** samo broji pending `temp_data`, **ne** mijenja DB / fiskal / rezervacije (v. **`docs/cron-commands.md`** §1). Zakazano samo u produkciji (`bootstrap/app.php`). |
-| `payment:check-pending-inquiry` | every 5 minutes | `app/Console/Commands/CheckPendingPaymentStatus.php` | Bank inquiry (Bankart) → `PaymentCallbackJob` |
+| `payment:check-pending-inquiry` | every 1 minute | `app/Console/Commands/CheckPendingPaymentStatus.php` | Bank inquiry (Bankart) → `PaymentCallbackJob` |
 | `post-fiscalization:retry` | every 10 minutes | `app/Console/Commands/RetryPostFiscalization.php` | Retry stvarne fiskalizacije |
 
 **VAŽNO (pre produkcije):** ove komande moraju biti operativno proverene i kompletno konfigurisanih env/kredencijala. Vidi `docs/cron-commands.md` → **“Production readiness (bank/fiscal)”**.

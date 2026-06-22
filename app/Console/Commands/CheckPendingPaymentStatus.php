@@ -56,9 +56,10 @@ class CheckPendingPaymentStatus extends Command
             return self::SUCCESS;
         }
 
-        $minutes = (int) config('payment.pending_inquiry_after_minutes', 10);
+        $minutes = (int) config('payment.pending_inquiry_after_minutes', 3);
         $inquiryCutoff = now()->subMinutes($minutes);
-        $throttleMinutes = max(1, (int) config('payment.status_inquiry_throttle_minutes', 20));
+        $throttleMinutes = max(1, (int) config('payment.status_inquiry_throttle_minutes', 3));
+        $notFoundGraceMinutes = max(1, (int) config('payment.status_inquiry_not_found_grace_minutes', 15));
 
         $pending = TempData::where('status', TempData::STATUS_PENDING)
             ->where('created_at', '<', $inquiryCutoff)
@@ -77,6 +78,13 @@ class CheckPendingPaymentStatus extends Command
                 continue;
             }
 
+            $ageMinutes = (int) $temp->created_at?->diffInMinutes(now());
+            Log::channel('payments')->info('payment_status_inquiry_started', [
+                'merchant_transaction_id' => $temp->merchant_transaction_id,
+                'temp_data_id' => $temp->id,
+                'age_minutes' => $ageMinutes,
+            ]);
+
             $result = $inquiry->inquire($temp->merchant_transaction_id);
             $outcome = $result['outcome'] ?? null;
             $raw = is_array($result['raw'] ?? null) ? $result['raw'] : [];
@@ -86,6 +94,18 @@ class CheckPendingPaymentStatus extends Command
             ]);
 
             if ($outcome === 'not_found') {
+                Log::channel('payments')->warning('payment_status_inquiry_not_found', [
+                    'merchant_transaction_id' => $temp->merchant_transaction_id,
+                    'temp_data_id' => $temp->id,
+                    'age_minutes' => $ageMinutes,
+                    'grace_minutes' => $notFoundGraceMinutes,
+                ]);
+
+                if ($ageMinutes < $notFoundGraceMinutes) {
+                    // Bank may not have final record yet; keep pending for a while.
+                    continue;
+                }
+
                 app(PaymentInitFailureService::class)->failAndRelease(
                     $temp,
                     'status_inquiry_transaction_not_found',
@@ -98,6 +118,11 @@ class CheckPendingPaymentStatus extends Command
             }
 
             if ($outcome === 'success') {
+                Log::channel('payments')->info('payment_status_inquiry_success_paid', [
+                    'merchant_transaction_id' => $temp->merchant_transaction_id,
+                    'temp_data_id' => $temp->id,
+                    'age_minutes' => $ageMinutes,
+                ]);
                 PaymentCallbackJob::dispatch([
                     'merchant_transaction_id' => $temp->merchant_transaction_id,
                     'status' => 'success',
@@ -109,6 +134,12 @@ class CheckPendingPaymentStatus extends Command
 
             if ($outcome === 'failed') {
                 $err = is_array($raw['errors'][0] ?? null) ? $raw['errors'][0] : [];
+                Log::channel('payments')->warning('payment_status_inquiry_failed_declined', [
+                    'merchant_transaction_id' => $temp->merchant_transaction_id,
+                    'temp_data_id' => $temp->id,
+                    'age_minutes' => $ageMinutes,
+                    'error_code' => $err['code'] ?? ($raw['errorCode'] ?? null),
+                ]);
                 PaymentCallbackJob::dispatch([
                     'merchant_transaction_id' => $temp->merchant_transaction_id,
                     'status' => 'failed',
@@ -116,7 +147,15 @@ class CheckPendingPaymentStatus extends Command
                     'error_reason' => $err['message'] ?? ($raw['errorMessage'] ?? null),
                 ], $rawPayload);
                 $dispatchedFailed++;
+
+                continue;
             }
+
+            Log::channel('payments')->info('payment_status_inquiry_pending', [
+                'merchant_transaction_id' => $temp->merchant_transaction_id,
+                'temp_data_id' => $temp->id,
+                'age_minutes' => $ageMinutes,
+            ]);
         }
 
         $this->info('Inquiry: checked '.$pending->count().' pending; throttled '.$throttled.'; dispatched success '.$dispatchedSuccess.', failed '.$dispatchedFailed.', released not_found '.$releasedNotFound.'.');

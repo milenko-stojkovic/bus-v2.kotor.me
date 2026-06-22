@@ -110,7 +110,7 @@ Ako je `late_success` za **ulogovanu agenciju** i avans je uključen (`config('f
 | **expired** | Terminalno (cron istek pending); kasni SUCCESS → `late_success`. Red ostaje za audit; `temp-data:cleanup` briše stare ne-pending redove (default 180 dana). |
 | **late_success** / **late_manual_review** | Samo nakon **`expired`** + kasni SUCCESS; **ručna** obrada preko **`/staff/late-success`** (`LateSuccessController`: force/reject). Komanda **`reservations:assign-late-success`** je **no-op stub** — nema automatske dodjele (v. `payment-state-machine.md` §4b). |
 | **pending → expired (cron)** | Komanda **`reservations:expire-pending`** (svakih **5 min**): pending stariji od **`pending_expire_minutes`** (env `RESERVATIONS_PENDING_EXPIRE_MINUTES`; **preporuka produkcija: 15–30 min** za session-e gdje je korisnik **stvarno** na banci) → **`expired`** + decrement `daily_parking_data.pending` (**samo Termini**). Ne zamjenjuje §1c — init failure se zatvara odmah. V. `cron-commands.md`. |
-| **inquiry „Transaction not found“** | Cron **`payment:check-pending-inquiry`**: ako banka vrati da transakcija ne postoji → isti tretman kao §1c (`payment_init_failed`, release lock). |
+| **inquiry „Transaction not found“** | Cron **`payment:check-pending-inquiry`**: ako banka vrati da transakcija ne postoji → **kratak grace period** (da se izbjegne prerano otkazivanje nakon uspješnog createSession), zatim isti tretman kao §1c (`payment_init_failed`, release lock). |
 
 **Napomena:** `reservations:process-pending` je **no-op stub** — ne mijenja `temp_data` (v. `cron-commands.md` §1).
 

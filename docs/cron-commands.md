@@ -43,11 +43,11 @@ Puna tabela rasporeda: **`docs/scheduled-tasks-overview.md`**.
 
 **Opis:** (1) Za **temp_data** u **pending** starije od **`payment.stale_pending_warn_after_minutes`** (npr. 12) — log **`payment_pending_too_long`** u `payments` (throttle keš po slogu; **bez promene statusa**). (2) Samo ako je **`PaymentStatusInquiryService::isImplemented()`** = true (Bankart + `BANKART_STATUS_INQUIRY_ENABLED` + kompletna konfiguracija): za pending starije od **`payment.pending_inquiry_after_minutes`** poziva **inquire()**; keš **throttle** po **`merchant_transaction_id`** (`payment.status_inquiry_throttle_minutes`). Rezultat **SUCCESS** / **ERROR** (Bankart `transactionStatus`) → **`PaymentCallbackJob`**. Odgovor **„Transaction not found“** → **`PaymentInitFailureService`** (`canceled`, `resolution_reason=payment_init_failed`, release lock) — **nije** dispatch joba.
 
-**Frekvencija:** svakih 5 minuta (bootstrap/app.php).
+**Frekvencija:** svakih 1 minut (bootstrap/app.php).
 
 **Tabele:** temp_data, reservations, daily_parking_data.
 
-**Config:** `stale_pending_warn_after_minutes` (`PAYMENT_STALE_PENDING_WARN_AFTER_MINUTES`); `pending_inquiry_after_minutes` (`PAYMENT_PENDING_INQUIRY_AFTER_MINUTES`); `status_inquiry_throttle_minutes` (`PAYMENT_STATUS_INQUIRY_THROTTLE_MINUTES`); `bankart_status_inquiry_enabled` (`BANKART_STATUS_INQUIRY_ENABLED`).
+**Config:** `stale_pending_warn_after_minutes` (`PAYMENT_STALE_PENDING_WARN_AFTER_MINUTES`); `pending_inquiry_after_minutes` (`PAYMENT_PENDING_INQUIRY_AFTER_MINUTES`); `status_inquiry_throttle_minutes` (`PAYMENT_STATUS_INQUIRY_THROTTLE_MINUTES`); `status_inquiry_not_found_grace_minutes` (`PAYMENT_STATUS_INQUIRY_NOT_FOUND_GRACE_MINUTES`); `bankart_status_inquiry_enabled` (`BANKART_STATUS_INQUIRY_ENABLED`).
 
 ---
 

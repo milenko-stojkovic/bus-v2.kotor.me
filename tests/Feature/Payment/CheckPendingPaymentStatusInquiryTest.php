@@ -142,6 +142,43 @@ class CheckPendingPaymentStatusInquiryTest extends TestCase
         $this->assertSame(0, $dropPending);
     }
 
+    public function test_not_found_within_grace_window_does_not_cancel_when_create_session_likely_succeeded(): void
+    {
+        config(['payment.status_inquiry_not_found_grace_minutes' => 15]);
+        config(['payment.pending_inquiry_after_minutes' => 3]);
+
+        $temp = $this->createOldPendingTemp('tx-inquiry-not-found-grace-1');
+        $temp->forceFill(['created_at' => now()->subMinutes(4)])->saveQuietly();
+
+        $inquiry = new class implements PaymentStatusInquiryService
+        {
+            public function isImplemented(): bool
+            {
+                return true;
+            }
+
+            public function inquire(string $merchantTransactionId): array
+            {
+                return [
+                    'outcome' => 'not_found',
+                    'raw' => [
+                        'success' => false,
+                        'errorMessage' => 'Transaction not found',
+                        'http_status' => 404,
+                    ],
+                ];
+            }
+        };
+
+        $this->app->instance(PaymentStatusInquiryService::class, $inquiry);
+
+        $this->artisan('payment:check-pending-inquiry')->assertSuccessful();
+
+        $temp->refresh();
+        $this->assertSame(TempData::STATUS_PENDING, (string) $temp->status);
+        $this->assertNull($temp->resolution_reason);
+    }
+
     public function test_throttle_skips_second_inquiry_for_same_merchant_transaction(): void
     {
         Queue::fake();

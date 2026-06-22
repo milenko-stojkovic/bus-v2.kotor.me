@@ -53,7 +53,7 @@ Provjera prije/po puštanju u rad (checklist). Prilagoditi hosting (Plesk, syste
 | Komanda | Kad (otprilike) | Kratak cilj |
 |---------|-----------------|-------------|
 | `reservations:process-pending` | svakih ~5 min | **No-op (stub):** broji pending `temp_data`, bez izmjena u bazi (v. `cron-commands.md` §1). Ne oslanjati se na obradu plaćanja dok se ne implementira sadržaj komande. |
-| `payment:check-pending-inquiry` | svakih ~5 min | Bank inquiry (npr. Bankart) → ažuriranje stanja uplate |
+| `payment:check-pending-inquiry` | svakih ~1 min | Bank inquiry (npr. Bankart) → ažuriranje stanja uplate |
 | `post-fiscalization:retry` | svakih ~10 min | Ponovni pokušaj naknadne fiskalizacije (`post_fiscalization_data`) |
 
 **SAFE / opšte** (`routes/console.php`, uključujući lokal):
