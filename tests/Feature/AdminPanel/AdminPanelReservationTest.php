@@ -9,6 +9,7 @@ use App\Models\Admin;
 use App\Models\DailyParkingData;
 use App\Models\ListOfTimeSlot;
 use App\Models\Reservation;
+use App\Models\User;
 use App\Models\VehicleType;
 use App\Models\VehicleTypeTranslation;
 use App\Support\ReservationKind;
@@ -85,6 +86,89 @@ class AdminPanelReservationTest extends TestCase
             ->assertOk()
             ->assertSee('Rezervacije', false)
             ->assertSee('oninput="this.value=this.value.toUpperCase()"', false);
+    }
+
+    public function test_search_result_for_agency_reservation_shows_agency_type_and_account(): void
+    {
+        $admin = $this->seedAdmin();
+        $agency = User::factory()->create([
+            'name' => 'Omnibus doo',
+            'email' => 'omnibus@example.com',
+        ]);
+        $d = Carbon::now()->addDays(3)->toDateString();
+        $slots = $this->seedVehicleAndThreeSlots();
+        $this->seedDailyForDate($d, [$slots['s1'], $slots['s2'], $slots['s3']]);
+
+        $mtid = 'mt-admin-agency-type-'.uniqid();
+        Reservation::query()->create([
+            'user_id' => $agency->id,
+            'merchant_transaction_id' => $mtid,
+            'drop_off_time_slot_id' => $slots['s1']->id,
+            'pick_up_time_slot_id' => $slots['s2']->id,
+            'reservation_date' => $d,
+            'user_name' => 'Omnibus doo',
+            'country' => 'ME',
+            'license_plate' => 'KO111AG',
+            'vehicle_type_id' => $slots['vt']->id,
+            'email' => 'reservation@example.com',
+            'status' => 'paid',
+            'invoice_amount' => '15.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $this->actingAs($admin, 'panel_admin');
+
+        $html = $this->get(route('panel_admin.reservations', ['merchant_transaction_id' => $mtid], false))
+            ->assertOk()
+            ->assertSee('PDF', false)
+            ->assertSee('Izmeni', false)
+            ->getContent();
+
+        $this->assertStringContainsString('Tip korisnika:', $html);
+        $this->assertStringContainsString('Agencija', $html);
+        $this->assertStringContainsString('Omnibus doo', $html);
+        $this->assertStringContainsString('Email naloga:', $html);
+        $this->assertStringContainsString('omnibus@example.com', $html);
+        $this->assertStringContainsString('Email rezervacije:', $html);
+        $this->assertStringContainsString('reservation@example.com', $html);
+    }
+
+    public function test_search_result_for_guest_reservation_shows_guest_type_and_contact(): void
+    {
+        $admin = $this->seedAdmin();
+        $d = Carbon::now()->addDays(3)->toDateString();
+        $slots = $this->seedVehicleAndThreeSlots();
+        $this->seedDailyForDate($d, [$slots['s1'], $slots['s2'], $slots['s3']]);
+
+        $mtid = 'mt-admin-guest-type-'.uniqid();
+        Reservation::query()->create([
+            'merchant_transaction_id' => $mtid,
+            'drop_off_time_slot_id' => $slots['s1']->id,
+            'pick_up_time_slot_id' => $slots['s2']->id,
+            'reservation_date' => $d,
+            'user_name' => 'Marko Marković',
+            'country' => 'ME',
+            'license_plate' => 'KO222GU',
+            'vehicle_type_id' => $slots['vt']->id,
+            'email' => 'marko@example.com',
+            'status' => 'paid',
+            'invoice_amount' => '15.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $this->actingAs($admin, 'panel_admin');
+
+        $html = $this->get(route('panel_admin.reservations', ['merchant_transaction_id' => $mtid], false))
+            ->assertOk()
+            ->assertSee('PDF', false)
+            ->assertSee('Izmeni', false)
+            ->getContent();
+
+        $this->assertStringContainsString('Tip korisnika:', $html);
+        $this->assertStringContainsString('Guest', $html);
+        $this->assertStringContainsString('Marko Marković', $html);
+        $this->assertStringContainsString('marko@example.com', $html);
+        $this->assertStringNotContainsString('Email naloga:', $html);
     }
 
     public function test_search_by_merchant_transaction_id_returns_reservation(): void

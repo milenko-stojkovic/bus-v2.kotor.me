@@ -19,7 +19,7 @@ final class AdminReservationSearchService
     public function search(array $filters, int $perPage = 50): LengthAwarePaginator
     {
         $q = Reservation::query()
-            ->with(['pickUpTimeSlot', 'dropOffTimeSlot', 'vehicleType.translations'])
+            ->with(['pickUpTimeSlot', 'dropOffTimeSlot', 'vehicleType.translations', 'user'])
             ->orderByDesc('reservation_date')
             ->orderByDesc('id');
 

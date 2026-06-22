@@ -189,11 +189,25 @@
                                         <div><span class="text-gray-500">Dolazak:</span> @include('partials.reservation-slot-display', ['reservation' => $r, 'slot' => $r->dropOffTimeSlot, 'locale' => 'cg'])</div>
                                         <div><span class="text-gray-500">Odlazak:</span> @include('partials.reservation-slot-display', ['reservation' => $r, 'slot' => $r->pickUpTimeSlot, 'locale' => 'cg'])</div>
                                     @endif
-                                    <div><span class="text-gray-500">Ime:</span> {{ $r->user_name }}</div>
+                                    @if ($r->isGuest())
+                                        <div><span class="text-gray-500">Tip korisnika:</span> Guest</div>
+                                        <div><span class="text-gray-500">Ime:</span> {{ $r->user_name }}</div>
+                                        <div><span class="text-gray-500">Email:</span> {{ $r->email }}</div>
+                                    @else
+                                        @php
+                                            $agencyAccountEmail = trim((string) ($r->user->email ?? ''));
+                                            $reservationEmail = trim((string) ($r->email ?? ''));
+                                        @endphp
+                                        <div><span class="text-gray-500">Tip korisnika:</span> Agencija</div>
+                                        <div><span class="text-gray-500">Agencija:</span> {{ $r->user->name ?: '—' }}</div>
+                                        <div><span class="text-gray-500">Email naloga:</span> {{ $agencyAccountEmail !== '' ? $agencyAccountEmail : '—' }}</div>
+                                        @if ($reservationEmail !== '' && strcasecmp($reservationEmail, $agencyAccountEmail) !== 0)
+                                            <div><span class="text-gray-500">Email rezervacije:</span> {{ $reservationEmail }}</div>
+                                        @endif
+                                    @endif
                                     <div><span class="text-gray-500">Država:</span> {{ $r->country }}</div>
                                     <div><span class="text-gray-500">Tablica:</span> {{ $r->license_plate }}</div>
                                     <div><span class="text-gray-500">Vozilo:</span> {{ $r->vehicleType?->formatLabel('cg', 'EUR') ?? '—' }}</div>
-                                    <div><span class="text-gray-500">Email:</span> {{ $r->email }}</div>
                                     <div><span class="text-gray-500">Status:</span> {{ $r->status }}</div>
                                 </div>
                                 <div class="flex flex-row flex-wrap gap-2 shrink-0 items-start">
