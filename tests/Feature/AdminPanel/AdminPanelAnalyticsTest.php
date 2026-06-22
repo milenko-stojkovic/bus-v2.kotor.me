@@ -127,6 +127,88 @@ class AdminPanelAnalyticsTest extends TestCase
         $this->assertSame('application/pdf', $pdf->headers->get('Content-Type'));
     }
 
+    public function test_slot_usage_index_kpi_uses_new_label_numeric_format_help_text_and_pdf(): void
+    {
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+
+        $slot1 = ListOfTimeSlot::query()->create(['time_slot' => '08:00 - 08:20']);
+        $slot2 = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+
+        $vt = VehicleType::query()->create(['price' => 50]);
+        foreach (['cg', 'en'] as $loc) {
+            VehicleTypeTranslation::query()->create([
+                'vehicle_type_id' => $vt->id,
+                'locale' => $loc,
+                'name' => 'VT',
+                'description' => 'd',
+            ]);
+        }
+
+        $d = Carbon::now()->addDays(5)->toDateString();
+
+        Reservation::query()->create([
+            'merchant_transaction_id' => 'mt-slot-usage-index',
+            'drop_off_time_slot_id' => $slot1->id,
+            'pick_up_time_slot_id' => $slot2->id,
+            'reservation_date' => $d,
+            'user_name' => 'X',
+            'country' => 'ME',
+            'license_plate' => 'KO1',
+            'vehicle_type_id' => $vt->id,
+            'email' => 'x@example.com',
+            'status' => 'paid',
+            'invoice_amount' => '50.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $dataset = app(AdminAnalyticsService::class)->build($d, $d, false);
+        $this->assertSame(2, $dataset['kpi']['occupied_slots_total']);
+        $this->assertEqualsWithDelta(1.0, (float) $dataset['kpi']['avg_occupancy_slot_level'], 0.001);
+
+        $html = $this->get(route('panel_admin.analytics', [
+            'show' => 1,
+            'date_from' => $d,
+            'date_to' => $d,
+            'include_free' => 0,
+        ], false))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Prosječno zauzeće termina', $html);
+        $this->assertStringNotContainsString('Prosječna popunjenost (slot-level)', $html);
+        $this->assertStringContainsString('Nije procenat popunjenosti kapaciteta', $html);
+        $this->assertStringContainsString('title="Prosječan broj slot-dodjela po (termin × dan)."', $html);
+
+        $this->assertMatchesRegularExpression(
+            '/Prosječno zauzeće termina<\/div>\s*<div class="text-lg font-semibold text-gray-900">1\.00<\/div>/i',
+            $html,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/Prosječno zauzeće termina<\/div>\s*<div class="text-lg font-semibold text-gray-900">[\d.]+%<\/div>/i',
+            $html,
+        );
+
+        $pdfHtml = view('pdf.admin-analytics-report', [
+            'dataset' => $dataset,
+            'logoDataUri' => '',
+        ])->render();
+
+        $this->assertStringContainsString('Prosječno zauzeće termina', $pdfHtml);
+        $this->assertStringNotContainsString('Popunjenost (slot-level', $pdfHtml);
+        $this->assertStringContainsString('Nije procenat popunjenosti kapaciteta', $pdfHtml);
+        $this->assertMatchesRegularExpression(
+            '/Prosječno zauzeće termina[\s\S]*?1\.00/i',
+            $pdfHtml,
+        );
+
+        $adminPanelDoc = file_get_contents(base_path('docs/admin-panel.md'));
+        $this->assertStringContainsString('Prosječno zauzeće termina', $adminPanelDoc);
+        $this->assertStringContainsString('nije** popunjenost kapaciteta', $adminPanelDoc);
+
+        $projectDoneDoc = file_get_contents(base_path('docs/project-done.md'));
+        $this->assertStringContainsString('Prosječno zauzeće termina', $projectDoneDoc);
+        $this->assertStringContainsString('Prosječna popunjenost (slot-level)', $projectDoneDoc);
+    }
+
     public function test_agency_analysis_section_renders_sorted_and_computes_metrics_and_pdf_contains_it(): void
     {
         $admin = $this->seedAdmin();

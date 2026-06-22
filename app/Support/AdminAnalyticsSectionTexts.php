@@ -23,6 +23,7 @@ final class AdminAnalyticsSectionTexts
             'ops' => 'Operativni signali o problematičnim pokušajima plaćanja i fiskalnim kašnjenjima.',
             'advance_balances' => 'Pregled trenutnog stanja neiskorišćenih avansnih sredstava po agencijama. Ovaj iznos ne predstavlja prihod, već evidenciju raspoloživih sredstava za buduće usluge.',
             'limo' => 'Limo pickup događaji (QR/tablica) nisu rezervacije parkinga niti dnevna naknada — prihod se računa iz `limo_pickup_events` za izabrani period (`occurred_at`, zona Europe/Podgorica). Uključeni statusi: pending_fiscal, fiscalized, fiscal_failed; incident isključen.',
+            'slot_usage_index' => 'Prosječan broj slot-dodjela po (termin × dan). Nije procenat popunjenosti kapaciteta. Broji slot-dodjele iz rezervacija sa terminima. Dolazak i odlazak se računaju odvojeno, pa vrijednost može biti veća od 1.',
         ];
     }
 }

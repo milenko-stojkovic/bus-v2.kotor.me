@@ -1,6 +1,7 @@
 @php
     $fmtMoney = fn (float $v) => number_format($v, 2, '.', '').' EUR';
     $fmtPct = fn (float $v) => number_format($v * 100, 1, '.', '').'%';
+    $fmtSlotUsageIndex = fn (float $v) => number_format($v, 2, '.', '');
     $st = \App\Support\AdminAnalyticsSectionTexts::all();
 @endphp
 
@@ -124,12 +125,12 @@
                 <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Ukupan broj zauzetih slotova</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $k['occupied_slots_total'] }}</div>
-                    <div class="text-xs text-gray-500 mt-1">Samo rezervacije sa terminima. Dnevna naknada ne ulazi u popunjenost termina.</div>
+                    <div class="text-xs text-gray-500 mt-1">Samo rezervacije sa terminima. Dnevna naknada ne ulazi u zauzeće termina.</div>
                 </div>
-                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
-                    <div class="text-xs text-gray-500">Prosječna popunjenost (slot-level)</div>
-                    <div class="text-lg font-semibold text-gray-900">{{ $fmtPct($k['avg_occupancy_slot_level']) }}</div>
-                    <div class="text-xs text-gray-500 mt-1">Samo termini / time_slots.</div>
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100" title="Prosječan broj slot-dodjela po (termin × dan).">
+                    <div class="text-xs text-gray-500">Prosječno zauzeće termina</div>
+                    <div class="text-lg font-semibold text-gray-900">{{ $fmtSlotUsageIndex((float) $k['avg_occupancy_slot_level']) }}</div>
+                    <p class="text-xs text-gray-500 mt-1">{{ $st['slot_usage_index'] ?? '' }}</p>
                 </div>
                 <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Broj blokiranih slotova</div>

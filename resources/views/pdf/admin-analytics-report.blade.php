@@ -3,6 +3,7 @@
     $f = (array) ($dataset['filters'] ?? []);
     $fmtMoney = fn (float $v) => number_format($v, 2, '.', '').' EUR';
     $fmtPct = fn (float $v) => number_format($v * 100, 1, '.', '').'%';
+    $fmtSlotUsageIndex = fn (float $v) => number_format($v, 2, '.', '');
     $st = \App\Support\AdminAnalyticsSectionTexts::all();
 @endphp
 <!doctype html>
@@ -66,7 +67,12 @@
         </tr>
         <tr>
             <td>Zauzeti slotovi (samo termini)</td><td>{{ (int)($k['occupied_slots_total'] ?? 0) }}</td>
-            <td>Popunjenost (slot-level, samo termini)</td><td>{{ $fmtPct((float)($k['avg_occupancy_slot_level'] ?? 0)) }}</td>
+            <td>Prosječno zauzeće termina</td><td>{{ $fmtSlotUsageIndex((float)($k['avg_occupancy_slot_level'] ?? 0)) }}</td>
+        </tr>
+        <tr>
+            <td colspan="4" class="muted" style="font-size:10px;padding-top:0;padding-bottom:6px">
+                {{ $st['slot_usage_index'] ?? '' }}
+            </td>
         </tr>
         <tr>
             <td>Blokirani slotovi</td><td>{{ (int)($k['blocked_slot_rows'] ?? 0) }}</td>
