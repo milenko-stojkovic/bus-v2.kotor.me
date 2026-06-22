@@ -167,6 +167,15 @@
             </div>
         </form>
 
+        @if ($hasCriteria)
+            <div class="flex justify-end">
+                <a href="{{ route('panel_admin.reservations', [], false) }}"
+                   class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md font-semibold text-xs text-red-800 uppercase tracking-widest hover:bg-red-50">
+                    Nova pretraga
+                </a>
+            </div>
+        @endif
+
         @if ($hasCriteria && $results)
             <div class="space-y-3">
                 <h2 class="text-base font-semibold text-gray-900">Rezultati ({{ $results->total() }})</h2>

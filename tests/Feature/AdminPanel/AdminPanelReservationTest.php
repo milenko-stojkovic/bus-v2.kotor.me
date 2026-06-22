@@ -171,6 +171,49 @@ class AdminPanelReservationTest extends TestCase
         $this->assertStringNotContainsString('Email naloga:', $html);
     }
 
+    public function test_nova_pretraga_link_appears_when_filters_applied_and_points_to_clean_route(): void
+    {
+        $admin = $this->seedAdmin();
+        $d = Carbon::now()->addDays(3)->toDateString();
+        $slots = $this->seedVehicleAndThreeSlots();
+        $this->seedDailyForDate($d, [$slots['s1'], $slots['s2'], $slots['s3']]);
+
+        $mtid = 'mt-admin-nova-pretraga-'.uniqid();
+        Reservation::query()->create([
+            'merchant_transaction_id' => $mtid,
+            'drop_off_time_slot_id' => $slots['s1']->id,
+            'pick_up_time_slot_id' => $slots['s2']->id,
+            'reservation_date' => $d,
+            'user_name' => 'Nova Pretraga Test',
+            'country' => 'ME',
+            'license_plate' => 'KO333NP',
+            'vehicle_type_id' => $slots['vt']->id,
+            'email' => 'nova-pretraga@example.com',
+            'status' => 'paid',
+            'invoice_amount' => '15.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $this->actingAs($admin, 'panel_admin');
+
+        $searchUrl = route('panel_admin.reservations', ['merchant_transaction_id' => $mtid], false);
+        $cleanUrl = route('panel_admin.reservations', [], false);
+
+        $html = $this->get($searchUrl)
+            ->assertOk()
+            ->assertSee('Nova pretraga', false)
+            ->assertSee('PDF', false)
+            ->assertSee('Izmeni', false)
+            ->getContent();
+
+        $this->assertStringContainsString('href="'.$cleanUrl.'"', $html);
+
+        $this->get($cleanUrl)
+            ->assertOk()
+            ->assertDontSee('Nova pretraga', false)
+            ->assertDontSee('Rezultati', false);
+    }
+
     public function test_search_by_merchant_transaction_id_returns_reservation(): void
     {
         $admin = $this->seedAdmin();
