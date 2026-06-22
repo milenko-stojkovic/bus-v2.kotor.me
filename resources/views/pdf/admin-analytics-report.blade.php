@@ -31,23 +31,33 @@
     <h2>KPI</h2>
     <div class="muted">{{ $st['kpi'] ?? '' }}</div>
     @php($lmPdf = (array) ($dataset['limo'] ?? []))
+    @php($rkPdf = (array) ($dataset['reservation_kinds'] ?? []))
+    @php($dtPdf = (array) ($rkPdf['daily_ticket'] ?? []))
+    @php($dtLimoPdf = (array) ($dtPdf['limo'] ?? []))
+    @php($dtBusesPdf = (array) ($dtPdf['buses'] ?? []))
     <table class="kpi">
-        <tr>
-            <td>Prihod od rezervacija (paid)</td><td>{{ $fmtMoney((float)($k['revenue_reservations'] ?? 0)) }}</td>
-            <td>Prihod od Limo servisa</td><td>{{ $fmtMoney((float)($lmPdf['revenue_total'] ?? 0)) }}</td>
-        </tr>
-        <tr>
-            <td colspan="2"><strong>Ukupan prihod (rezervacije + Limo)</strong></td><td colspan="2"><strong>{{ $fmtMoney((float)($k['revenue_grand_total'] ?? 0)) }}</strong></td>
-        </tr>
-        @php($rkPdf = (array) ($dataset['reservation_kinds'] ?? []))
         <tr>
             <td>Termini — broj / prihod</td>
             <td>{{ (int)(($rkPdf['time_slots']['count'] ?? 0)) }} / {{ $fmtMoney((float)(($rkPdf['time_slots']['revenue'] ?? 0))) }}</td>
-            <td>Dnevne naknade — broj / prihod</td>
-            <td>{{ (int)(($rkPdf['daily_ticket']['count'] ?? 0)) }} / {{ $fmtMoney((float)(($rkPdf['daily_ticket']['revenue'] ?? 0))) }}</td>
+            <td>Dnevna naknada ukupno — broj / prihod</td>
+            <td>{{ (int)(($dtPdf['count'] ?? 0)) }} / {{ $fmtMoney((float)(($dtPdf['revenue'] ?? 0))) }}</td>
         </tr>
         <tr>
-            <td>Rezervacije</td><td>{{ (int)($k['reservations_total'] ?? 0) }}</td>
+            <td>DN — Limo — broj / prihod</td>
+            <td>{{ (int)(($dtLimoPdf['count'] ?? 0)) }} / {{ $fmtMoney((float)(($dtLimoPdf['revenue'] ?? 0))) }}</td>
+            <td>DN — Autobusi — broj / prihod</td>
+            <td>{{ (int)(($dtBusesPdf['count'] ?? 0)) }} / {{ $fmtMoney((float)(($dtBusesPdf['revenue'] ?? 0))) }}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><strong>Ukupan prihod (rezervacije, paid)</strong></td>
+            <td colspan="2"><strong>{{ $fmtMoney((float)($k['revenue_reservations'] ?? 0)) }}</strong></td>
+        </tr>
+        <tr>
+            <td>Prihod od Limo pickup-a (evidencija)</td><td>{{ $fmtMoney((float)($lmPdf['revenue_total'] ?? 0)) }}</td>
+            <td>Rezervacije + Limo pickup</td><td>{{ $fmtMoney((float)($k['revenue_grand_total'] ?? 0)) }}</td>
+        </tr>
+        <tr>
+            <td>Rezervacije (ukupno)</td><td>{{ (int)($k['reservations_total'] ?? 0) }}</td>
             <td>Paid / Free</td><td>{{ (int)($k['paid_reservations'] ?? 0) }} / {{ (int)($k['free_reservations'] ?? 0) }}</td>
         </tr>
         <tr>
@@ -56,7 +66,7 @@
         </tr>
         <tr>
             <td>Zauzeti slotovi (samo termini)</td><td>{{ (int)($k['occupied_slots_total'] ?? 0) }}</td>
-            <td>Popunjenost (slot-level)</td><td>{{ $fmtPct((float)($k['avg_occupancy_slot_level'] ?? 0)) }}</td>
+            <td>Popunjenost (slot-level, samo termini)</td><td>{{ $fmtPct((float)($k['avg_occupancy_slot_level'] ?? 0)) }}</td>
         </tr>
         <tr>
             <td>Blokirani slotovi</td><td>{{ (int)($k['blocked_slot_rows'] ?? 0) }}</td>
@@ -64,7 +74,24 @@
         </tr>
     </table>
 
-    <h2>Limo servis</h2>
+    <h2>Dnevna naknada</h2>
+    <div class="muted">{{ $st['daily_fee'] ?? '' }}</div>
+    <table>
+        <thead>
+            <tr><th>Kategorija</th><th>Broj vozila</th><th>Prihod</th></tr>
+        </thead>
+        <tbody>
+            @foreach (($dataset['daily_fee']['rows'] ?? []) as $row)
+                <tr>
+                    <td>{{ $row['label'] }}</td>
+                    <td style="text-align:right">{{ (int) ($row['count'] ?? 0) }}</td>
+                    <td style="text-align:right">{{ $fmtMoney((float) ($row['revenue'] ?? 0)) }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    <h2>Limo pickup (evidencija)</h2>
     <div class="muted">{{ $st['limo'] ?? '' }}</div>
     <table class="kpi">
         <tr>
@@ -108,7 +135,7 @@
     </table>
 
     <h2>Delovi dana</h2>
-    <div class="muted">{{ $st['day_parts'] ?? '' }}</div>
+    <div class="muted">{{ $st['day_parts'] ?? '' }} Samo termini; dnevna naknada u posebnoj sekciji.</div>
     <table>
         <thead>
             <tr>
@@ -156,14 +183,16 @@
             <tr>
                 <th>Agencija</th>
                 <th>Prihod</th>
-                <th>% prihoda</th>
+                <th>Termini</th>
+                <th>Prihod (T)</th>
+                <th>DN Limo</th>
+                <th>Prihod (L)</th>
+                <th>DN Autobusi</th>
+                <th>Prihod (A)</th>
+                <th>DN ukupno</th>
+                <th>Prihod (DN)</th>
                 <th>Rez.</th>
-                <th>Paid</th>
-                <th>Free</th>
-                <th>% free</th>
-                <th>Prosj. prihod</th>
                 <th>Zauzeti slotovi</th>
-                <th>Najčešći tip</th>
             </tr>
         </thead>
         <tbody>
@@ -171,14 +200,16 @@
                 <tr>
                     <td>{{ $row['agency'] }}</td>
                     <td style="text-align:right">{{ $fmtMoney((float) $row['revenue']) }}</td>
-                    <td style="text-align:right">{{ $fmtPct((float) $row['revenue_share']) }}</td>
+                    <td style="text-align:right">{{ (int) ($row['time_slots_count'] ?? 0) }}</td>
+                    <td style="text-align:right">{{ $fmtMoney((float) ($row['time_slots_revenue'] ?? 0)) }}</td>
+                    <td style="text-align:right">{{ (int) ($row['daily_fee_limo_count'] ?? 0) }}</td>
+                    <td style="text-align:right">{{ $fmtMoney((float) ($row['daily_fee_limo_revenue'] ?? 0)) }}</td>
+                    <td style="text-align:right">{{ (int) ($row['daily_fee_buses_count'] ?? 0) }}</td>
+                    <td style="text-align:right">{{ $fmtMoney((float) ($row['daily_fee_buses_revenue'] ?? 0)) }}</td>
+                    <td style="text-align:right">{{ (int) ($row['daily_ticket_count'] ?? 0) }}</td>
+                    <td style="text-align:right">{{ $fmtMoney((float) ($row['daily_ticket_revenue'] ?? 0)) }}</td>
                     <td style="text-align:right">{{ (int) $row['reservations_total'] }}</td>
-                    <td style="text-align:right">{{ (int) $row['paid_reservations'] }}</td>
-                    <td style="text-align:right">{{ (int) $row['free_reservations'] }}</td>
-                    <td style="text-align:right">{{ $fmtPct((float) $row['free_pct']) }}</td>
-                    <td style="text-align:right">{{ $fmtMoney((float) $row['avg_revenue_per_paid']) }}</td>
                     <td style="text-align:right">{{ (int) $row['occupied_slots'] }}</td>
-                    <td>{{ $row['top_vehicle_type'] }}</td>
                 </tr>
             @endforeach
         </tbody>

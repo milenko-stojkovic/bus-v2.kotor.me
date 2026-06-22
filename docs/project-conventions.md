@@ -113,7 +113,7 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 - Kolona **`reservation_kind`** na **`reservations`** i **`temp_data`**: `time_slots` (default) | `daily_ticket`.
 - Konstante: **`App\Support\ReservationKind`**, aliasi na **`Reservation`** / **`TempData`**; helperi **`isTimeSlots()`**, **`isDailyTicket()`**.
 - **Invariant (Phase 2+ checkout/admin):** `time_slots` → oba slot ID NOT NULL; `daily_ticket` → oba NULL (bez sentinel slotova; ne dira **`daily_parking_data`**).
-- **Phase 1 (2026-05-28):** samo šema/model; UI, checkout, PDF, analitika **nisu** još uključeni.
+- **Admin Analitika:** popunjenost slotova, delovi dana i operativni slot indikatori koriste **samo** `time_slots`. Dnevna naknada se prikazuje odvojeno; **Limo** u analitici dnevnih naknada = putničko 4+1–7+1 + mini bus 8+1 (`controlDailyFeeListVehicleTypeIds()`); **Autobusi** = ostale kategorije na `daily_ticket`. **Limo pickup (evidencija)** iz `limo_pickup_events` je poseban proizvod.
 
 ### Rezervacije — step forma (GET auto-refresh i scroll)
 

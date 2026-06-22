@@ -61,23 +61,39 @@
                 $rk = $dataset['reservation_kinds'] ?? [];
                 $tsKind = $rk['time_slots'] ?? [];
                 $dtKind = $rk['daily_ticket'] ?? [];
+                $dtLimo = $dtKind['limo'] ?? [];
+                $dtBuses = $dtKind['buses'] ?? [];
             @endphp
             <p class="text-sm text-gray-600">{{ $st['kpi'] ?? '' }}</p>
-            <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                 <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Termini</div>
-                    <div class="mt-2 text-sm text-gray-700">Broj rezervacija: <span class="font-semibold text-gray-900">{{ (int) ($tsKind['count'] ?? 0) }}</span></div>
+                    <div class="mt-2 text-sm text-gray-700">Broj: <span class="font-semibold text-gray-900">{{ (int) ($tsKind['count'] ?? 0) }}</span></div>
                     <div class="text-sm text-gray-700">Prihod (paid): <span class="font-semibold text-gray-900">{{ $fmtMoney((float) ($tsKind['revenue'] ?? 0)) }}</span></div>
                 </div>
                 <div class="bg-white shadow rounded-lg p-4 border border-red-100">
-                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Dnevne naknade</div>
-                    <div class="mt-2 text-sm text-gray-700">Broj rezervacija: <span class="font-semibold text-gray-900">{{ (int) ($dtKind['count'] ?? 0) }}</span></div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Dnevna naknada ukupno</div>
+                    <div class="mt-2 text-sm text-gray-700">Broj: <span class="font-semibold text-gray-900">{{ (int) ($dtKind['count'] ?? 0) }}</span></div>
                     <div class="text-sm text-gray-700">Prihod (paid): <span class="font-semibold text-gray-900">{{ $fmtMoney((float) ($dtKind['revenue'] ?? 0)) }}</span></div>
                 </div>
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Dnevna naknada — Limo</div>
+                    <div class="mt-2 text-sm text-gray-700">Broj: <span class="font-semibold text-gray-900">{{ (int) ($dtLimo['count'] ?? 0) }}</span></div>
+                    <div class="text-sm text-gray-700">Prihod (paid): <span class="font-semibold text-gray-900">{{ $fmtMoney((float) ($dtLimo['revenue'] ?? 0)) }}</span></div>
+                </div>
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Dnevna naknada — Autobusi</div>
+                    <div class="mt-2 text-sm text-gray-700">Broj: <span class="font-semibold text-gray-900">{{ (int) ($dtBuses['count'] ?? 0) }}</span></div>
+                    <div class="text-sm text-gray-700">Prihod (paid): <span class="font-semibold text-gray-900">{{ $fmtMoney((float) ($dtBuses['revenue'] ?? 0)) }}</span></div>
+                </div>
                 <div class="bg-white shadow rounded-lg p-4 border border-red-100 ring-1 ring-red-100">
-                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Ukupno (rezervacije paid)</div>
-                    <div class="mt-2 text-sm text-gray-700">Broj paid: <span class="font-semibold text-gray-900">{{ $k['paid_reservations'] }}</span></div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Ukupno prihod (rezervacije)</div>
+                    <div class="mt-2 text-sm text-gray-700">Paid rezervacije: <span class="font-semibold text-gray-900">{{ $k['paid_reservations'] }}</span></div>
                     <div class="text-sm text-gray-700">Prihod: <span class="font-semibold text-gray-900">{{ $fmtMoney((float) ($k['total_revenue'] ?? $k['revenue_reservations'])) }}</span></div>
+                </div>
+                <div class="bg-white shadow rounded-lg p-4 border border-red-100">
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Ukupno rezervacija</div>
+                    <div class="mt-2 text-sm text-gray-700">Termini + DN: <span class="font-semibold text-gray-900">{{ (int) ($k['total_reservations_all_kinds'] ?? $k['reservations_total']) }}</span></div>
                 </div>
             </section>
             <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -108,11 +124,12 @@
                 <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Ukupan broj zauzetih slotova</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $k['occupied_slots_total'] }}</div>
-                    <div class="text-xs text-gray-500 mt-1">Samo rezervacije sa terminima (Benovo)</div>
+                    <div class="text-xs text-gray-500 mt-1">Samo rezervacije sa terminima. Dnevna naknada ne ulazi u popunjenost termina.</div>
                 </div>
                 <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Prosječna popunjenost (slot-level)</div>
                     <div class="text-lg font-semibold text-gray-900">{{ $fmtPct($k['avg_occupancy_slot_level']) }}</div>
+                    <div class="text-xs text-gray-500 mt-1">Samo termini / time_slots.</div>
                 </div>
                 <div class="bg-white shadow rounded-lg p-4 border border-red-100">
                     <div class="text-xs text-gray-500">Broj blokiranih slotova</div>
@@ -125,7 +142,32 @@
             </section>
 
             <section class="bg-white shadow rounded-lg p-6 border border-red-100">
-                <h2 class="text-base font-semibold text-gray-900">Limo servis</h2>
+                <h2 class="text-base font-semibold text-gray-900">Dnevna naknada</h2>
+                <p class="text-sm text-gray-600 mt-1">{{ $st['daily_fee'] ?? '' }}</p>
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="text-xs text-gray-500 uppercase">
+                            <tr class="border-b">
+                                <th class="py-2 pr-4 text-left">Kategorija</th>
+                                <th class="py-2 pr-4 text-right">Broj vozila</th>
+                                <th class="py-2 pr-4 text-right">Prihod</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            @foreach (($dataset['daily_fee']['rows'] ?? []) as $row)
+                                <tr>
+                                    <td class="py-2 pr-4 @if(!empty($row['is_total'])) font-semibold @endif">{{ $row['label'] }}</td>
+                                    <td class="py-2 pr-4 text-right @if(!empty($row['is_total'])) font-semibold @endif">{{ (int) ($row['count'] ?? 0) }}</td>
+                                    <td class="py-2 pr-4 text-right @if(!empty($row['is_total'])) font-semibold @endif">{{ $fmtMoney((float) ($row['revenue'] ?? 0)) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="bg-white shadow rounded-lg p-6 border border-red-100">
+                <h2 class="text-base font-semibold text-gray-900">Limo pickup (evidencija)</h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $st['limo'] ?? '' }}</p>
                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div class="rounded-lg border border-red-100 bg-red-50 p-4">
@@ -193,7 +235,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <section class="bg-white shadow rounded-lg p-6 border border-red-100">
                     <h2 class="text-base font-semibold text-gray-900">Analiza po delovima dana</h2>
-                    <p class="text-sm text-gray-600 mt-1">{{ $st['day_parts'] ?? '' }} Zauzetost slotova i prozori dana odnose se samo na rezervacije sa terminima; dnevna naknada je prikazana odvojeno.</p>
+                    <p class="text-sm text-gray-600 mt-1">{{ $st['day_parts'] ?? '' }} Samo rezervacije sa terminima. Dnevna naknada ne ulazi u popunjenost termina.</p>
                     <div class="mt-4 overflow-x-auto">
                         <table class="min-w-full text-sm">
                             <thead class="text-xs text-gray-500 uppercase">
@@ -285,7 +327,13 @@
                                 <th class="py-2 pr-4 text-right">Free</th>
                                 <th class="py-2 pr-4 text-right">% free</th>
                                 <th class="py-2 pr-4 text-right">Prosj. prihod (paid)</th>
-                                <th class="py-2 pr-4 text-right">Dnevne naknade</th>
+                                <th class="py-2 pr-4 text-right">Termini</th>
+                                <th class="py-2 pr-4 text-right">Prihod (T)</th>
+                                <th class="py-2 pr-4 text-right">DN Limo</th>
+                                <th class="py-2 pr-4 text-right">Prihod (L)</th>
+                                <th class="py-2 pr-4 text-right">DN Autobusi</th>
+                                <th class="py-2 pr-4 text-right">Prihod (A)</th>
+                                <th class="py-2 pr-4 text-right">DN ukupno</th>
                                 <th class="py-2 pr-4 text-right">Prihod (DN)</th>
                                 <th class="py-2 pr-4 text-right" title="Samo rezervacije sa terminima">Zauzeti slotovi</th>
                                 <th class="py-2 pr-4 text-right">Prosj. slotova</th>
@@ -307,6 +355,12 @@
                                     <td class="py-2 pr-4 text-right">{{ (int) $row['free_reservations'] }}</td>
                                     <td class="py-2 pr-4 text-right">{{ $fmtPct((float) $row['free_pct']) }}</td>
                                     <td class="py-2 pr-4 text-right">{{ $fmtMoney((float) $row['avg_revenue_per_paid']) }}</td>
+                                    <td class="py-2 pr-4 text-right">{{ (int) ($row['time_slots_count'] ?? 0) }}</td>
+                                    <td class="py-2 pr-4 text-right">{{ $fmtMoney((float) ($row['time_slots_revenue'] ?? 0)) }}</td>
+                                    <td class="py-2 pr-4 text-right">{{ (int) ($row['daily_fee_limo_count'] ?? 0) }}</td>
+                                    <td class="py-2 pr-4 text-right">{{ $fmtMoney((float) ($row['daily_fee_limo_revenue'] ?? 0)) }}</td>
+                                    <td class="py-2 pr-4 text-right">{{ (int) ($row['daily_fee_buses_count'] ?? 0) }}</td>
+                                    <td class="py-2 pr-4 text-right">{{ $fmtMoney((float) ($row['daily_fee_buses_revenue'] ?? 0)) }}</td>
                                     <td class="py-2 pr-4 text-right">{{ (int) ($row['daily_ticket_count'] ?? 0) }}</td>
                                     <td class="py-2 pr-4 text-right">{{ $fmtMoney((float) ($row['daily_ticket_revenue'] ?? 0)) }}</td>
                                     <td class="py-2 pr-4 text-right">{{ (int) $row['occupied_slots'] }}</td>
@@ -319,7 +373,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="17" class="py-3 pr-4 text-sm text-gray-500">Nema podataka za izabrani period.</td>
+                                    <td colspan="23" class="py-3 pr-4 text-sm text-gray-500">Nema podataka za izabrani period.</td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -9,6 +9,7 @@ use App\Models\PostFiscalizationData;
 use App\Models\Reservation;
 use App\Models\TempData;
 use App\Models\VehicleType;
+use App\Services\Reservation\ReservationVehicleEligibilityService;
 use App\Support\ReservationKind;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -16,6 +17,10 @@ use Illuminate\Support\Facades\DB;
 
 final class AdminAnalyticsService
 {
+    public function __construct(
+        private ReservationVehicleEligibilityService $vehicleEligibility,
+    ) {}
+
     /**
      * @return array<string, mixed> Aggregate dataset (dashboard + PDF).
      */
@@ -58,9 +63,15 @@ final class AdminAnalyticsService
         $paidTimeSlots = $this->onlyTimeSlots($paid);
         $paidDailyTickets = $this->onlyDailyTickets($paid);
 
+        $limoVehicleTypeIds = $this->vehicleEligibility->controlDailyFeeListVehicleTypeIds();
+        $dailyFeeAll = $this->splitDailyTicketByVehicleGroup($dailyTicketReservations, $limoVehicleTypeIds);
+        $dailyFeePaid = $this->splitDailyTicketByVehicleGroup($paidDailyTickets, $limoVehicleTypeIds);
+
         $revenueTotal = (float) $paid->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
         $timeSlotsRevenue = (float) $paidTimeSlots->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
         $dailyTicketRevenue = (float) $paidDailyTickets->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
+        $dailyFeeLimoRevenue = $dailyFeePaid['limo']['revenue'];
+        $dailyFeeBusesRevenue = $dailyFeePaid['buses']['revenue'];
         $paidCount = $paid->count();
         $freeCount = $free->count();
         $reservationCount = $reservations->count();
@@ -113,14 +124,14 @@ final class AdminAnalyticsService
         // Trend by day.
         $trendByDay = $this->trendByDay($from, $to, $reservations);
 
-        // Day parts (time_slots only) + optional daily ticket row outside slot grouping.
-        $dayParts = $this->groupByDayPart($timeSlotsReservations, $slotById, $dailyTicketReservations);
+        // Day parts: time_slots only (daily fee has separate section).
+        $dayParts = $this->groupByDayPart($timeSlotsReservations, $slotById);
 
         // Vehicle types.
         $byVehicleType = $this->groupByVehicleType($reservations);
 
         // Agencies (registered users).
-        $byAgency = $this->groupByAgency($reservations, $slotById, $revenueTotal, $includeFree, $freeForAgencyWhenExcluded);
+        $byAgency = $this->groupByAgency($reservations, $slotById, $revenueTotal, $includeFree, $freeForAgencyWhenExcluded, $limoVehicleTypeIds);
 
         // Admin free (FZBR) — separate section, independent from include_free.
         $adminFreeReservations = Reservation::query()
@@ -158,6 +169,13 @@ final class AdminAnalyticsService
             'total_revenue' => $revenueTotal,
             'time_slots_revenue' => $timeSlotsRevenue,
             'daily_ticket_revenue' => $dailyTicketRevenue,
+            'daily_fee_limo_count' => $dailyFeeAll['limo']['count'],
+            'daily_fee_limo_revenue' => $dailyFeeLimoRevenue,
+            'daily_fee_buses_count' => $dailyFeeAll['buses']['count'],
+            'daily_fee_buses_revenue' => $dailyFeeBusesRevenue,
+            'daily_fee_total_count' => $dailyTicketCount,
+            'daily_fee_total_revenue' => $dailyTicketRevenue,
+            'total_reservations_all_kinds' => $timeSlotsCount + $dailyTicketCount,
             'limo_revenue_total' => $limo['revenue_total'],
             'revenue_grand_total' => $revenueGrandTotal,
             'reservations_total' => $reservationCount,
@@ -183,6 +201,37 @@ final class AdminAnalyticsService
                 'count' => $dailyTicketCount,
                 'paid_count' => $paidDailyTickets->count(),
                 'revenue' => $dailyTicketRevenue,
+                'limo' => [
+                    'count' => $dailyFeeAll['limo']['count'],
+                    'paid_count' => $dailyFeePaid['limo']['count'],
+                    'revenue' => $dailyFeeLimoRevenue,
+                ],
+                'buses' => [
+                    'count' => $dailyFeeAll['buses']['count'],
+                    'paid_count' => $dailyFeePaid['buses']['count'],
+                    'revenue' => $dailyFeeBusesRevenue,
+                ],
+            ],
+        ];
+
+        $dailyFee = [
+            'rows' => [
+                [
+                    'label' => 'Limo',
+                    'count' => $dailyFeeAll['limo']['count'],
+                    'revenue' => $dailyFeeLimoRevenue,
+                ],
+                [
+                    'label' => 'Autobusi',
+                    'count' => $dailyFeeAll['buses']['count'],
+                    'revenue' => $dailyFeeBusesRevenue,
+                ],
+                [
+                    'label' => 'Ukupno',
+                    'count' => $dailyTicketCount,
+                    'revenue' => $dailyTicketRevenue,
+                    'is_total' => true,
+                ],
             ],
         ];
 
@@ -201,6 +250,7 @@ final class AdminAnalyticsService
             ],
             'kpi' => $kpi,
             'reservation_kinds' => $reservationKinds,
+            'daily_fee' => $dailyFee,
             'trend_by_day' => $trendByDay,
             'day_parts' => $dayParts,
             'by_vehicle_type' => $byVehicleType,
@@ -467,15 +517,39 @@ final class AdminAnalyticsService
     }
 
     /**
-     * @param  Collection<int, Reservation>  $reservations
+     * @param  Collection<int, Reservation>  $dailyTickets
+     * @param  list<int>  $limoVehicleTypeIds
+     * @return array{limo: array{count:int,revenue:float}, buses: array{count:int,revenue:float}}
+     */
+    private function splitDailyTicketByVehicleGroup(Collection $dailyTickets, array $limoVehicleTypeIds): array
+    {
+        $limo = ['count' => 0, 'revenue' => 0.0];
+        $buses = ['count' => 0, 'revenue' => 0.0];
+
+        foreach ($dailyTickets as $reservation) {
+            if (! $reservation->isDailyTicket()) {
+                continue;
+            }
+
+            $amount = $reservation->status === 'paid' ? (float) ($reservation->invoice_amount ?? 0) : 0.0;
+            if (in_array((int) $reservation->vehicle_type_id, $limoVehicleTypeIds, true)) {
+                $limo['count']++;
+                $limo['revenue'] += $amount;
+            } else {
+                $buses['count']++;
+                $buses['revenue'] += $amount;
+            }
+        }
+
+        return ['limo' => $limo, 'buses' => $buses];
+    }
+
+    /**
+     * @param  Collection<int, Reservation>  $timeSlotsReservations
      * @param  Collection<int, ListOfTimeSlot>  $slotById
      * @return list<array{key:string,label:string,reservations:int,occupied_slots:int,revenue:float,share_occupied:float,share_revenue:float}>
      */
-    /**
-     * @param  Collection<int, Reservation>  $timeSlotsReservations
-     * @param  Collection<int, Reservation>  $dailyTicketReservations
-     */
-    private function groupByDayPart(Collection $timeSlotsReservations, Collection $slotById, Collection $dailyTicketReservations): array
+    private function groupByDayPart(Collection $timeSlotsReservations, Collection $slotById): array
     {
         $groups = [
             AdminAnalyticsDefinitions::PART_FREE_MORNING => ['reservations' => 0, 'occupied' => 0, 'revenue' => 0.0],
@@ -506,23 +580,6 @@ final class AdminAnalyticsService
                 'revenue' => (float) $g['revenue'],
                 'share_occupied' => $totalOcc > 0 ? ((int) $g['occupied'] / $totalOcc) : 0.0,
                 'share_revenue' => $totalRev > 0 ? ((float) $g['revenue'] / $totalRev) : 0.0,
-                'is_daily_ticket' => false,
-            ];
-        }
-
-        if ($dailyTicketReservations->isNotEmpty()) {
-            $dailyRev = (float) $dailyTicketReservations->where('status', 'paid')
-                ->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
-            $reservationRevenueTotal = $totalRev + $dailyRev;
-            $out[] = [
-                'key' => AdminAnalyticsDefinitions::PART_DAILY_TICKET,
-                'label' => AdminAnalyticsDefinitions::dayPartLabel(AdminAnalyticsDefinitions::PART_DAILY_TICKET),
-                'reservations' => $dailyTicketReservations->count(),
-                'occupied_slots' => 0,
-                'revenue' => $dailyRev,
-                'share_occupied' => 0.0,
-                'share_revenue' => $reservationRevenueTotal > 0 ? ($dailyRev / $reservationRevenueTotal) : 0.0,
-                'is_daily_ticket' => true,
             ];
         }
 
@@ -590,6 +647,7 @@ final class AdminAnalyticsService
         float $revenueTotal,
         bool $includeFree,
         Collection $freeForAgencyWhenExcluded,
+        array $limoVehicleTypeIds,
     ): array {
         $locale = 'cg';
 
@@ -602,7 +660,7 @@ final class AdminAnalyticsService
             ->map(fn (Collection $rows) => $rows->count());
 
         $groups = $agencyRows->groupBy(fn (Reservation $r) => (int) $r->user_id)->map(
-            function (Collection $rows, int $userId) use ($slotById, $revenueTotal, $includeFree, $freeExtraByUserId, $locale): array {
+            function (Collection $rows, int $userId) use ($slotById, $revenueTotal, $includeFree, $freeExtraByUserId, $locale, $limoVehicleTypeIds): array {
                 $paidRows = $rows->where('status', 'paid');
                 $freeRows = $rows->where('status', 'free');
 
@@ -643,9 +701,15 @@ final class AdminAnalyticsService
                 $occMorning = 0;
                 $occDay = 0;
                 $occEvening = 0;
-                $dailyTicketCountAgency = $rows->where(fn (Reservation $r) => $r->isDailyTicket())->count();
-                $dailyTicketRevenueAgency = (float) $rows
-                    ->where(fn (Reservation $r) => $r->isDailyTicket() && $r->status === 'paid')
+                $timeSlotsCountAgency = $rows->filter(fn (Reservation $r) => $r->isTimeSlots())->count();
+                $timeSlotsRevenueAgency = (float) $rows
+                    ->filter(fn (Reservation $r) => $r->isTimeSlots() && $r->status === 'paid')
+                    ->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
+                $dailyTicketRows = $rows->filter(fn (Reservation $r) => $r->isDailyTicket());
+                $dailySplit = $this->splitDailyTicketByVehicleGroup($dailyTicketRows, $limoVehicleTypeIds);
+                $dailyTicketCountAgency = $dailyTicketRows->count();
+                $dailyTicketRevenueAgency = (float) $dailyTicketRows
+                    ->where('status', 'paid')
                     ->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0));
 
                 foreach ($rows as $r) {
@@ -699,8 +763,14 @@ final class AdminAnalyticsService
                     'morning_pct' => $morningPct,
                     'day_pct' => $dayPct,
                     'evening_pct' => $eveningPct,
+                    'time_slots_count' => $timeSlotsCountAgency,
+                    'time_slots_revenue' => $timeSlotsRevenueAgency,
                     'daily_ticket_count' => $dailyTicketCountAgency,
                     'daily_ticket_revenue' => $dailyTicketRevenueAgency,
+                    'daily_fee_limo_count' => $dailySplit['limo']['count'],
+                    'daily_fee_limo_revenue' => $dailySplit['limo']['revenue'],
+                    'daily_fee_buses_count' => $dailySplit['buses']['count'],
+                    'daily_fee_buses_revenue' => $dailySplit['buses']['revenue'],
                 ];
             }
         );
@@ -716,6 +786,8 @@ final class AdminAnalyticsService
             $reservationsTotal = $guestRows->count();
             $occupiedSlots = $this->occupiedSlotsFor($guestRows);
             $freePct = ($paidCount + $freeCount) > 0 ? ($freeCount / ($paidCount + $freeCount)) : 0.0;
+            $guestDailyRows = $guestRows->filter(fn (Reservation $r) => $r->isDailyTicket());
+            $guestDailySplit = $this->splitDailyTicketByVehicleGroup($guestDailyRows, $limoVehicleTypeIds);
 
             $groups->put('guest', [
                 'key' => 'guest',
@@ -735,10 +807,18 @@ final class AdminAnalyticsService
                 'morning_pct' => 0.0,
                 'day_pct' => 0.0,
                 'evening_pct' => 0.0,
-                'daily_ticket_count' => $guestRows->where(fn (Reservation $r) => $r->isDailyTicket())->count(),
-                'daily_ticket_revenue' => (float) $guestRows
-                    ->where(fn (Reservation $r) => $r->isDailyTicket() && $r->status === 'paid')
+                'time_slots_count' => $guestRows->filter(fn (Reservation $r) => $r->isTimeSlots())->count(),
+                'time_slots_revenue' => (float) $guestRows
+                    ->filter(fn (Reservation $r) => $r->isTimeSlots() && $r->status === 'paid')
                     ->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0)),
+                'daily_ticket_count' => $guestDailyRows->count(),
+                'daily_ticket_revenue' => (float) $guestDailyRows
+                    ->where('status', 'paid')
+                    ->sum(fn (Reservation $r) => (float) ($r->invoice_amount ?? 0)),
+                'daily_fee_limo_count' => $guestDailySplit['limo']['count'],
+                'daily_fee_limo_revenue' => $guestDailySplit['limo']['revenue'],
+                'daily_fee_buses_count' => $guestDailySplit['buses']['count'],
+                'daily_fee_buses_revenue' => $guestDailySplit['buses']['revenue'],
             ]);
         }
 

@@ -115,7 +115,7 @@ class AdminPanelAnalyticsTest extends TestCase
             ->assertSee('Prihod od rezervacija (paid)', false)
             ->assertSee('Ukupan prihod (rezervacije + Limo)', false)
             ->assertSee('50.00 EUR', false)
-            ->assertSee('Limo servis', false);
+            ->assertSee('Limo pickup', false);
 
         $pdf = $this->get(route('panel_admin.analytics.pdf', [
             'date_from' => $d,
@@ -868,7 +868,7 @@ class AdminPanelAnalyticsTest extends TestCase
             'date_from' => $d,
             'date_to' => $d,
             'include_free' => 0,
-        ], false))->assertOk()->assertSee('Limo servis', false);
+        ], false))->assertOk()->assertSee('Limo pickup', false);
 
         Carbon::setTestNow();
     }
@@ -996,7 +996,7 @@ class AdminPanelAnalyticsTest extends TestCase
             'logoDataUri' => '',
         ])->render();
 
-        $this->assertStringContainsString('Limo servis', $html);
+        $this->assertStringContainsString('Limo pickup', $html);
         $this->assertStringContainsString('Pickup preko tablice', $html);
 
         $binary = app(AdminAnalyticsPdfGenerator::class)->renderBinary($dataset);
