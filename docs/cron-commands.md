@@ -341,3 +341,19 @@ Proveri da:
 - SAFE job-ovi gore postoje
 - EXCLUDED job-ovi nisu prisutni
 - `schedule:list` ne puca (posebno zbog cron izraza)
+
+---
+
+## 12. RepairFulfilledFreeReservationRequests (ručno)
+
+**Komanda:** `free-reservation-requests:repair-fulfilled`
+
+**Opis:** Operativni repair za produkcijske slučajeve gdje su `status=free` rezervacije već kreirane, ali `free_reservation_requests` ostaju `submitted`/`updated` (npr. poslije pada email/PDF-a prije idempotentnog fixa). Koristi isti matcher kao admin fulfill: po liniji vozila/segmenta pronalazi tačno jednu odgovarajuću rezervaciju, povezuje FK, označava zahtjev `fulfilled`, uklanja upozorenje i šalje potvrde ako treba.
+
+**Opcije:** `--dry-run` (samo izvještaj); `--id=` (jedan zahtjev).
+
+**Nije zakazano** — pokreće se ručno na serveru.
+
+**Servis:** `App\Services\AdminPanel\FreeReservation\FreeReservationRequestFulfillmentService::repairSubmittedRequest`.
+
+**Testovi:** `tests/Feature/AdminPanel/AdminPanelFreeReservationTest.php` (`test_repair_command_completes_submitted_request_with_existing_orphan`).

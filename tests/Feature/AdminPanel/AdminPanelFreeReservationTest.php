@@ -568,7 +568,7 @@ class AdminPanelFreeReservationTest extends TestCase
         $this->assertSame(1, FreeReservationRequest::query()->count());
     }
 
-    public function test_fulfill_keeps_request_and_warning_when_mail_pdf_fails_after_reservations_created(): void
+    public function test_fulfill_keeps_request_fulfilled_when_mail_pdf_fails_after_reservations_created(): void
     {
         Mail::fake();
 
@@ -630,18 +630,19 @@ class AdminPanelFreeReservationTest extends TestCase
 
         $this->post(route('panel_admin.free-reservation-requests.fulfill', ['freeReservationRequest' => $req->id], false), [
             'confirm' => 1,
-        ])->assertRedirect();
+        ])->assertRedirect()->assertSessionHas('status');
 
         $this->assertSame(1, Reservation::query()->count());
         $req->refresh();
-        $this->assertSame(FreeReservationRequest::STATUS_SUBMITTED, $req->status);
+        $this->assertSame(FreeReservationRequest::STATUS_FULFILLED, $req->status);
+        $this->assertSame($req->id, (int) Reservation::query()->value('free_reservation_request_id'));
         $this->assertSame(
             Reservation::EMAIL_NOT_SENT,
             (int) Reservation::query()->value('email_sent')
         );
         $alert = AdminAlert::query()->first();
         $this->assertNotNull($alert);
-        $this->assertNull($alert->removed_at);
+        $this->assertNotNull($alert->removed_at);
     }
 
     public function test_admin_can_preview_free_request_attachment_from_private_storage(): void
@@ -733,5 +734,350 @@ class AdminPanelFreeReservationTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertSame(1, Reservation::query()->where('license_plate', 'KO123AB')->count());
+    }
+
+    /**
+     * @return array{req: FreeReservationRequest, slotA: ListOfTimeSlot, slotB: ListOfTimeSlot, vt: VehicleType, date: string}
+     */
+    private function seedSubmittedFreeRequest(string $plate = 'KO-FRR-1'): array
+    {
+        $d = Carbon::now()->addDays(6)->toDateString();
+        $slotA = ListOfTimeSlot::query()->create(['time_slot' => '10:00 - 10:20']);
+        $slotB = ListOfTimeSlot::query()->create(['time_slot' => '11:00 - 11:20']);
+        foreach ([$slotA, $slotB] as $s) {
+            DailyParkingData::query()->create([
+                'date' => $d,
+                'time_slot_id' => $s->id,
+                'capacity' => 10,
+                'reserved' => 0,
+                'pending' => 0,
+                'is_blocked' => false,
+            ]);
+        }
+
+        $vt = VehicleType::query()->create(['price' => 10]);
+        VehicleTypeTranslation::query()->create(['vehicle_type_id' => $vt->id, 'locale' => 'cg', 'name' => 'Autobus', 'description' => null]);
+
+        $req = FreeReservationRequest::query()->create([
+            'locale' => 'cg',
+            'institution_name' => 'Institucija Test',
+            'institution_email' => 'inst@example.com',
+            'institution_phone' => '+38267111222',
+            'reservation_date' => $d,
+            'drop_off_time_slot_id' => $slotA->id,
+            'pick_up_time_slot_id' => $slotB->id,
+            'country' => 'ME',
+            'status' => FreeReservationRequest::STATUS_SUBMITTED,
+        ]);
+        $seg = FreeReservationRequestSegment::query()->create([
+            'request_id' => $req->id,
+            'reservation_date' => $d,
+            'drop_off_time_slot_id' => $slotA->id,
+            'pick_up_time_slot_id' => $slotB->id,
+            'position' => 1,
+        ]);
+        FreeReservationRequestVehicle::query()->create([
+            'request_id' => $req->id,
+            'segment_id' => $seg->id,
+            'license_plate' => $plate,
+            'vehicle_type_id' => $vt->id,
+        ]);
+
+        return ['req' => $req, 'slotA' => $slotA, 'slotB' => $slotB, 'vt' => $vt, 'date' => $d];
+    }
+
+    private function mockFreeReservationPdf(): void
+    {
+        $this->app->instance(\App\Services\Pdf\FreeReservationPdfGenerator::class, new class extends \App\Services\Pdf\FreeReservationPdfGenerator {
+            public function renderBinary(\App\Models\Reservation $reservation): string
+            {
+                return 'PDF';
+            }
+        });
+    }
+
+    public function test_fulfill_second_click_is_idempotent_and_does_not_create_duplicates(): void
+    {
+        Mail::fake();
+        Storage::fake('local');
+
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+        $seed = $this->seedSubmittedFreeRequest('KO-IDEM-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        $route = route('panel_admin.free-reservation-requests.fulfill', ['freeReservationRequest' => $req->id], false);
+        $this->post($route, ['confirm' => 1])->assertRedirect();
+        $this->post($route, ['confirm' => 1])->assertRedirect()->assertSessionHas('status');
+
+        $this->assertSame(1, Reservation::query()->count());
+        $req->refresh();
+        $this->assertSame(FreeReservationRequest::STATUS_FULFILLED, $req->status);
+        $this->assertSame($req->id, (int) Reservation::query()->value('free_reservation_request_id'));
+    }
+
+    public function test_fulfill_links_existing_orphan_reservation_and_completes_submitted_request(): void
+    {
+        Mail::fake();
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+        $seed = $this->seedSubmittedFreeRequest('KO-ORPH-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        $orphan = Reservation::query()->create([
+            'free_reservation_request_id' => null,
+            'merchant_transaction_id' => (string) Str::uuid(),
+            'drop_off_time_slot_id' => $seed['slotA']->id,
+            'pick_up_time_slot_id' => $seed['slotB']->id,
+            'reservation_date' => $seed['date'],
+            'user_name' => 'Institucija Test',
+            'country' => 'ME',
+            'license_plate' => 'KO-ORPH-1',
+            'vehicle_type_id' => $seed['vt']->id,
+            'email' => 'inst@example.com',
+            'status' => 'free',
+            'invoice_amount' => '0.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+            'created_by_admin' => true,
+        ]);
+
+        AdminAlert::query()->create([
+            'type' => 'free_reservation_request',
+            'status' => AdminAlert::STATUS_UNREAD,
+            'title' => 't',
+            'message' => 'm',
+            'payload_json' => ['free_reservation_request_id' => $req->id],
+        ]);
+
+        $this->post(route('panel_admin.free-reservation-requests.fulfill', ['freeReservationRequest' => $req->id], false), [
+            'confirm' => 1,
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $orphan->refresh();
+        $req->refresh();
+        $this->assertSame($req->id, (int) $orphan->free_reservation_request_id);
+        $this->assertSame(FreeReservationRequest::STATUS_FULFILLED, $req->status);
+        $this->assertSame(1, Reservation::query()->count());
+        $this->assertNotNull(AdminAlert::query()->first()?->removed_at);
+    }
+
+    public function test_fulfill_relinks_reservation_wrongly_linked_to_another_request(): void
+    {
+        Mail::fake();
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+        $seed = $this->seedSubmittedFreeRequest('KO-WRONG-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        $wrongOwner = FreeReservationRequest::query()->create([
+            'locale' => 'cg',
+            'institution_name' => 'Druga institucija',
+            'institution_email' => 'other@example.com',
+            'institution_phone' => '+38267111222',
+            'reservation_date' => $seed['date'],
+            'drop_off_time_slot_id' => $seed['slotA']->id,
+            'pick_up_time_slot_id' => $seed['slotB']->id,
+            'country' => 'ME',
+            'status' => FreeReservationRequest::STATUS_FULFILLED,
+        ]);
+
+        $mislinked = Reservation::query()->create([
+            'free_reservation_request_id' => $wrongOwner->id,
+            'merchant_transaction_id' => (string) Str::uuid(),
+            'drop_off_time_slot_id' => $seed['slotA']->id,
+            'pick_up_time_slot_id' => $seed['slotB']->id,
+            'reservation_date' => $seed['date'],
+            'user_name' => 'Institucija Test',
+            'country' => 'ME',
+            'license_plate' => 'KO-WRONG-1',
+            'vehicle_type_id' => $seed['vt']->id,
+            'email' => 'inst@example.com',
+            'status' => 'free',
+            'invoice_amount' => '0.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+            'created_by_admin' => true,
+        ]);
+
+        $this->post(route('panel_admin.free-reservation-requests.fulfill', ['freeReservationRequest' => $req->id], false), [
+            'confirm' => 1,
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $mislinked->refresh();
+        $this->assertSame($req->id, (int) $mislinked->free_reservation_request_id);
+        $this->assertSame(FreeReservationRequest::STATUS_FULFILLED, $req->fresh()->status);
+    }
+
+    public function test_fulfill_blocks_when_matching_reservation_belongs_to_other_submitted_request(): void
+    {
+        Mail::fake();
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+
+        $d = Carbon::now()->addDays(7)->toDateString();
+        $slotA = ListOfTimeSlot::query()->create(['time_slot' => '10:00 - 10:20']);
+        $slotB = ListOfTimeSlot::query()->create(['time_slot' => '11:00 - 11:20']);
+        foreach ([$slotA, $slotB] as $s) {
+            DailyParkingData::query()->create([
+                'date' => $d,
+                'time_slot_id' => $s->id,
+                'capacity' => 10,
+                'reserved' => 0,
+                'pending' => 0,
+                'is_blocked' => false,
+            ]);
+        }
+
+        $vt = VehicleType::query()->create(['price' => 10]);
+        VehicleTypeTranslation::query()->create(['vehicle_type_id' => $vt->id, 'locale' => 'cg', 'name' => 'Autobus', 'description' => null]);
+
+        $makeReq = function () use ($d, $slotA, $slotB, $vt): FreeReservationRequest {
+            $req = FreeReservationRequest::query()->create([
+                'locale' => 'cg',
+                'institution_name' => 'Institucija Test',
+                'institution_email' => 'inst@example.com',
+                'institution_phone' => '+38267111222',
+                'reservation_date' => $d,
+                'drop_off_time_slot_id' => $slotA->id,
+                'pick_up_time_slot_id' => $slotB->id,
+                'country' => 'ME',
+                'status' => FreeReservationRequest::STATUS_SUBMITTED,
+            ]);
+            $seg = FreeReservationRequestSegment::query()->create([
+                'request_id' => $req->id,
+                'reservation_date' => $d,
+                'drop_off_time_slot_id' => $slotA->id,
+                'pick_up_time_slot_id' => $slotB->id,
+                'position' => 1,
+            ]);
+            FreeReservationRequestVehicle::query()->create([
+                'request_id' => $req->id,
+                'segment_id' => $seg->id,
+                'license_plate' => 'KO-OTHER-1',
+                'vehicle_type_id' => $vt->id,
+            ]);
+
+            return $req;
+        };
+
+        $otherReq = $makeReq();
+        $targetReq = $makeReq();
+        $this->mockFreeReservationPdf();
+
+        Reservation::query()->create([
+            'free_reservation_request_id' => $otherReq->id,
+            'merchant_transaction_id' => (string) Str::uuid(),
+            'drop_off_time_slot_id' => $slotA->id,
+            'pick_up_time_slot_id' => $slotB->id,
+            'reservation_date' => $d,
+            'user_name' => 'Institucija Test',
+            'country' => 'ME',
+            'license_plate' => 'KO-OTHER-1',
+            'vehicle_type_id' => $vt->id,
+            'email' => 'inst@example.com',
+            'status' => 'free',
+            'invoice_amount' => '0.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+            'created_by_admin' => true,
+        ]);
+
+        $this->post(route('panel_admin.free-reservation-requests.fulfill', ['freeReservationRequest' => $targetReq->id], false), [
+            'confirm' => 1,
+        ])->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame(FreeReservationRequest::STATUS_SUBMITTED, $targetReq->fresh()->status);
+    }
+
+    public function test_fulfill_does_not_auto_link_ambiguous_matching_reservations(): void
+    {
+        Mail::fake();
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+        $seed = $this->seedSubmittedFreeRequest('KO-AMB-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        foreach (['mt-a', 'mt-b'] as $mtid) {
+            Reservation::query()->create([
+                'free_reservation_request_id' => null,
+                'merchant_transaction_id' => $mtid,
+                'drop_off_time_slot_id' => $seed['slotA']->id,
+                'pick_up_time_slot_id' => $seed['slotB']->id,
+                'reservation_date' => $seed['date'],
+                'user_name' => 'Institucija Test',
+                'country' => 'ME',
+                'license_plate' => 'KO-AMB-1',
+                'vehicle_type_id' => $seed['vt']->id,
+                'email' => 'inst@example.com',
+                'status' => 'free',
+                'invoice_amount' => '0.00',
+                'email_sent' => Reservation::EMAIL_NOT_SENT,
+                'created_by_admin' => true,
+            ]);
+        }
+
+        $this->post(route('panel_admin.free-reservation-requests.fulfill', ['freeReservationRequest' => $req->id], false), [
+            'confirm' => 1,
+        ])->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame(FreeReservationRequest::STATUS_SUBMITTED, $req->fresh()->status);
+        $this->assertSame(2, Reservation::query()->count());
+    }
+
+    public function test_fulfilled_request_appears_in_approved_review_list(): void
+    {
+        Mail::fake();
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+        $seed = $this->seedSubmittedFreeRequest('KO-REVIEW-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        $this->post(route('panel_admin.free-reservation-requests.fulfill', ['freeReservationRequest' => $req->id], false), [
+            'confirm' => 1,
+        ])->assertRedirect();
+
+        $reviewDay = Carbon::now('Europe/Podgorica')->toDateString();
+        $this->get(route('panel_admin.free-reservations', [
+            'fzbr_review' => 'approved',
+            'fzbr_date_from' => $reviewDay,
+            'fzbr_date_to' => $reviewDay,
+        ], false))
+            ->assertOk()
+            ->assertSee('Institucija Test', false);
+    }
+
+    public function test_repair_command_completes_submitted_request_with_existing_orphan(): void
+    {
+        Mail::fake();
+        $seed = $this->seedSubmittedFreeRequest('KO-REPAIR-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        Reservation::query()->create([
+            'free_reservation_request_id' => null,
+            'merchant_transaction_id' => (string) Str::uuid(),
+            'drop_off_time_slot_id' => $seed['slotA']->id,
+            'pick_up_time_slot_id' => $seed['slotB']->id,
+            'reservation_date' => $seed['date'],
+            'user_name' => 'Institucija Test',
+            'country' => 'ME',
+            'license_plate' => 'KO-REPAIR-1',
+            'vehicle_type_id' => $seed['vt']->id,
+            'email' => 'inst@example.com',
+            'status' => 'free',
+            'invoice_amount' => '0.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+            'created_by_admin' => true,
+        ]);
+
+        $this->artisan('free-reservation-requests:repair-fulfilled', ['--id' => $req->id])
+            ->assertSuccessful();
+
+        $req->refresh();
+        $this->assertSame(FreeReservationRequest::STATUS_FULFILLED, $req->status);
+        $this->assertSame($req->id, (int) Reservation::query()->value('free_reservation_request_id'));
     }
 }

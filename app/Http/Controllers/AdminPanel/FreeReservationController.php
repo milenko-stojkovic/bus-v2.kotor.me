@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\AdminPanel;
 
 use App\Exceptions\AdminFreeReservationSlotsUnavailableException;
+use App\Exceptions\AmbiguousFreeReservationLinkException;
 use App\Exceptions\DuplicateTerminiReservationException;
+use App\Exceptions\FreeReservationLinkedToOtherRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AdminPanel\AdminFreeReservationRequest;
 use App\Http\Requests\AdminPanel\AdminFreeReservationRequestFulfillRequest;
@@ -176,10 +178,31 @@ class FreeReservationController extends Controller
             return back()->with('error', 'Kapacitet više nije dostupan za traženi datum/termine. Nijedna rezervacija nije kreirana.');
         } catch (DuplicateTerminiReservationException $e) {
             return back()->with('error', $e->getMessage());
+        } catch (AmbiguousFreeReservationLinkException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (FreeReservationLinkedToOtherRequestException $e) {
+            return back()->with('error', $e->getMessage());
         }
 
         if (! $result['mail_sent']) {
-            return back()->with('error', 'Rezervacije su kreirane, ali slanje potvrda nije uspelo. Pokušajte ponovo kasnije (zahtjev i upozorenje ostaju).');
+            if ($result['idempotent'] || $result['linked_existing'] > 0) {
+                return back()->with(
+                    'status',
+                    'Zahtjev je označen kao obrađen (postojeće rezervacije su povezane). Slanje potvrda nije uspjelo — pokušajte ponovo.'
+                );
+            }
+
+            return back()->with(
+                'status',
+                'Zahtjev je označen kao obrađen, ali slanje potvrda nije uspjelo. Pokušajte ponovo kasnije.'
+            );
+        }
+
+        if ($result['idempotent'] || $result['linked_existing'] > 0) {
+            return back()->with(
+                'status',
+                'Besplatne rezervacije su već postojale; zahtjev je označen kao obrađen i potvrde su poslate na email iz zahtjeva.'
+            );
         }
 
         return back()->with('status', 'Zahtjev je obrađen. Kreirane su besplatne rezervacije i potvrde su poslate na email iz zahtjeva.');

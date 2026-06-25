@@ -67,13 +67,19 @@ class DuplicateReservationAttemptService
         int $pickUpSlotId,
         ?int $exceptReservationId = null,
         ?int $exceptTempDataId = null,
+        array $exceptReservationIds = [],
     ): bool {
         $plate = self::normalizeLicensePlate($licensePlate);
         if ($plate === '') {
             return false;
         }
 
-        if ($this->hasReservationConflict($date, $plate, $dropOffSlotId, $pickUpSlotId, $exceptReservationId)) {
+        $exceptIds = array_values(array_unique(array_filter(array_merge(
+            $exceptReservationId !== null ? [$exceptReservationId] : [],
+            $exceptReservationIds,
+        ))));
+
+        if ($this->hasReservationConflict($date, $plate, $dropOffSlotId, $pickUpSlotId, $exceptIds)) {
             return true;
         }
 
@@ -88,6 +94,7 @@ class DuplicateReservationAttemptService
 
     /**
      * @throws DuplicateTerminiReservationException
+     * @param  list<int>  $exceptReservationIds
      */
     public function assertNoConflict(
         string $date,
@@ -97,8 +104,9 @@ class DuplicateReservationAttemptService
         ?int $exceptReservationId = null,
         ?int $exceptTempDataId = null,
         ?string $locale = null,
+        array $exceptReservationIds = [],
     ): void {
-        if ($this->existsConflict($date, $licensePlate, $dropOffSlotId, $pickUpSlotId, $exceptReservationId, $exceptTempDataId)) {
+        if ($this->existsConflict($date, $licensePlate, $dropOffSlotId, $pickUpSlotId, $exceptReservationId, $exceptTempDataId, $exceptReservationIds)) {
             throw new DuplicateTerminiReservationException($this->conflictMessage($locale));
         }
     }
@@ -196,12 +204,12 @@ class DuplicateReservationAttemptService
         string $normalizedPlate,
         int $dropOffSlotId,
         int $pickUpSlotId,
-        ?int $exceptReservationId,
+        array $exceptReservationIds,
     ): bool {
         $query = $this->timeSlotsReservationQuery($date, $dropOffSlotId, $pickUpSlotId);
 
-        if ($exceptReservationId !== null) {
-            $query->whereKeyNot($exceptReservationId);
+        if ($exceptReservationIds !== []) {
+            $query->whereNotIn('id', $exceptReservationIds);
         }
 
         return $this->queryHasMatchingPlate($query, $normalizedPlate);
