@@ -107,6 +107,55 @@ final class FzbrAdminReviewAndAttachmentPreviewTest extends TestCase
             ->assertDontSee('OUT_RANGE_FZBR', false);
     }
 
+    public function test_fzbr_review_filtered_page_shows_reset_filter_link_to_clean_route(): void
+    {
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+
+        $cleanUrl = route('panel_admin.free-reservations', [], false);
+        $filteredUrl = route('panel_admin.free-reservations', [
+            'fzbr_review' => 'rejected',
+            'fzbr_date_from' => '2026-05-08',
+            'fzbr_date_to' => '2026-05-12',
+        ], false);
+
+        $html = $this->get($filteredUrl)
+            ->assertOk()
+            ->assertSee('Reset filter', false)
+            ->getContent();
+
+        $this->assertStringContainsString('href="'.$cleanUrl.'"', $html);
+    }
+
+    public function test_fzbr_review_clean_page_does_not_show_reset_filter(): void
+    {
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+
+        $this->get(route('panel_admin.free-reservations', [], false))
+            ->assertOk()
+            ->assertDontSee('Reset filter', false);
+    }
+
+    public function test_fzbr_review_date_filters_still_apply_when_reset_filter_not_used(): void
+    {
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+
+        $this->seedTerminalRequest(FreeReservationRequest::STATUS_FULFILLED, 'IN_RANGE_FZBR', Carbon::parse('2026-05-10 15:00:00', 'Europe/Podgorica'));
+        $this->seedTerminalRequest(FreeReservationRequest::STATUS_FULFILLED, 'OUT_RANGE_FZBR', Carbon::parse('2026-07-20 15:00:00', 'Europe/Podgorica'));
+
+        $this->get(route('panel_admin.free-reservations', [
+            'fzbr_review' => 'approved',
+            'fzbr_date_from' => '2026-05-08',
+            'fzbr_date_to' => '2026-05-12',
+        ], false))
+            ->assertOk()
+            ->assertSee('IN_RANGE_FZBR', false)
+            ->assertDontSee('OUT_RANGE_FZBR', false)
+            ->assertSee('Reset filter', false);
+    }
+
     public function test_fzbr_attachment_preview_local_png(): void
     {
         Storage::fake('local');
