@@ -426,6 +426,15 @@
                 </div>
             </form>
 
+            @if (! empty($fzbrReviewFilterActive))
+                <div class="flex justify-end">
+                    <a href="{{ route('panel_admin.free-reservations', [], false) }}"
+                       class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md font-semibold text-xs text-red-800 uppercase tracking-widest hover:bg-red-50">
+                        Reset filter
+                    </a>
+                </div>
+            @endif
+
             <div class="bg-white shadow rounded-lg border border-red-100 overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-red-50">

@@ -115,6 +115,8 @@ class FreeReservationController extends Controller
             $r->setAttribute('segments_availability', $a['segments'] ?? []);
         }
 
+        $fzbrReviewFilterActive = $request->hasAny(['fzbr_review', 'fzbr_date_from', 'fzbr_date_to']);
+
         return view('admin-panel.free-reservations', array_merge(
             $pageData->forAdminPanel($request),
             [
@@ -125,6 +127,7 @@ class FreeReservationController extends Controller
                 'fzbrDateFrom' => $fzbrDates['fzbr_date_from'],
                 'fzbrDateTo' => $fzbrDates['fzbr_date_to'],
                 'fzbrReviewRequests' => $fzbrReviewRequests,
+                'fzbrReviewFilterActive' => $fzbrReviewFilterActive,
             ]
         ));
     }
