@@ -3,6 +3,7 @@
 namespace Tests\Feature\AdminPanel;
 
 use App\Jobs\SendFreeReservationConfirmationJob;
+use App\Mail\FreeReservationRequestFulfilledMail;
 use App\Models\AdminAlert;
 use App\Models\Admin;
 use App\Models\FreeReservationRequest;
@@ -513,6 +514,12 @@ class AdminPanelFreeReservationTest extends TestCase
         $alert = AdminAlert::query()->first();
         $this->assertNotNull($alert);
         $this->assertNotNull($alert->removed_at);
+
+        Mail::assertSent(FreeReservationRequestFulfilledMail::class, function (FreeReservationRequestFulfilledMail $m): bool {
+            return $m->hasTo('school@example.com')
+                && count($m->pdfAttachments) === 2;
+        });
+        Mail::assertSent(FreeReservationRequestFulfilledMail::class, 1);
     }
 
     public function test_fulfill_does_not_create_any_reservations_when_final_availability_check_fails(): void
@@ -1079,5 +1086,184 @@ class AdminPanelFreeReservationTest extends TestCase
         $req->refresh();
         $this->assertSame(FreeReservationRequest::STATUS_FULFILLED, $req->status);
         $this->assertSame($req->id, (int) Reservation::query()->value('free_reservation_request_id'));
+    }
+
+    public function test_fulfill_sends_confirmation_email_with_pdf_attachment(): void
+    {
+        Mail::fake();
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+        $seed = $this->seedSubmittedFreeRequest('KO-MAIL-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        $this->post(route('panel_admin.free-reservation-requests.fulfill', ['freeReservationRequest' => $req->id], false), [
+            'confirm' => 1,
+        ])->assertRedirect();
+
+        Mail::assertSent(FreeReservationRequestFulfilledMail::class, function (FreeReservationRequestFulfilledMail $m) use ($req): bool {
+            return $m->hasTo($req->institution_email)
+                && count($m->pdfAttachments) === 1
+                && $m->pdfAttachments[0]['filename'] !== '';
+        });
+    }
+
+    public function test_fulfill_linking_orphan_with_email_sent_already_does_not_fake_mail_sent(): void
+    {
+        Mail::fake();
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+        $seed = $this->seedSubmittedFreeRequest('KO-FAKE-SENT-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        Reservation::query()->create([
+            'free_reservation_request_id' => null,
+            'merchant_transaction_id' => (string) Str::uuid(),
+            'drop_off_time_slot_id' => $seed['slotA']->id,
+            'pick_up_time_slot_id' => $seed['slotB']->id,
+            'reservation_date' => $seed['date'],
+            'user_name' => 'Institucija Test',
+            'country' => 'ME',
+            'license_plate' => 'KO-FAKE-SENT-1',
+            'vehicle_type_id' => $seed['vt']->id,
+            'email' => 'inst@example.com',
+            'status' => 'free',
+            'invoice_amount' => '0.00',
+            'email_sent' => Reservation::EMAIL_SENT,
+            'invoice_sent_at' => now(),
+            'created_by_admin' => true,
+        ]);
+
+        $this->post(route('panel_admin.free-reservation-requests.fulfill', ['freeReservationRequest' => $req->id], false), [
+            'confirm' => 1,
+        ])->assertRedirect()->assertSessionHas('status');
+
+        Mail::assertNothingSent();
+        $req->refresh();
+        $this->assertSame(FreeReservationRequest::STATUS_FULFILLED, $req->status);
+    }
+
+    public function test_repair_fulfilled_request_sends_missing_confirmation_email(): void
+    {
+        Mail::fake();
+        $seed = $this->seedSubmittedFreeRequest('KO-REPAIR-MAIL-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        $reservation = Reservation::query()->create([
+            'free_reservation_request_id' => $req->id,
+            'merchant_transaction_id' => (string) Str::uuid(),
+            'drop_off_time_slot_id' => $seed['slotA']->id,
+            'pick_up_time_slot_id' => $seed['slotB']->id,
+            'reservation_date' => $seed['date'],
+            'user_name' => 'Institucija Test',
+            'country' => 'ME',
+            'license_plate' => 'KO-REPAIR-MAIL-1',
+            'vehicle_type_id' => $seed['vt']->id,
+            'email' => 'inst@example.com',
+            'status' => 'free',
+            'invoice_amount' => '0.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+            'created_by_admin' => true,
+        ]);
+        $req->update(['status' => FreeReservationRequest::STATUS_FULFILLED]);
+
+        $this->artisan('free-reservation-requests:repair-fulfilled', ['--id' => $req->id])
+            ->assertSuccessful()
+            ->expectsOutputToContain('mail_sent=yes');
+
+        Mail::assertSent(FreeReservationRequestFulfilledMail::class, function (FreeReservationRequestFulfilledMail $m) use ($req): bool {
+            return $m->hasTo($req->institution_email);
+        });
+
+        $reservation->refresh();
+        $this->assertSame(Reservation::EMAIL_SENT, (int) $reservation->email_sent);
+    }
+
+    public function test_repair_fulfilled_request_skips_email_when_already_sent_without_resend_flag(): void
+    {
+        Mail::fake();
+        $seed = $this->seedSubmittedFreeRequest('KO-REPAIR-SKIP-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        Reservation::query()->create([
+            'free_reservation_request_id' => $req->id,
+            'merchant_transaction_id' => (string) Str::uuid(),
+            'drop_off_time_slot_id' => $seed['slotA']->id,
+            'pick_up_time_slot_id' => $seed['slotB']->id,
+            'reservation_date' => $seed['date'],
+            'user_name' => 'Institucija Test',
+            'country' => 'ME',
+            'license_plate' => 'KO-REPAIR-SKIP-1',
+            'vehicle_type_id' => $seed['vt']->id,
+            'email' => 'inst@example.com',
+            'status' => 'free',
+            'invoice_amount' => '0.00',
+            'email_sent' => Reservation::EMAIL_SENT,
+            'invoice_sent_at' => now(),
+            'created_by_admin' => true,
+        ]);
+        $req->update(['status' => FreeReservationRequest::STATUS_FULFILLED]);
+
+        $this->artisan('free-reservation-requests:repair-fulfilled', ['--id' => $req->id])
+            ->assertSuccessful()
+            ->expectsOutputToContain('mail_skipped=already_sent');
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_repair_fulfilled_request_resends_with_resend_email_flag(): void
+    {
+        Mail::fake();
+        $seed = $this->seedSubmittedFreeRequest('KO-REPAIR-RESEND-1');
+        $req = $seed['req'];
+        $this->mockFreeReservationPdf();
+
+        Reservation::query()->create([
+            'free_reservation_request_id' => $req->id,
+            'merchant_transaction_id' => (string) Str::uuid(),
+            'drop_off_time_slot_id' => $seed['slotA']->id,
+            'pick_up_time_slot_id' => $seed['slotB']->id,
+            'reservation_date' => $seed['date'],
+            'user_name' => 'Institucija Test',
+            'country' => 'ME',
+            'license_plate' => 'KO-REPAIR-RESEND-1',
+            'vehicle_type_id' => $seed['vt']->id,
+            'email' => 'inst@example.com',
+            'status' => 'free',
+            'invoice_amount' => '0.00',
+            'email_sent' => Reservation::EMAIL_SENT,
+            'invoice_sent_at' => now(),
+            'created_by_admin' => true,
+        ]);
+        $req->update(['status' => FreeReservationRequest::STATUS_FULFILLED]);
+
+        $this->artisan('free-reservation-requests:repair-fulfilled', [
+            '--id' => $req->id,
+            '--resend-email' => true,
+        ])
+            ->assertSuccessful()
+            ->expectsOutputToContain('mail_sent=yes');
+
+        Mail::assertSent(FreeReservationRequestFulfilledMail::class, 1);
+    }
+
+    public function test_reject_request_does_not_send_fulfillment_confirmation_email(): void
+    {
+        Mail::fake();
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+        $seed = $this->seedSubmittedFreeRequest('KO-REJECT-1');
+        $req = $seed['req'];
+
+        $this->delete(route('panel_admin.free-reservation-requests.reject', ['freeReservationRequest' => $req->id], false), [
+            'confirm' => 1,
+        ])->assertRedirect();
+
+        $req->refresh();
+        $this->assertSame(FreeReservationRequest::STATUS_REJECTED, $req->status);
+        Mail::assertNothingSent();
     }
 }

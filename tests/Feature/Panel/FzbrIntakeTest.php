@@ -3,6 +3,7 @@
 namespace Tests\Feature\Panel;
 
 use App\Mail\AgencyFreeReservationRequestSubmittedMail;
+use App\Mail\FreeReservationRequestFulfilledMail;
 use App\Models\AdminAlert;
 use App\Models\FreeReservationRequest;
 use App\Models\FreeReservationRequestAttachment;
@@ -139,6 +140,7 @@ class FzbrIntakeTest extends TestCase
         Mail::assertSent(AgencyFreeReservationRequestSubmittedMail::class, function (AgencyFreeReservationRequestSubmittedMail $m) use ($req) {
             return $m->hasTo('bus@kotor.me') && $m->request->id === $req->id;
         });
+        Mail::assertNotSent(FreeReservationRequestFulfilledMail::class);
 
         $this->assertStringContainsString($user->email, $alert->message);
         $this->assertSame($req->id, $alert->payload_json['free_reservation_request_id'] ?? null);

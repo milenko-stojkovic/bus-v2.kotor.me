@@ -348,12 +348,14 @@ Proveri da:
 
 **Komanda:** `free-reservation-requests:repair-fulfilled`
 
-**Opis:** Operativni repair za produkcijske slučajeve gdje su `status=free` rezervacije već kreirane, ali `free_reservation_requests` ostaju `submitted`/`updated` (npr. poslije pada email/PDF-a prije idempotentnog fixa). Koristi isti matcher kao admin fulfill: po liniji vozila/segmenta pronalazi tačno jednu odgovarajuću rezervaciju, povezuje FK, označava zahtjev `fulfilled`, uklanja upozorenje i šalje potvrde ako treba.
+**Opis:** Operativni repair za produkcijske slučajeve gdje su `status=free` rezervacije već kreirane, ali `free_reservation_requests` ostaju `submitted`/`updated` (npr. poslije pada email/PDF-a prije idempotentnog fixa). Koristi isti matcher kao admin fulfill: po liniji vozila/segmenta pronalazi tačno jednu odgovarajuću rezervaciju, povezuje FK, označava zahtjev `fulfilled`, uklanja upozorenje i šalje potvrde ako treba. Za već `fulfilled` zahtjeve šalje nedostajuće potvrde agenciji (`institution_email`) ako bilo koja povezana rezervacija ima `email_sent=0`.
 
-**Opcije:** `--dry-run` (samo izvještaj); `--id=` (jedan zahtjev).
+**Opcije:** `--dry-run` (samo izvještaj); `--id=` (jedan zahtjev); `--resend-email` (ponovo pošalji potvrdu čak i kad je `email_sent=1` na svim rezervacijama).
+
+**Izlaz:** `mail_sent=yes` samo kada je email **stvarno poslat** u tom pokretanju; `mail_skipped=already_sent` kada su sve rezervacije već imale `email_sent=1` (bez `--resend-email`).
 
 **Nije zakazano** — pokreće se ručno na serveru.
 
-**Servis:** `App\Services\AdminPanel\FreeReservation\FreeReservationRequestFulfillmentService::repairSubmittedRequest`.
+**Servis:** `FreeReservationRequestFulfillmentService::repairSubmittedRequest`, `::repairFulfilledRequest`.
 
-**Testovi:** `tests/Feature/AdminPanel/AdminPanelFreeReservationTest.php` (`test_repair_command_completes_submitted_request_with_existing_orphan`).
+**Testovi:** `tests/Feature/AdminPanel/AdminPanelFreeReservationTest.php` (repair, resend, fulfill email).

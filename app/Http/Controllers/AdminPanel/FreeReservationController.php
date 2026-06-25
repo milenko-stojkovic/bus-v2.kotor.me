@@ -200,7 +200,9 @@ class FreeReservationController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        if (! $result['mail_sent']) {
+        $mailSkippedAlreadySent = (bool) ($result['mail_skipped_already_sent'] ?? false);
+
+        if (! $result['mail_sent'] && ! $mailSkippedAlreadySent) {
             if ($result['idempotent'] || $result['linked_existing'] > 0) {
                 return back()->with(
                     'status',
@@ -211,6 +213,20 @@ class FreeReservationController extends Controller
             return back()->with(
                 'status',
                 'Zahtjev je označen kao obrađen, ali slanje potvrda nije uspjelo. Pokušajte ponovo kasnije.'
+            );
+        }
+
+        if ($mailSkippedAlreadySent && ! $result['mail_sent']) {
+            if ($result['idempotent'] || $result['linked_existing'] > 0) {
+                return back()->with(
+                    'status',
+                    'Besplatne rezervacije su već postojale; zahtjev je označen kao obrađen. Potvrde su već poslate na email iz zahtjeva.'
+                );
+            }
+
+            return back()->with(
+                'status',
+                'Zahtjev je već obrađen. Potvrde su već poslate na email iz zahtjeva.'
             );
         }
 

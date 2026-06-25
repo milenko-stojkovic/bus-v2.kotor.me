@@ -128,4 +128,23 @@ final class FreeReservationConfirmationEmailTest extends TestCase
             UiText::t('emails', 'free_reservation_subject', '', 'cg')
         );
     }
+
+    public function test_fulfilled_request_mail_uses_fulfilled_copy_not_single_reservation_copy(): void
+    {
+        $cgBody = UiText::t(
+            'emails',
+            'free_request_fulfilled_body',
+            "Zdravo,\n\nVaš zahtjev je obrađen i potvrde besplatnih rezervacija su u prilogu.\nBroj vozila: %1\$d\nDatum: %2\$s\n\nHvala vam.",
+            'cg'
+        );
+        $enBody = UiText::t(
+            'emails',
+            'free_request_fulfilled_body',
+            "Hello,\n\nYour request has been processed and free reservation confirmations are attached.\nVehicles: %1\$d\nDate: %2\$s\n\nThank you.",
+            'en'
+        );
+
+        $this->assertStringContainsString('obrađen', $cgBody);
+        $this->assertStringContainsString('processed', $enBody);
+    }
 }

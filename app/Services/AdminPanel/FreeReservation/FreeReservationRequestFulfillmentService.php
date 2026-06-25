@@ -6,6 +6,7 @@ use App\Exceptions\AdminFreeReservationSlotsUnavailableException;
 use App\Exceptions\AmbiguousFreeReservationLinkException;
 use App\Exceptions\DuplicateTerminiReservationException;
 use App\Exceptions\FreeReservationLinkedToOtherRequestException;
+use App\Mail\FreeReservationRequestFulfilledMail;
 use App\Models\AdminAlert;
 use App\Models\DailyParkingData;
 use App\Models\FreeReservationRequest;
@@ -36,6 +37,7 @@ class FreeReservationRequestFulfillmentService
      * @return array{
      *     reservations: list<Reservation>,
      *     mail_sent: bool,
+     *     mail_skipped_already_sent: bool,
      *     idempotent: bool,
      *     linked_existing: int,
      *     created_new: int
@@ -159,11 +161,12 @@ class FreeReservationRequestFulfillmentService
         $createdNew = (int) collect($plan)->where('action', 'create')->count();
         $idempotent = $linkedExisting > 0 && $createdNew === 0;
 
-        $mailSent = $this->sendMultiConfirmationEmail($req, $reservations);
+        $mailResult = $this->sendMultiConfirmationEmail($req, $reservations);
 
         return [
             'reservations' => $reservations,
-            'mail_sent' => $mailSent,
+            'mail_sent' => $mailResult['sent'],
+            'mail_skipped_already_sent' => $mailResult['skipped_already_sent'],
             'idempotent' => $idempotent,
             'linked_existing' => $linkedExisting,
             'created_new' => $createdNew,
@@ -174,6 +177,7 @@ class FreeReservationRequestFulfillmentService
      * @return array{
      *     reservations: list<Reservation>,
      *     mail_sent: bool,
+     *     mail_skipped_already_sent: bool,
      *     idempotent: bool,
      *     linked_existing: int,
      *     created_new: int
@@ -190,6 +194,7 @@ class FreeReservationRequestFulfillmentService
             return [
                 'reservations' => [],
                 'mail_sent' => false,
+                'mail_skipped_already_sent' => false,
                 'idempotent' => false,
                 'linked_existing' => 0,
                 'created_new' => 0,
@@ -204,6 +209,7 @@ class FreeReservationRequestFulfillmentService
                 return [
                     'reservations' => collect($plan)->pluck('reservation')->filter()->values()->all(),
                     'mail_sent' => false,
+                    'mail_skipped_already_sent' => false,
                     'idempotent' => true,
                     'linked_existing' => 0,
                     'created_new' => 0,
@@ -217,6 +223,7 @@ class FreeReservationRequestFulfillmentService
             return [
                 'reservations' => [],
                 'mail_sent' => false,
+                'mail_skipped_already_sent' => false,
                 'idempotent' => false,
                 'linked_existing' => (int) collect($plan)->where('action', 'link')->count(),
                 'created_new' => (int) collect($plan)->where('action', 'create')->count(),
@@ -224,6 +231,67 @@ class FreeReservationRequestFulfillmentService
         }
 
         return $this->fulfill($req);
+    }
+
+    /**
+     * Send (or resend) fulfillment confirmation for an already fulfilled request.
+     *
+     * @return array{
+     *     reservations: list<Reservation>,
+     *     mail_sent: bool,
+     *     mail_skipped_already_sent: bool,
+     *     would_send?: bool
+     * }
+     */
+    public function repairFulfilledRequest(FreeReservationRequest $req, bool $dryRun = false, bool $forceResend = false): array
+    {
+        $req->loadMissing(['segments.vehicles']);
+
+        if ($req->status !== FreeReservationRequest::STATUS_FULFILLED) {
+            return [
+                'reservations' => [],
+                'mail_sent' => false,
+                'mail_skipped_already_sent' => false,
+            ];
+        }
+
+        $reservations = $req->reservations()->get()->all();
+        if ($reservations === []) {
+            return [
+                'reservations' => [],
+                'mail_sent' => false,
+                'mail_skipped_already_sent' => false,
+            ];
+        }
+
+        $needsSend = $forceResend || collect($reservations)->contains(
+            fn (Reservation $r): bool => (int) $r->email_sent === Reservation::EMAIL_NOT_SENT
+        );
+
+        if (! $needsSend) {
+            return [
+                'reservations' => $reservations,
+                'mail_sent' => false,
+                'mail_skipped_already_sent' => true,
+            ];
+        }
+
+        if ($dryRun) {
+            return [
+                'reservations' => $reservations,
+                'mail_sent' => false,
+                'mail_skipped_already_sent' => false,
+                'would_send' => true,
+            ];
+        }
+
+        $mailResult = $this->sendMultiConfirmationEmail($req, $reservations, $forceResend);
+
+        return [
+            'reservations' => $reservations,
+            'mail_sent' => $mailResult['sent'],
+            'mail_skipped_already_sent' => $mailResult['skipped_already_sent'],
+        ];
     }
 
     /**
@@ -282,6 +350,7 @@ class FreeReservationRequestFulfillmentService
      * @return array{
      *     reservations: list<Reservation>,
      *     mail_sent: bool,
+     *     mail_skipped_already_sent: bool,
      *     idempotent: bool,
      *     linked_existing: int,
      *     created_new: int
@@ -310,11 +379,12 @@ class FreeReservationRequestFulfillmentService
             });
         }
 
-        $mailSent = $this->sendMultiConfirmationEmail($req, $reservations);
+        $mailResult = $this->sendMultiConfirmationEmail($req, $reservations);
 
         return [
             'reservations' => $reservations,
-            'mail_sent' => $mailSent,
+            'mail_sent' => $mailResult['sent'],
+            'mail_skipped_already_sent' => $mailResult['skipped_already_sent'],
             'idempotent' => $idempotent,
             'linked_existing' => 0,
             'created_new' => 0,
@@ -340,18 +410,27 @@ class FreeReservationRequestFulfillmentService
 
     /**
      * @param  list<Reservation>  $reservations
+     * @return array{sent: bool, skipped_already_sent: bool}
      */
-    private function sendMultiConfirmationEmail(FreeReservationRequest $req, array $reservations): bool
+    private function sendMultiConfirmationEmail(FreeReservationRequest $req, array $reservations, bool $forceResend = false): array
     {
         if ($reservations === []) {
-            return false;
+            return ['sent' => false, 'skipped_already_sent' => false];
         }
 
-        $needsSend = collect($reservations)->contains(
+        $reservationIds = collect($reservations)->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+
+        $needsSend = $forceResend || collect($reservations)->contains(
             fn (Reservation $r): bool => (int) $r->email_sent === Reservation::EMAIL_NOT_SENT
         );
         if (! $needsSend) {
-            return true;
+            Log::channel('payments')->info('free_reservation_request_multi_email_skipped_already_sent', [
+                'free_reservation_request_id' => $req->id,
+                'reservation_ids' => $reservationIds,
+                'email' => $req->institution_email,
+            ]);
+
+            return ['sent' => false, 'skipped_already_sent' => true];
         }
 
         $email = $req->institution_email;
@@ -362,9 +441,6 @@ class FreeReservationRequestFulfillmentService
         $emailLocale = in_array($req->locale, ['cg', 'en'], true) ? $req->locale : 'cg';
         $previousLocale = app()->getLocale();
         app()->setLocale($emailLocale);
-
-        $fromAddress = config('mail.from.address');
-        $fromName = config('mail.from.name');
 
         $subjectTemplate = UiText::t(
             'emails',
@@ -388,6 +464,7 @@ class FreeReservationRequestFulfillmentService
 
         $tmpPaths = [];
         try {
+            $pdfAttachments = [];
             foreach ($reservations as $r) {
                 $pdfBinary = $this->pdfGenerator->renderBinary($r);
                 if ($pdfBinary === '') {
@@ -398,20 +475,14 @@ class FreeReservationRequestFulfillmentService
                     throw new RuntimeException('tempnam failed for multi free reservation PDF attachment.');
                 }
                 file_put_contents($tmp, $pdfBinary);
-                $tmpPaths[] = [$tmp, $r->freeConfirmationPdfFilename()];
+                $tmpPaths[] = $tmp;
+                $pdfAttachments[] = [
+                    'path' => $tmp,
+                    'filename' => $r->freeConfirmationPdfFilename(),
+                ];
             }
 
-            Mail::raw($body, function ($message) use ($email, $fromAddress, $fromName, $subject, $tmpPaths): void {
-                $message->to($email)
-                    ->from($fromAddress, $fromName)
-                    ->subject($subject);
-                foreach ($tmpPaths as [$path, $filename]) {
-                    $message->attach($path, [
-                        'as' => $filename,
-                        'mime' => 'application/pdf',
-                    ]);
-                }
-            });
+            Mail::to($email)->send(new FreeReservationRequestFulfilledMail($body, $subject, $pdfAttachments));
 
             foreach ($reservations as $r) {
                 if ((int) $r->email_sent === Reservation::EMAIL_NOT_SENT) {
@@ -421,23 +492,25 @@ class FreeReservationRequestFulfillmentService
 
             Log::channel('payments')->info('free_reservation_request_multi_email_sent', [
                 'free_reservation_request_id' => $req->id,
+                'reservation_ids' => $reservationIds,
                 'email' => $email,
                 'count' => count($reservations),
             ]);
 
-            return true;
+            return ['sent' => true, 'skipped_already_sent' => false];
         } catch (Throwable $e) {
             Log::channel('payments')->warning('free_reservation_request_multi_email_failed', [
                 'free_reservation_request_id' => $req->id,
+                'reservation_ids' => $reservationIds,
                 'email' => $email,
                 'count' => count($reservations),
                 'message' => $e->getMessage(),
                 'exception' => $e::class,
             ]);
 
-            return false;
+            return ['sent' => false, 'skipped_already_sent' => false];
         } finally {
-            foreach ($tmpPaths as [$path]) {
+            foreach ($tmpPaths as $path) {
                 if (is_string($path)) {
                     @unlink($path);
                 }
