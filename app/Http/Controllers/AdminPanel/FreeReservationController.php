@@ -37,59 +37,71 @@ class FreeReservationController extends Controller
     {
         App::setLocale('cg');
 
-        $today = Carbon::now(self::TZ)->toDateString();
-        $fzbrReview = $request->query('fzbr_review', 'approved');
-        if (! in_array($fzbrReview, ['approved', 'rejected'], true)) {
-            $fzbrReview = 'approved';
-        }
-        $fzbrDateFrom = $request->query('fzbr_date_from', $today);
-        $fzbrDateTo = $request->query('fzbr_date_to', $today);
+        $fzbrReviewSearchPerformed = $request->hasAny(['fzbr_review', 'fzbr_date_from', 'fzbr_date_to']);
 
-        $fzbrValidator = Validator::make(
-            [
-                'fzbr_date_from' => $fzbrDateFrom,
-                'fzbr_date_to' => $fzbrDateTo,
-            ],
-            [
-                'fzbr_date_from' => ['required', 'date'],
-                'fzbr_date_to' => ['required', 'date', 'after_or_equal:fzbr_date_from'],
-            ]
-        );
+        $fzbrReview = null;
+        $fzbrDateFrom = null;
+        $fzbrDateTo = null;
+        $fzbrReviewRequests = collect();
 
-        if ($fzbrValidator->fails()) {
-            return redirect()
-                ->route('panel_admin.free-reservations', array_filter([
-                    'fzbr_review' => $fzbrReview,
+        if ($fzbrReviewSearchPerformed) {
+            $today = Carbon::now(self::TZ)->toDateString();
+            $fzbrReview = $request->query('fzbr_review', 'approved');
+            if (! in_array($fzbrReview, ['approved', 'rejected'], true)) {
+                $fzbrReview = 'approved';
+            }
+            $fzbrDateFrom = $request->query('fzbr_date_from', $today);
+            $fzbrDateTo = $request->query('fzbr_date_to', $today);
+
+            $fzbrValidator = Validator::make(
+                [
                     'fzbr_date_from' => $fzbrDateFrom,
                     'fzbr_date_to' => $fzbrDateTo,
-                ], static fn ($v) => $v !== null && $v !== ''), false)
-                ->withErrors($fzbrValidator)
-                ->withInput();
+                ],
+                [
+                    'fzbr_date_from' => ['required', 'date'],
+                    'fzbr_date_to' => ['required', 'date', 'after_or_equal:fzbr_date_from'],
+                ]
+            );
+
+            if ($fzbrValidator->fails()) {
+                return redirect()
+                    ->route('panel_admin.free-reservations', array_filter([
+                        'fzbr_review' => $fzbrReview,
+                        'fzbr_date_from' => $fzbrDateFrom,
+                        'fzbr_date_to' => $fzbrDateTo,
+                    ], static fn ($v) => $v !== null && $v !== ''), false)
+                    ->withErrors($fzbrValidator)
+                    ->withInput();
+            }
+
+            /** @var array{fzbr_date_from: string, fzbr_date_to: string} $fzbrDates */
+            $fzbrDates = $fzbrValidator->validated();
+            $fzbrDateFrom = $fzbrDates['fzbr_date_from'];
+            $fzbrDateTo = $fzbrDates['fzbr_date_to'];
+
+            $fzbrFrom = Carbon::parse($fzbrDateFrom, self::TZ)->startOfDay();
+            $fzbrTo = Carbon::parse($fzbrDateTo, self::TZ)->endOfDay();
+
+            $status = $fzbrReview === 'approved'
+                ? FreeReservationRequest::STATUS_FULFILLED
+                : FreeReservationRequest::STATUS_REJECTED;
+
+            $fzbrReviewRequests = FreeReservationRequest::query()
+                ->where('status', $status)
+                ->whereBetween('updated_at', [$fzbrFrom, $fzbrTo])
+                ->with([
+                    'attachments',
+                    'dropOffTimeSlot',
+                    'pickUpTimeSlot',
+                    'segments.dropOffTimeSlot',
+                    'segments.pickUpTimeSlot',
+                    'segments.vehicles',
+                    'user',
+                ])
+                ->orderByDesc('updated_at')
+                ->get();
         }
-
-        /** @var array{fzbr_date_from: string, fzbr_date_to: string} $fzbrDates */
-        $fzbrDates = $fzbrValidator->validated();
-        $fzbrFrom = Carbon::parse($fzbrDates['fzbr_date_from'], self::TZ)->startOfDay();
-        $fzbrTo = Carbon::parse($fzbrDates['fzbr_date_to'], self::TZ)->endOfDay();
-
-        $status = $fzbrReview === 'approved'
-            ? FreeReservationRequest::STATUS_FULFILLED
-            : FreeReservationRequest::STATUS_REJECTED;
-
-        $fzbrReviewRequests = FreeReservationRequest::query()
-            ->where('status', $status)
-            ->whereBetween('updated_at', [$fzbrFrom, $fzbrTo])
-            ->with([
-                'attachments',
-                'dropOffTimeSlot',
-                'pickUpTimeSlot',
-                'segments.dropOffTimeSlot',
-                'segments.pickUpTimeSlot',
-                'segments.vehicles',
-                'user',
-            ])
-            ->orderByDesc('updated_at')
-            ->get();
 
         $requests = FreeReservationRequest::query()
             ->whereIn('status', [
@@ -115,7 +127,7 @@ class FreeReservationController extends Controller
             $r->setAttribute('segments_availability', $a['segments'] ?? []);
         }
 
-        $fzbrReviewFilterActive = $request->hasAny(['fzbr_review', 'fzbr_date_from', 'fzbr_date_to']);
+        $fzbrReviewFilterActive = $fzbrReviewSearchPerformed;
 
         return view('admin-panel.free-reservations', array_merge(
             $pageData->forAdminPanel($request),
@@ -124,10 +136,11 @@ class FreeReservationController extends Controller
                 'pageTitle' => 'Besplatne rezervacije',
                 'freeReservationRequests' => $requests,
                 'fzbrReview' => $fzbrReview,
-                'fzbrDateFrom' => $fzbrDates['fzbr_date_from'],
-                'fzbrDateTo' => $fzbrDates['fzbr_date_to'],
+                'fzbrDateFrom' => $fzbrDateFrom,
+                'fzbrDateTo' => $fzbrDateTo,
                 'fzbrReviewRequests' => $fzbrReviewRequests,
                 'fzbrReviewFilterActive' => $fzbrReviewFilterActive,
+                'fzbrReviewSearchPerformed' => $fzbrReviewSearchPerformed,
             ]
         ));
     }

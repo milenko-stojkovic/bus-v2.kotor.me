@@ -45,7 +45,7 @@ final class FzbrAdminReviewAndAttachmentPreviewTest extends TestCase
             ->assertSee('Pregled besplatnih rezervacija', false);
     }
 
-    public function test_default_fzbr_review_is_approved_and_shows_fulfilled_in_range(): void
+    public function test_clean_route_does_not_auto_apply_fzbr_review_filters_or_show_results(): void
     {
         $admin = $this->seedAdmin();
         $this->actingAs($admin, 'panel_admin');
@@ -56,9 +56,16 @@ final class FzbrAdminReviewAndAttachmentPreviewTest extends TestCase
             decidedAt: Carbon::parse('2026-06-01 10:00:00', 'Europe/Podgorica'),
         );
 
-        $this->get(route('panel_admin.free-reservations', [], false))
+        $html = $this->get(route('panel_admin.free-reservations', [], false))
             ->assertOk()
-            ->assertSee('FULFILLED_TODAY_MARKER', false);
+            ->assertDontSee('Reset filter', false)
+            ->assertDontSee('FULFILLED_TODAY_MARKER', false)
+            ->getContent();
+
+        // Blank form (no auto-defaults)
+        $this->assertStringContainsString('name="fzbr_date_from"', $html);
+        $this->assertStringContainsString('name="fzbr_date_to"', $html);
+        $this->assertStringNotContainsString('name="fzbr_date_from"'."\n".'                               value="2026-06-01"', $html);
     }
 
     public function test_approved_filter_shows_only_fulfilled_requests(): void
@@ -69,7 +76,11 @@ final class FzbrAdminReviewAndAttachmentPreviewTest extends TestCase
         $this->seedTerminalRequest(FreeReservationRequest::STATUS_FULFILLED, 'ONLY_FULFILLED', Carbon::now());
         $this->seedTerminalRequest(FreeReservationRequest::STATUS_REJECTED, 'ONLY_REJECTED', Carbon::now());
 
-        $this->get(route('panel_admin.free-reservations', ['fzbr_review' => 'approved'], false))
+        $this->get(route('panel_admin.free-reservations', [
+            'fzbr_review' => 'approved',
+            'fzbr_date_from' => '2026-06-01',
+            'fzbr_date_to' => '2026-06-01',
+        ], false))
             ->assertOk()
             ->assertSee('ONLY_FULFILLED', false)
             ->assertDontSee('ONLY_REJECTED', false);
@@ -83,7 +94,11 @@ final class FzbrAdminReviewAndAttachmentPreviewTest extends TestCase
         $this->seedTerminalRequest(FreeReservationRequest::STATUS_FULFILLED, 'FUL_X', Carbon::now());
         $this->seedTerminalRequest(FreeReservationRequest::STATUS_REJECTED, 'REJ_UNIQUE_MARKER', Carbon::now());
 
-        $this->get(route('panel_admin.free-reservations', ['fzbr_review' => 'rejected'], false))
+        $this->get(route('panel_admin.free-reservations', [
+            'fzbr_review' => 'rejected',
+            'fzbr_date_from' => '2026-06-01',
+            'fzbr_date_to' => '2026-06-01',
+        ], false))
             ->assertOk()
             ->assertSee('REJ_UNIQUE_MARKER', false)
             ->assertDontSee('FUL_X', false);
@@ -134,7 +149,8 @@ final class FzbrAdminReviewAndAttachmentPreviewTest extends TestCase
 
         $this->get(route('panel_admin.free-reservations', [], false))
             ->assertOk()
-            ->assertDontSee('Reset filter', false);
+            ->assertDontSee('Reset filter', false)
+            ->assertSee('Unesite kriterijume i pokrenite pretragu.', false);
     }
 
     public function test_fzbr_review_date_filters_still_apply_when_reset_filter_not_used(): void
