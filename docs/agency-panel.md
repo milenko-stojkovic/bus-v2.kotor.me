@@ -210,16 +210,18 @@ Korisnički naziv menija: **Promjena tablica** (EN: **Plate change**). Ruta i kl
 
 ## Promena vozila / tablice (predstojeće rezervacije)
 
-- **Termini** (`time_slots`): ista pravila kao ranije (upcoming prozor po pick-up terminu).
-- **Dnevna naknada** (`daily_ticket`): promjena tablice samo kad je datum rezervacije **striktno posle** današnjeg dana (Podgorica); isti dan i prošlost su blokirani radi sprečavanja zloupotrebe.
+- **Termini** (`time_slots`): upcoming prozor po pick-up terminu; kategorija i konflikt slotova kao ranije.
+- **Dnevna naknada** (`daily_ticket`): promjena tablice samo kad je `reservation_date` **striktno posle** današnjeg dana (`Europe/Podgorica`); isti dan i prošlost blokirani radi sprečavanja zloupotrebe. Konflikt termina (drop/pick) **ne** važi.
 
-- Dozvoljeno samo vozilo istog korisnika koje ispunjava oba uslova:
+- Dozvoljeno samo vozilo istog korisnika koje ispunjava:
   - **kategorija**: **`vehicle_types.price` ≤** cene kategorije **plaćene na rezervaciji** (`reservations.vehicle_type_id` snapshot — **ne** trenutno dodijeljeno vozilo); pri promjeni tablice **`vehicle_type_id`** i **`invoice_amount`** se **ne** mijenjaju
-  - **dostupnost**: kandidat vozilo nema konflikt za isti datum po pravilu:
-    - konflikt je samo ako je **`drop_off_time_slot_id` isti** (drop=drop) **ili** je **`pick_up_time_slot_id` isti** (pick=pick)
-    - nema konflikta za cross-match (**drop=pick** / **pick=drop**)
+  - **dostupnost (samo Termini)**: kandidat nema konflikt za isti datum ako je **`drop_off_time_slot_id` isti** (drop=drop) **ili** **`pick_up_time_slot_id` isti** (pick=pick); cross-match (**drop=pick** / **pick=drop**) nije konflikt
 - **Plaćena** rezervacija: reset **`invoice_sent_at`** / **`email_sent`**, zatim **`SendInvoiceEmailJob`** (PDF se generiše u jobu, bez trajnog skladišta).
 - **Besplatna** (`reservations.status = free`): samo **`license_plate`** / **`vehicle_id`**, bez fiskal/PDF mejla.
+
+**UI tekstovi** (`ui_translations`, grupa `panel`): `upcoming_plate_change_unavailable_daily_fee_today` (isti dan); `upcoming_plate_change_unavailable_daily_fee` (opšta napomena — samo budući datumi).
+
+**Testovi:** `tests/Feature/Panel/PlateChangePageTest.php`, `PanelReservationListDailyTicketTest.php`, `ReservationVehicleChangePaidCategoryTest.php`.
 
 **UI (label tipa vozila):** u panelu i na korisničkim formama tip vozila se prikazuje kao **`Naziv (Opis) - Cena`** (opis je lokalizovan iz `vehicle_type_translations.description`, ako postoji). Formatiranje je centralizovano u `VehicleType::formatLabel($locale, 'EUR')`. Ako opis nedostaje, prikaz je `Naziv - Cena`.
 

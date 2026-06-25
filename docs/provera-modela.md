@@ -191,7 +191,7 @@ U **reservations** postoje i **vehicle_type_id** i **vehicle_id**. Ovo je namern
 
 | Polje | Namera |
 |--------|--------|
-| **vehicle_type_id** | Snapshot tipa vozila u trenutku rezervacije (plaćena kategorija). Ostaje za istoriju čak i ako user kasnije promeni vozilo ili obriše Vehicle. **Promjena tablice** (`PATCH /panel/reservations/{id}/vehicle`, uklanjanje vozila) **ne** ažurira ovo polje — kandidati za zamjenu porede se sa ovim snapshot-om (`VehicleReplacementCandidateService::paidCategoryMaxPrice`). |
+| **vehicle_type_id** | Snapshot tipa vozila u trenutku rezervacije (plaćena kategorija). Ostaje za istoriju čak i ako user kasnije promeni vozilo ili obriše Vehicle. **Promjena tablice** (`PATCH /panel/reservations/{id}/vehicle`, uklanjanje vozila) **ne** ažurira ovo polje — kandidati za zamjenu porede se sa ovim snapshot-om (`VehicleReplacementCandidateService::paidCategoryMaxPrice`). Za **dnevnu naknadu** promjena tablice u agencijskom panelu dozvoljena je samo za **buduće** datume (`allowsPlateChange`; isti dan blokiran). |
 | **vehicle_id** | Opcioni link na konkretno vozilo (ako je autentifikovan i izabrao vozilo). |
 
 **Nemoj brisati vehicle_type_id iz reservations** kada dodaš ili koristiš vehicle_id. Istorijski podaci moraju ostati tačni.

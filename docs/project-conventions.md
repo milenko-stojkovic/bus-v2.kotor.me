@@ -115,6 +115,7 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 - Konstante: **`App\Support\ReservationKind`**, aliasi na **`Reservation`** / **`TempData`**; helperi **`isTimeSlots()`**, **`isDailyTicket()`**.
 - **Invariant (Phase 2+ checkout/admin):** `time_slots` → oba slot ID NOT NULL; `daily_ticket` → oba NULL (bez sentinel slotova; ne dira **`daily_parking_data`**).
 - **Admin Analitika:** popunjenost slotova, delovi dana i operativni slot indikatori koriste **samo** `time_slots`. Dnevna naknada se prikazuje odvojeno; **Limo** u analitici dnevnih naknada = putničko 4+1–7+1 + mini bus 8+1 (`controlDailyFeeListVehicleTypeIds()`); **Autobusi** = ostale kategorije na `daily_ticket`. **Limo pickup (evidencija)** iz `limo_pickup_events` je poseban proizvod.
+- **Agency panel — Promjena tablica** (`GET /panel/upcoming`, `PATCH /panel/reservations/{id}/vehicle`): **`PanelReservationListService::allowsPlateChange`**. **Termini** — postojeći upcoming prozor + kategorija + konflikt slotova (`VehicleReplacementCandidateService::hasConflictWithUpcoming`). **Dnevna naknada** — promjena tablice **samo** kad je `reservation_date` **striktno posle** današnjeg dana (`Europe/Podgorica`); isti dan i prošlost blokirani; **bez** Termini slot konflikta. `vehicle_type_id` / `invoice_amount` se ne mijenjaju. V. **[agency-panel.md](./agency-panel.md)** § Promjena tablica; testovi **`PlateChangePageTest`**.
 
 ### Rezervacije — step forma (GET auto-refresh i scroll)
 

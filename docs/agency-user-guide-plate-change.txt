@@ -1,0 +1,15 @@
+Agency user guide — Promjena tablica / Plate change (2026-06-25)
+================================================================
+
+Za puni opis funkcija v. docs/agency-panel.md i docs/agency-user-guide.md.
+PDF izvor: public/docs/cgbuskotor.pdf, public/docs/engbuskotor.pdf
+
+CG (dnevna naknada):
+  Promjena tablice za dnevnu naknadu moguća je samo za buduće datume.
+  Za tekući dan: Promjena tablice za dnevnu naknadu nije dostupna za tekući dan.
+
+EN (Daily fee):
+  Plate change for Daily fee is only available for future dates.
+  On the current day: Plate change for Daily fee is not available on the current day.
+
+Termini / time-slot reservations: unchanged rules (category, slot conflict).

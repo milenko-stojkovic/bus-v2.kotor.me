@@ -37,6 +37,19 @@ Jezik linka prati `app()->getLocale()` (`cg` → CG PDF, inače EN).
 ## Povezana dokumentacija
 
 - Panel (funkcionalnost): **[agency-panel.md](./agency-panel.md)** — npr. **Promjena tablica**: dnevna naknada samo za **buduće** datume (isti dan blokiran); Termini po postojećim pravilima.
+
+---
+
+## Za ažuriranje PDF uputstva (CG / EN)
+
+Kada se mijenja sadržaj u **`public/docs/cgbuskotor.pdf`** / **`engbuskotor.pdf`**, za **Promjenu tablica** (2026-06-25) uključiti:
+
+| Jezik | Tekst za agencije |
+|-------|-------------------|
+| **CG** | Promjena tablice za **dnevnu naknadu** moguća je **samo za buduće datume**. Za **današnji** dan promjena nije dostupna (radi sprečavanja zloupotrebe). Za **Termine** vrijede postojeća pravila (kategorija vozila, konflikt termina). |
+| **EN** | **Plate change** for **Daily fee** is allowed **only for future dates**. Changes on the **current day** are not available (to prevent misuse). For **time-slot** reservations, existing rules apply (vehicle category, slot conflicts). |
+
+Isti stringovi u aplikaciji: `panel.upcoming_plate_change_unavailable_daily_fee_today` (isti dan), `panel.upcoming_plate_change_unavailable_daily_fee` (opšta napomena).
 - Testovi: `tests/Feature/Landing/UserGuidePdfLinkTest.php`
 
 ---
