@@ -85,6 +85,9 @@ class AdminPanelReservationTest extends TestCase
         $this->get(route('panel_admin.reservations', [], false))
             ->assertOk()
             ->assertSee('Rezervacije', false)
+            ->assertSee('name="license_plate"', false)
+            ->assertSee('id="license_plate"', false)
+            ->assertSee('for="license_plate"', false)
             ->assertSee('this.value=this.value.toUpperCase().replace(/[^A-Z0-9]+/g', false);
     }
 

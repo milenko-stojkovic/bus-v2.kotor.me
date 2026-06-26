@@ -1,6 +1,6 @@
 @props(['disabled' => false])
 
-<x-text-input
+<input
     @disabled($disabled)
     {{ $attributes->merge([
         'type' => 'text',
@@ -9,7 +9,7 @@
         'spellcheck' => 'false',
         'inputmode' => 'latin',
         'pattern' => '[A-Z0-9]+',
-        'class' => 'uppercase',
+        'class' => 'uppercase border-red-200 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm',
         'oninput' => "this.value=this.value.toUpperCase().replace(/[^A-Z0-9]+/g,'')",
     ]) }}
-/>
+>
