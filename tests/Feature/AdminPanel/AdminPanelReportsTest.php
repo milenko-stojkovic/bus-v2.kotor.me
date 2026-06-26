@@ -41,6 +41,28 @@ class AdminPanelReportsTest extends TestCase
             ->assertSee('Izvještaji', false);
     }
 
+    public function test_reports_wizard_wires_iso_date_inputs_for_alpine_pdf_enablement(): void
+    {
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+
+        $html = $this->get(route('panel_admin.reports', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('placeholder="dd/mm/yyyy"', $html);
+        $this->assertStringContainsString('x-model="dailyDate"', $html);
+        $this->assertStringContainsString('x-model="dateFrom"', $html);
+        $this->assertStringContainsString('x-model="dateTo"', $html);
+        $this->assertStringContainsString('@input="dailyDate = $event.target.value"', $html);
+        $this->assertStringContainsString('@input="dateFrom = $event.target.value"', $html);
+        $this->assertStringContainsString('@input="dateTo = $event.target.value"', $html);
+        $this->assertStringContainsString('isoHiddenValue(id)', $html);
+        $this->assertStringContainsString('name="date"', $html);
+        $this->assertStringContainsString('data-iso-date-hidden', $html);
+        $this->assertStringContainsString(':disabled="!canGeneratePdf()"', $html);
+    }
+
     public function test_advance_obligations_option_hidden_and_pdf_blocked_when_feature_flag_off(): void
     {
         config(['features.advance_payments' => false]);

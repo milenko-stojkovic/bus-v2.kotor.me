@@ -93,6 +93,8 @@ function bindIsoDateInput(wrapper) {
         }
         display.setCustomValidity('');
         if (dispatchChange && prev !== normalized) {
+            // Alpine x-model listens to "input", not only "change".
+            hidden.dispatchEvent(new Event('input', { bubbles: true }));
             hidden.dispatchEvent(new Event('change', { bubbles: true }));
         }
     };

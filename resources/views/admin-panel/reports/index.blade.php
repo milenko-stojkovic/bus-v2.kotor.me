@@ -104,6 +104,8 @@
                         <label for="date_display" class="block text-sm font-medium text-gray-700" x-show="kind === 'advance_obligations'">Stanje na dan</label>
                         <x-iso-date-input id="date" name="date"
                             x-model="dailyDate"
+                            @input="dailyDate = $event.target.value"
+                            @change="dailyDate = $event.target.value"
                             :min="$minDate" :max="$maxDate" />
                     </div>
 
@@ -157,12 +159,16 @@
                             <x-input-label for="date_from_display" value="Od" />
                             <x-iso-date-input id="date_from" name="date_from"
                                 x-model="dateFrom"
+                                @input="dateFrom = $event.target.value"
+                                @change="dateFrom = $event.target.value"
                                 :min="$minDate" :max="$maxDate" />
                         </div>
                         <div>
                             <x-input-label for="date_to_display" value="Do" />
                             <x-iso-date-input id="date_to" name="date_to"
                                 x-model="dateTo"
+                                @input="dateTo = $event.target.value"
+                                @change="dateTo = $event.target.value"
                                 :min="$minDate" :max="$maxDate" />
                         </div>
                     </div>
@@ -200,12 +206,22 @@
                 canProceed() {
                     return this.when !== '' && this.kind !== '';
                 },
+                isoHiddenValue(id) {
+                    const el = document.getElementById(id);
+                    if (!el || !el.hasAttribute('data-iso-date-hidden')) {
+                        return '';
+                    }
+
+                    return el.value || '';
+                },
                 canGeneratePdf() {
                     if (this.step !== 2) return false;
                     if (!this.canProceed()) return false;
 
                     if (this.when === 'daily') {
-                        return (this.dailyDate || '') !== '';
+                        const d = this.dailyDate || this.isoHiddenValue('date');
+
+                        return d !== '';
                     }
                     if (this.when === 'monthly') {
                         return (this.monthYear || '') !== '' && (this.month || '') !== '';
@@ -214,8 +230,11 @@
                         return (this.yearlyYear || '') !== '';
                     }
                     if (this.when === 'period') {
-                        if ((this.dateFrom || '') === '' || (this.dateTo || '') === '') return false;
-                        return this.dateFrom <= this.dateTo;
+                        const from = this.dateFrom || this.isoHiddenValue('date_from');
+                        const to = this.dateTo || this.isoHiddenValue('date_to');
+                        if (from === '' || to === '') return false;
+
+                        return from <= to;
                     }
 
                     return false;

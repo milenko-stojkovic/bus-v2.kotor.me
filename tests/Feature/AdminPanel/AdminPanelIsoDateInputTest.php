@@ -101,6 +101,7 @@ final class AdminPanelIsoDateInputTest extends TestCase
         $this->assertIsoDateInputMarkup($html, 'date');
         $this->assertIsoDateInputMarkup($html, 'date_from');
         $this->assertIsoDateInputMarkup($html, 'date_to');
+        $this->assertStringContainsString('isoHiddenValue(id)', $html);
     }
 
     public function test_admin_analytics_filters_use_iso_date_inputs(): void
