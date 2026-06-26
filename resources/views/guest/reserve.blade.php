@@ -46,6 +46,15 @@
         );
     @endphp
 
+    @php
+        $checkoutBanner = session('checkout_banner');
+        $guestFeedbackScroll = session('guest_lower_category_block')
+            || (session('error') && ! session('guest_lower_category_block'))
+            || session('message')
+            || $errors->any()
+            || (is_array($checkoutBanner) && ($checkoutBanner['level'] ?? '') === 'error');
+    @endphp
+
     <div class="space-y-6">
         <div class="space-y-3">
             <div class="space-y-1">
@@ -54,6 +63,11 @@
             @include('partials.reservation-pricing-notice')
         </div>
 
+        <div
+            id="guest-reservation-feedback"
+            @if ($guestFeedbackScroll) data-guest-reservation-feedback @endif
+            class="space-y-4 @if ($guestFeedbackScroll) scroll-mt-20 @endif"
+        >
         @include('partials.checkout-result-banner')
 
         @include('partials.guest-lower-category-block')
@@ -64,6 +78,7 @@
         @if (session('error') && ! session('guest_lower_category_block'))
             <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ session('error') }}</div>
         @endif
+        </div>
 
         <form method="GET" action="{{ route('guest.reserve', [], false) }}" class="space-y-4" id="stepForm"
             data-reservation-auto-scroll="reservation_form_scroll_guest"

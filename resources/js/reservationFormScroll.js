@@ -4,6 +4,7 @@
  */
 
 const SCROLL_OFFSET_PX = 80;
+const GUEST_FEEDBACK_HIGHLIGHT_MS = 2500;
 
 function anchorStorageKey(scrollKey) {
     return `${scrollKey}_anchor`;
@@ -84,6 +85,29 @@ export function submitReservationForm(form, sourceEl) {
     form.submit();
 }
 
+/**
+ * Guest /guest/reserve only: scroll top validation or checkout feedback into view after POST redirect.
+ */
+export function scrollToGuestReservationFeedback() {
+    const el = document.querySelector('[data-guest-reservation-feedback]');
+    if (!el) {
+        return false;
+    }
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    window.setTimeout(() => {
+        const top = el.getBoundingClientRect().top + window.scrollY - SCROLL_OFFSET_PX;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        el.classList.add('ring-2', 'ring-red-400', 'ring-offset-2', 'rounded-md');
+        window.setTimeout(() => {
+            el.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2', 'rounded-md');
+        }, GUEST_FEEDBACK_HIGHLIGHT_MS);
+    }, 100);
+
+    return true;
+}
+
 function initReservationFormScrollForms() {
     document.querySelectorAll('form[data-reservation-auto-scroll]').forEach((form) => {
         const scrollKey = form.getAttribute('data-reservation-auto-scroll');
@@ -106,11 +130,17 @@ if (typeof window !== 'undefined') {
         save: saveReservationScroll,
         restore: restoreReservationScroll,
         submit: submitReservationForm,
+        scrollToGuestFeedback: scrollToGuestReservationFeedback,
+    };
+
+    const onReady = () => {
+        initReservationFormScrollForms();
+        scrollToGuestReservationFeedback();
     };
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initReservationFormScrollForms);
+        document.addEventListener('DOMContentLoaded', onReady);
     } else {
-        initReservationFormScrollForms();
+        onReady();
     }
 }
