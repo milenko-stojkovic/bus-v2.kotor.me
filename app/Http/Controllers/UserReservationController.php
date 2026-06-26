@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateReservationVehicleRequest;
+use App\Jobs\SendAdminUpdatedReservationDocumentJob;
 use App\Jobs\SendInvoiceEmailJob;
 use App\Models\Reservation;
 use App\Models\Vehicle;
@@ -174,10 +175,31 @@ class UserReservationController extends Controller
 
             $isFiscal = $reservation->fiscal_jir !== null;
             SendInvoiceEmailJob::dispatch($reservation->id, $isFiscal);
+        } elseif ($reservation->status === 'free') {
+            $reservation->update([
+                'invoice_sent_at' => null,
+                'email_sent' => Reservation::EMAIL_NOT_SENT,
+            ]);
+            $reservation->refresh();
+
+            SendAdminUpdatedReservationDocumentJob::dispatch(
+                $reservation->id,
+                null,
+                ['vehicle_id', 'license_plate'],
+            );
         }
 
         $locale = app()->getLocale();
-        $messageKey = $reservation->status === 'paid' ? 'vehicle_change_success' : 'vehicle_change_success_free';
+        $messageKey = match ($reservation->status) {
+            'paid' => 'vehicle_change_success',
+            'free' => 'vehicle_change_success_free',
+            default => 'vehicle_change_success_free',
+        };
+        $defaultMessage = match ($reservation->status) {
+            'paid' => 'Vehicle updated. A new invoice will be sent by email.',
+            'free' => 'Vehicle updated. An updated confirmation will be sent by email.',
+            default => 'Vehicle updated.',
+        };
 
         return redirect()
             ->route('panel.upcoming')
@@ -186,9 +208,7 @@ class UserReservationController extends Controller
                 UiText::t(
                     'panel',
                     $messageKey,
-                    $reservation->status === 'paid'
-                        ? 'Vehicle updated. A new invoice will be sent by email.'
-                        : 'Vehicle updated.',
+                    $defaultMessage,
                     $locale
                 )
             );
