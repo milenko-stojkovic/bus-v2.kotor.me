@@ -174,4 +174,26 @@ final class AdminPanelIsoDateInputTest extends TestCase
         $this->assertIsoDateInputMarkup($html, 'date_from');
         $this->assertIsoDateInputMarkup($html, 'date_to');
     }
+
+    public function test_control_termini_dashboard_does_not_use_iso_date_input(): void
+    {
+        $control = Admin::query()->create([
+            'username' => 'controliso',
+            'email' => 'control-iso@example.test',
+            'password' => bcrypt('secret-pass'),
+            'control_access' => true,
+            'admin_access' => false,
+        ]);
+
+        $this->actingAs($control, 'control');
+
+        $html = $this->get(route('control.dashboard', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('name="date"', $html);
+        $this->assertStringContainsString('type="date"', $html);
+        $this->assertStringNotContainsString('data-iso-date-input', $html);
+        $this->assertStringNotContainsString('data-iso-date-display', $html);
+    }
 }

@@ -46,6 +46,50 @@ class ControlPanelTest extends TestCase
         $this->get('/control')->assertOk();
     }
 
+    public function test_termini_search_uses_native_date_input_for_ios_reliability(): void
+    {
+        $this->createControlAdmin();
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $html = $this->get(route('control.dashboard', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('name="date"', $html);
+        $this->assertStringContainsString('id="c_date"', $html);
+        $this->assertStringContainsString('type="date"', $html);
+        $this->assertStringNotContainsString('data-iso-date-input', $html);
+        $this->assertStringNotContainsString('data-iso-date-display', $html);
+    }
+
+    public function test_termini_search_by_date_reaches_controller_as_yyyy_mm_dd(): void
+    {
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+        $date = now()->addDays(5)->format('Y-m-d');
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => $date,
+            'user_name' => 'iOS Date Search',
+            'country' => 'ME',
+            'license_plate' => 'PG IOS1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'ios-date@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $this->get('/control?search=1&date='.$date)
+            ->assertOk()
+            ->assertSee('PG IOS1', false)
+            ->assertSee('iOS Date Search', false);
+    }
+
     public function test_admin_without_control_access_cannot_login_via_control(): void
     {
         Admin::query()->create([

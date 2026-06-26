@@ -77,8 +77,8 @@
 
         <form method="GET" action="{{ route('control.dashboard', [], false) }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-                <x-input-label for="c_date_display" value="Datum" />
-                <x-iso-date-input id="c_date" name="date" :value="old('date', $searchInput['date'] ?? '')" />
+                <x-input-label for="c_date" value="Datum" />
+                <x-text-input id="c_date" class="block mt-1 w-full" type="date" name="date" :value="old('date', $searchInput['date'] ?? '')" />
             </div>
             <div>
                 <x-input-label for="c_name" value="Ime" />
