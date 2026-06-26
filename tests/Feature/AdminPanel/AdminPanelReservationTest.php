@@ -85,7 +85,7 @@ class AdminPanelReservationTest extends TestCase
         $this->get(route('panel_admin.reservations', [], false))
             ->assertOk()
             ->assertSee('Rezervacije', false)
-            ->assertSee('oninput="this.value=this.value.toUpperCase()"', false);
+            ->assertSee('this.value=this.value.toUpperCase().replace(/[^A-Z0-9]+/g', false);
     }
 
     public function test_search_result_for_agency_reservation_shows_agency_type_and_account(): void
@@ -487,5 +487,123 @@ class AdminPanelReservationTest extends TestCase
         $this->assertSame('Daily Updated', $r->user_name);
         $this->assertSame('KO888EE', $r->license_plate);
         Queue::assertPushed(SendAdminUpdatedReservationDocumentJob::class);
+    }
+
+    public function test_reservation_search_normalizes_license_plate_with_spaces(): void
+    {
+        $admin = $this->seedAdmin();
+        $d = Carbon::now()->addDays(3)->toDateString();
+        $slots = $this->seedVehicleAndThreeSlots();
+        $this->seedDailyForDate($d, [$slots['s1'], $slots['s2'], $slots['s3']]);
+
+        Reservation::query()->create([
+            'merchant_transaction_id' => 'mt-plate-spaces-'.uniqid(),
+            'drop_off_time_slot_id' => $slots['s1']->id,
+            'pick_up_time_slot_id' => $slots['s2']->id,
+            'reservation_date' => $d,
+            'user_name' => 'Plate Spaces',
+            'country' => 'ME',
+            'license_plate' => 'ZG123AB',
+            'vehicle_type_id' => $slots['vt']->id,
+            'email' => 'plate-spaces@test.local',
+            'status' => 'paid',
+            'invoice_amount' => '15.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $this->actingAs($admin, 'panel_admin');
+
+        $this->get(route('panel_admin.reservations', ['license_plate' => 'zg 123 ab'], false))
+            ->assertOk()
+            ->assertSee('ZG123AB', false);
+    }
+
+    public function test_reservation_search_normalizes_license_plate_with_symbols(): void
+    {
+        $admin = $this->seedAdmin();
+        $d = Carbon::now()->addDays(3)->toDateString();
+        $slots = $this->seedVehicleAndThreeSlots();
+        $this->seedDailyForDate($d, [$slots['s1'], $slots['s2'], $slots['s3']]);
+
+        Reservation::query()->create([
+            'merchant_transaction_id' => 'mt-plate-symbols-'.uniqid(),
+            'drop_off_time_slot_id' => $slots['s1']->id,
+            'pick_up_time_slot_id' => $slots['s2']->id,
+            'reservation_date' => $d,
+            'user_name' => 'Plate Symbols',
+            'country' => 'ME',
+            'license_plate' => 'ZG123AB',
+            'vehicle_type_id' => $slots['vt']->id,
+            'email' => 'plate-symbols@test.local',
+            'status' => 'paid',
+            'invoice_amount' => '15.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $this->actingAs($admin, 'panel_admin');
+
+        $this->get(route('panel_admin.reservations', ['license_plate' => 'zg-123/ab'], false))
+            ->assertOk()
+            ->assertSee('ZG123AB', false);
+    }
+
+    public function test_reservation_search_accepts_lowercase_license_plate_input(): void
+    {
+        $admin = $this->seedAdmin();
+        $d = Carbon::now()->addDays(3)->toDateString();
+        $slots = $this->seedVehicleAndThreeSlots();
+        $this->seedDailyForDate($d, [$slots['s1'], $slots['s2'], $slots['s3']]);
+
+        Reservation::query()->create([
+            'merchant_transaction_id' => 'mt-plate-lower-'.uniqid(),
+            'drop_off_time_slot_id' => $slots['s1']->id,
+            'pick_up_time_slot_id' => $slots['s2']->id,
+            'reservation_date' => $d,
+            'user_name' => 'Plate Lower',
+            'country' => 'ME',
+            'license_plate' => 'KO111AG',
+            'vehicle_type_id' => $slots['vt']->id,
+            'email' => 'plate-lower@test.local',
+            'status' => 'paid',
+            'invoice_amount' => '15.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $this->actingAs($admin, 'panel_admin');
+
+        $this->get(route('panel_admin.reservations', ['license_plate' => 'ko111ag'], false))
+            ->assertOk()
+            ->assertSee('KO111AG', false);
+    }
+
+    public function test_reservation_search_by_merchant_transaction_id_still_works(): void
+    {
+        $admin = $this->seedAdmin();
+        $d = Carbon::now()->addDays(3)->toDateString();
+        $slots = $this->seedVehicleAndThreeSlots();
+        $this->seedDailyForDate($d, [$slots['s1'], $slots['s2'], $slots['s3']]);
+
+        $mtid = 'mt-search-still-works-'.uniqid();
+        Reservation::query()->create([
+            'merchant_transaction_id' => $mtid,
+            'drop_off_time_slot_id' => $slots['s1']->id,
+            'pick_up_time_slot_id' => $slots['s2']->id,
+            'reservation_date' => $d,
+            'user_name' => 'MTID Search',
+            'country' => 'ME',
+            'license_plate' => 'KO555ZZ',
+            'vehicle_type_id' => $slots['vt']->id,
+            'email' => 'mtid-search@test.local',
+            'status' => 'paid',
+            'invoice_amount' => '15.00',
+            'email_sent' => Reservation::EMAIL_NOT_SENT,
+        ]);
+
+        $this->actingAs($admin, 'panel_admin');
+
+        $this->get(route('panel_admin.reservations', ['merchant_transaction_id' => $mtid], false))
+            ->assertOk()
+            ->assertSee('KO555ZZ', false)
+            ->assertSee('MTID Search', false);
     }
 }

@@ -1,6 +1,6 @@
 ﻿# Konvencije projekta (bus.kotor.me)
 
-**Poslednje ažuriranje:** 2026-06-19  
+**Poslednje ažuriranje:** 2026-06-25  
 
 Za AI i ljude: držati se ovoga pri novim izmenama da ostane konzistentno.
 
@@ -55,6 +55,19 @@ Preporučeni oblik (naslovi ili bold oznake moraju biti eksplicitni):
 - Pristup u Blade-u: **`App\Support\UiText::t('group', 'key', $fallback)`**; novi ključevi kroz **`UiTranslationsSeeder`** sa `upsert` (bez dupliranja redova).
 - **Korisnik / mail locale:** za auth mailove koristiti **`$user->lang`** (`cg` / `en`); verify-email ekran treba da prati isti princip gde je korisnik ulogovan.
 - **Agencijski unos datuma (FZBR, Statistika):** hibrid preko **`iso-date-input`**: vidljivo **`dd/mm/yyyy`**, submit **`Y-m-d`** (skriveno `name`), kalendar preko skrivenog `input[type=date]` + dugmeta (native picker, bez vidljivog mm/dd/yyyy u polju). **`isoDateInput.js`** sinhronizuje tipkanje, picker i canonical. **Rezervacije** koriste mesečni grid **`partials/reservation-date-calendar`** (isto `Y-m-d`).
+
+### 1.1 Registarska tablica — unos i normalizacija
+
+Svako polje za **registarsku tablicu** (booking, panel, admin pretraga, Control, Limo) mora da prati **ista** pravila — ne uvoditi posebna pravila po stranici.
+
+| Sloj | Pravilo |
+|------|---------|
+| **Klijent** | Automatski **uppercase**; dozvoljeno samo **A–Z** i **0–9**; **bez** razmaka i simbola (`-`, `_`, `.`, `/`, …). Tipično: `oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]+/g,'')"` ili Blade komponenta **`<x-license-plate-input>`** (`resources/views/components/license-plate-input.blade.php`) — atributi `autocapitalize="characters"`, `autocomplete="off"`, `spellcheck="false"`, `inputmode="latin"`, `pattern="[A-Z0-9]+"`. |
+| **Server** | Ista semantika prije validacije/spremanja/pretrage: **`App\Support\MontenegroLicensePlate::normalizeAscii()`** (uppercase, ukloni razmake/simbolе, transliteracija **Ž→Z**, **Š→S**, **Č/Ć→C**, **Đ→D**). U rezervacionom domenu često se poziva i **`DuplicateReservationAttemptService::normalizeLicensePlate()`** — ista logika za nullable unos. |
+| **Validacija** | Poslije normalizacije: regex **`^[A-Z0-9]*$`** (prazan string dozvoljen gdje je polje opciono). |
+
+- **Nova polja u Blade-u:** preferirati **`<x-license-plate-input>`** umjesto kopiranja `oninput` po fajlovima. Stariji ekrani (guest reserve, agency vozila, FZBR, admin Insight) još mogu imati inline JS — pri izmjeni prebaciti na komponentu.
+- **Admin pretraga rezervacija:** `AdminReservationSearchRequest::applyInputNormalization()` (poziv u `ReservationController::index` **prije** provjere kriterijuma i validacije) + `<x-license-plate-input>` u formi. V. **`docs/admin-panel.md`** § Rezervacije.
 
 ---
 

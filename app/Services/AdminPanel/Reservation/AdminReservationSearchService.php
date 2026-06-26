@@ -3,6 +3,7 @@
 namespace App\Services\AdminPanel\Reservation;
 
 use App\Models\Reservation;
+use App\Support\MontenegroLicensePlate;
 use App\Support\ReservationKind;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -78,7 +79,7 @@ final class AdminReservationSearchService
         }
 
         if (! empty($filters['license_plate'])) {
-            $plate = strtoupper(preg_replace('/\s+/', '', (string) $filters['license_plate']) ?? '');
+            $plate = MontenegroLicensePlate::normalizeAscii((string) $filters['license_plate']);
             if ($plate !== '') {
                 $q->whereRaw("REPLACE(UPPER(license_plate), ' ', '') LIKE ?", ['%'.$plate.'%']);
             }

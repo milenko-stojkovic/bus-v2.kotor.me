@@ -1,6 +1,6 @@
 ﻿# Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-06-21  
+**Poslednje ažuriranje:** 2026-06-25  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
@@ -8,6 +8,7 @@ Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj
 
 ## 2026-06 — Admin / UX (post cut-over)
 
+- **2026-06-25** — **Admin rezervacije — puna normalizacija tablice u pretrazi:** polje `license_plate` više ne prihvata razmake/simbolе (ranije samo uppercase). Zajednička Blade komponenta **`<x-license-plate-input>`**; server **`MontenegroLicensePlate::normalizeAscii()`** preko **`AdminReservationSearchRequest::applyInputNormalization()`**. Testovi: **`AdminPanelReservationTest`**. Docs: **`admin-panel.md`**, **`project-conventions.md`** §1.1.
 - **2026-06-21** — **Zahtjev za promjenu kategorije — arhiva priloga na MEGA:** nakon **approve/reject** queue job **`ArchiveVehicleCategoryChangeRequestAttachmentsJob`** uploaduje priloge na MEGA (`vehicle-category-changes/...`) i briše lokalne fajlove tek poslije uspjeha; kolone arhive na **`vehicle_category_change_request_attachments`**; admin UI status po prilogu. Testovi: **`VehicleCategoryChangeAttachmentArchiveTest`**. Docs: **`admin-panel.md`** §9.5, **`external-file-archive.md`**, **`agency-panel.md`**.
 - **2026-06-21** — **Zahtjev za promjenu kategorije — više priloga:** agencija može uploadovati **1–5** dokumenata/slika (jpg, png, pdf; max 10 MB po fajlu); tabela **`vehicle_category_change_request_attachments`** + backfill legacy **`document_path`**; admin pregled i preview po prilogu; email sa linkom na pregled umjesto svih attachmenta. Testovi: **`VehicleCategoryChangeMultiAttachmentTest`**. Docs: **`agency-panel.md`**, **`admin-panel.md`** §9.5.
 - **2026-06-19** — **Guest plaćena rezervacija — niža kategorija od historije:** nakon uspješnog kreiranja guest **`paid`** rezervacije, **`GuestPaidLowerCategoryAlertService`** upoređuje **`vehicle_types.price`** sa najnovijom starijom **`paid`** rezervacijom iste normalizovane tablice (samo **`reservations`**); ako je nova cijena niža → **`admin_alerts`** tip **`guest_paid_lower_category_than_history`** + email (**`AdminFiscalizationAlertService`**). Rezervacija se **ne** blokira. Testovi: **`GuestPaidLowerCategoryAlertTest`**. Docs: **`admin-panel.md`**, **`success-payment-pipeline.md`**, **`production-hardening.md`**.
@@ -26,7 +27,7 @@ Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj
 - **2026-06-19** — **Admin dashboard — dnevne naknade danas/sutra:** kartice **`DailyFeeReservationSummaryService`** na **`GET /admin`** (broj plaćenih `daily_ticket` za danas i sutra, Podgorica); testovi prošireni u **`AdminWarningsDashboardTest`**; docs (`admin-panel.md`).
 - **2026-06-19** — **Control — ukupan broj na listi dnevnih naknada:** naslov sekcije prikazuje **Ukupno vozila** (`DailyFeeControlService::total`); docs (`control-panel.md`).
 - **2026-06-19** — **Admin agencije — heuristička pretraga:** `GET /admin/agencije?q=` preko **`AdminAgencySearchService`** (isto kao admin pretraga rezervacija + space-insensitive ime); testovi **`AdminAgenciesTest`**; docs (`admin-panel.md` §9.1).
-- **2026-06-19** — **Admin rezervacije — uppercase tablica u pretrazi:** polje tablice u formi pretrage automatski **A–Z0–9**; docs (`admin-panel.md` §1.2).
+- **2026-06-19** — **Admin rezervacije — uppercase tablica u pretrazi (djelimično):** forma je dobila `oninput` uppercase; puna **A–Z0–9** normalizacija i komponenta — **2026-06-25** (v. gore).
 
 ## 2026-06 — Produkcija V2
 

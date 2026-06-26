@@ -33,6 +33,8 @@ class ReservationController extends Controller
         AdminReservationSearchService $searchService,
         AdminReservationDateBounds $dateBounds,
     ): View {
+        AdminReservationSearchRequest::applyInputNormalization($request);
+
         $filters = [];
         $results = null;
         $hasCriteria = $this->requestHasSearchCriteria($request);

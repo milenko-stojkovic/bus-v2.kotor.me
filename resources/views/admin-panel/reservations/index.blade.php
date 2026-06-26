@@ -124,9 +124,7 @@
                 </div>
                 <div>
                     <x-input-label for="license_plate" value="Registarska tablica" />
-                    <x-text-input class="mt-1 block w-full uppercase" type="text" name="license_plate" id="license_plate" x-ref="plate"
-                        autocapitalize="characters" autocomplete="off" spellcheck="false"
-                        oninput="this.value=this.value.toUpperCase()"
+                    <x-license-plate-input class="mt-1 block w-full" name="license_plate" id="license_plate" x-ref="plate"
                         :value="old('license_plate', $filters['license_plate'] ?? '')" />
                 </div>
                 <div>
