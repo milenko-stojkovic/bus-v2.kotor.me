@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Models\Reservation;
 use App\Services\Pdf\PaidInvoicePdfGenerator;
+use App\Services\Reservation\ReservationEmailSendClaimService;
+use App\Support\ReservationDocumentEmailLogger;
 use App\Support\ReservationEmailReferenceLine;
 use App\Support\UiText;
 use Illuminate\Bus\Queueable;
@@ -11,7 +13,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use RuntimeException;
@@ -26,6 +27,8 @@ use Throwable;
 class SendInvoiceEmailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private const LOG_EVENT = 'paid_invoice_email';
 
     public int $tries = 3;
 
@@ -50,7 +53,8 @@ class SendInvoiceEmailJob implements ShouldQueue
             'email_sent' => Reservation::EMAIL_NOT_SENT,
         ]);
         $mtid = Reservation::query()->whereKey($this->reservationId)->value('merchant_transaction_id');
-        Log::channel('payments')->error('invoice_email_job_exhausted', [
+        Log::channel('payments')->error(self::LOG_EVENT.'_job_exhausted', [
+            'event' => self::LOG_EVENT.'_job_exhausted',
             'reservation_id' => $this->reservationId,
             'merchant_transaction_id' => $mtid,
             'is_fiscal' => $this->isFiscal,
@@ -59,36 +63,15 @@ class SendInvoiceEmailJob implements ShouldQueue
         ]);
     }
 
-    public function handle(PaidInvoicePdfGenerator $pdfGenerator): void
-    {
-        /** @var Reservation|null $reservation */
-        $reservation = null;
-        $claimed = false;
+    public function handle(
+        PaidInvoicePdfGenerator $pdfGenerator,
+        ReservationEmailSendClaimService $claimService,
+    ): void {
+        ['reservation' => $reservation, 'claimed' => $claimed] = $claimService->claim($this->reservationId);
 
-        DB::transaction(function () use (&$reservation, &$claimed): void {
-            $reservation = Reservation::query()
-                ->whereKey($this->reservationId)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $reservation) {
-                return;
-            }
-
-            if ($reservation->invoice_sent_at !== null) {
-                return;
-            }
-
-            if ((int) $reservation->email_sent === Reservation::EMAIL_SENDING) {
-                return;
-            }
-
-            $reservation->update(['email_sent' => Reservation::EMAIL_SENDING]);
-            $claimed = true;
-        });
-
-        if (! $reservation) {
-            Log::channel('payments')->warning('invoice_email_reservation_missing', [
+        if ($reservation === null) {
+            Log::channel('payments')->warning(self::LOG_EVENT.'_reservation_missing', [
+                'event' => self::LOG_EVENT.'_reservation_missing',
                 'reservation_id' => $this->reservationId,
                 'is_fiscal' => $this->isFiscal,
                 'job' => static::class,
@@ -101,14 +84,17 @@ class SendInvoiceEmailJob implements ShouldQueue
             return;
         }
 
-        // Primalac mora biti snapshot na rezervaciji (isti kao u PDF-u). user.email se menja u profilu;
-        // admin izmena rezervacije menja samo reservations.email — ne slati na stari nalog.
         $email = $reservation->email;
         if (empty($email)) {
             $reservation->update(['email_sent' => Reservation::EMAIL_NOT_SENT]);
 
             return;
         }
+
+        $attachmentFilename = $reservation->invoicePdfFilename();
+        ReservationDocumentEmailLogger::started(self::LOG_EVENT, $reservation, $attachmentFilename, [
+            'is_fiscal_pdf' => $this->isFiscal,
+        ]);
 
         $emailLocale = $reservation->user_id
             ? ($reservation->user?->lang ?? 'en')
@@ -146,32 +132,24 @@ class SendInvoiceEmailJob implements ShouldQueue
             file_put_contents($tmpPath, $pdfBinary);
             Mail::raw(
                 $body,
-                function ($message) use ($reservation, $email, $fromAddress, $fromName, $tmpPath, $subject): void {
+                function ($message) use ($reservation, $email, $fromAddress, $fromName, $tmpPath, $subject, $attachmentFilename): void {
                     $message->to($email)
                         ->from($fromAddress, $fromName)
                         ->subject($subject);
                     $message->attach($tmpPath, [
-                        'as' => $reservation->invoicePdfFilename(),
+                        'as' => $attachmentFilename,
                         'mime' => 'application/pdf',
                     ]);
                 }
             );
 
             $reservation->markConfirmationEmailSent();
-            Log::channel('payments')->info('invoice_email_sent', [
-                'reservation_id' => $reservation->id,
-                'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                'user_id' => $reservation->user_id,
+            ReservationDocumentEmailLogger::sent(self::LOG_EVENT, $reservation, $attachmentFilename, [
                 'is_fiscal_pdf' => $this->isFiscal,
             ]);
         } catch (Throwable $e) {
-            Log::channel('payments')->warning('invoice_email_send_failed', [
-                'reservation_id' => $reservation->id,
-                'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                'user_id' => $reservation->user_id,
+            ReservationDocumentEmailLogger::failed(self::LOG_EVENT, $reservation, $attachmentFilename, $e, [
                 'is_fiscal' => $this->isFiscal,
-                'message' => $e->getMessage(),
-                'exception' => $e::class,
             ]);
             Log::channel('single')->error('SendInvoiceEmailJob failed', [
                 'reservation_id' => $reservation->id,
@@ -221,7 +199,6 @@ class SendInvoiceEmailJob implements ShouldQueue
             $emailLocale
         );
 
-        // Stale DB copy (pre-unified email) used %1$d / %3$s — sprintf would crash the job.
         if (str_contains($bodyTemplate, '%1$d') || str_contains($bodyTemplate, '%3$s')) {
             return $fallback;
         }

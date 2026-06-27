@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
 use App\Models\VehicleTypeTranslation;
-use App\Services\Pdf\FreeReservationPdfGenerator;
+use App\Services\Reservation\ReservationEmailSendClaimService;
 use App\Services\Reservation\PanelReservationListService;
 use App\Support\ReservationKind;
 use Carbon\Carbon;
@@ -124,6 +124,7 @@ final class FreeReservationPlateChangeEmailTest extends TestCase
             (new SendAdminUpdatedReservationDocumentJob($reservation->id))->handle(
                 app(\App\Services\Pdf\PaidInvoicePdfGenerator::class),
                 app(FreeReservationPdfGenerator::class),
+                app(ReservationEmailSendClaimService::class),
             );
             $this->fail('Expected mail failure exception.');
         } catch (\RuntimeException $e) {

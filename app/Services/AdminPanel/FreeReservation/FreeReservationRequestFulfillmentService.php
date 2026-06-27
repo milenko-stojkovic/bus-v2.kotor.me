@@ -467,6 +467,20 @@ class FreeReservationRequestFulfillmentService
             ReservationEmailReferenceLine::forReservations($reservations, $emailLocale),
         );
 
+        $attachmentFilenames = array_map(
+            fn (Reservation $r): string => $r->freeConfirmationPdfFilename(),
+            $reservations,
+        );
+
+        Log::channel('payments')->info('free_reservation_request_multi_email_started', [
+            'event' => 'free_reservation_request_multi_email_started',
+            'free_reservation_request_id' => $req->id,
+            'reservation_ids' => $reservationIds,
+            'recipient_email' => $email,
+            'count' => count($reservations),
+            'attachment_filenames' => $attachmentFilenames,
+        ]);
+
         $tmpPaths = [];
         try {
             $pdfAttachments = [];
@@ -496,19 +510,23 @@ class FreeReservationRequestFulfillmentService
             }
 
             Log::channel('payments')->info('free_reservation_request_multi_email_sent', [
+                'event' => 'free_reservation_request_multi_email_sent',
                 'free_reservation_request_id' => $req->id,
                 'reservation_ids' => $reservationIds,
-                'email' => $email,
+                'recipient_email' => $email,
                 'count' => count($reservations),
+                'attachment_filenames' => $attachmentFilenames,
             ]);
 
             return ['sent' => true, 'skipped_already_sent' => false];
         } catch (Throwable $e) {
             Log::channel('payments')->warning('free_reservation_request_multi_email_failed', [
+                'event' => 'free_reservation_request_multi_email_failed',
                 'free_reservation_request_id' => $req->id,
                 'reservation_ids' => $reservationIds,
-                'email' => $email,
+                'recipient_email' => $email,
                 'count' => count($reservations),
+                'attachment_filenames' => $attachmentFilenames ?? [],
                 'message' => $e->getMessage(),
                 'exception' => $e::class,
             ]);

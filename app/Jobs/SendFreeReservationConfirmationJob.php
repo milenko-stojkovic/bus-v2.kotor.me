@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Models\Reservation;
 use App\Services\Pdf\FreeReservationPdfGenerator;
+use App\Services\Reservation\ReservationEmailSendClaimService;
+use App\Support\ReservationDocumentEmailLogger;
 use App\Support\ReservationEmailReferenceLine;
 use App\Support\UiText;
 use Illuminate\Bus\Queueable;
@@ -11,7 +13,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use RuntimeException;
@@ -25,6 +26,8 @@ use Throwable;
 class SendFreeReservationConfirmationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private const LOG_EVENT = 'free_reservation_email';
 
     public int $tries = 3;
 
@@ -48,7 +51,8 @@ class SendFreeReservationConfirmationJob implements ShouldQueue
             'email_sent' => Reservation::EMAIL_NOT_SENT,
         ]);
         $mtid = Reservation::query()->whereKey($this->reservationId)->value('merchant_transaction_id');
-        Log::channel('payments')->error('free_reservation_email_job_exhausted', [
+        Log::channel('payments')->error(self::LOG_EVENT.'_job_exhausted', [
+            'event' => self::LOG_EVENT.'_job_exhausted',
             'reservation_id' => $this->reservationId,
             'merchant_transaction_id' => $mtid,
             'message' => $e?->getMessage(),
@@ -56,45 +60,28 @@ class SendFreeReservationConfirmationJob implements ShouldQueue
         ]);
     }
 
-    public function handle(FreeReservationPdfGenerator $pdfGenerator): void
-    {
-        /** @var Reservation|null $reservation */
-        $reservation = null;
-        $claimed = false;
+    public function handle(
+        FreeReservationPdfGenerator $pdfGenerator,
+        ReservationEmailSendClaimService $claimService,
+    ): void {
+        ['reservation' => $reservation, 'claimed' => $claimed] = $claimService->claim(
+            $this->reservationId,
+            extraGuard: fn (Reservation $r): bool => $r->status === 'free',
+        );
 
-        DB::transaction(function () use (&$reservation, &$claimed): void {
-            $reservation = Reservation::query()
-                ->whereKey($this->reservationId)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $reservation || $reservation->status !== 'free') {
-                return;
-            }
-
-            if ($reservation->invoice_sent_at !== null) {
-                return;
-            }
-
-            if ((int) $reservation->email_sent === Reservation::EMAIL_SENDING) {
-                return;
-            }
-
-            $reservation->update(['email_sent' => Reservation::EMAIL_SENDING]);
-            $claimed = true;
-        });
-
-        if (! $reservation || ! $claimed) {
+        if ($reservation === null || ! $claimed) {
             return;
         }
 
-        // Isto kao SendInvoiceEmailJob: dokument i primalac = reservations.email (snapshot).
         $email = $reservation->email;
         if ($email === '' || $email === null) {
             $reservation->update(['email_sent' => Reservation::EMAIL_NOT_SENT]);
 
             return;
         }
+
+        $attachmentFilename = $reservation->freeConfirmationPdfFilename();
+        ReservationDocumentEmailLogger::started(self::LOG_EVENT, $reservation, $attachmentFilename);
 
         $emailLocale = $reservation->user_id
             ? ($reservation->user?->lang ?? 'en')
@@ -125,30 +112,20 @@ class SendFreeReservationConfirmationJob implements ShouldQueue
             }
 
             file_put_contents($tmpPath, $pdfBinary);
-            Mail::raw($body, function ($message) use ($email, $fromAddress, $fromName, $subject, $reservation, $tmpPath): void {
+            Mail::raw($body, function ($message) use ($email, $fromAddress, $fromName, $subject, $attachmentFilename, $tmpPath): void {
                 $message->to($email)
                     ->from($fromAddress, $fromName)
                     ->subject($subject);
                 $message->attach($tmpPath, [
-                    'as' => $reservation->freeConfirmationPdfFilename(),
+                    'as' => $attachmentFilename,
                     'mime' => 'application/pdf',
                 ]);
             });
 
             $reservation->markConfirmationEmailSent();
-            Log::channel('payments')->info('free_reservation_email_sent', [
-                'reservation_id' => $reservation->id,
-                'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                'user_id' => $reservation->user_id,
-            ]);
+            ReservationDocumentEmailLogger::sent(self::LOG_EVENT, $reservation, $attachmentFilename);
         } catch (Throwable $e) {
-            Log::channel('payments')->warning('free_reservation_email_send_failed', [
-                'reservation_id' => $reservation->id,
-                'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                'user_id' => $reservation->user_id,
-                'message' => $e->getMessage(),
-                'exception' => $e::class,
-            ]);
+            ReservationDocumentEmailLogger::failed(self::LOG_EVENT, $reservation, $attachmentFilename, $e);
             Log::channel('single')->error('SendFreeReservationConfirmationJob failed', [
                 'reservation_id' => $reservation->id,
                 'message' => $e->getMessage(),
@@ -211,6 +188,6 @@ class SendFreeReservationConfirmationJob implements ShouldQueue
     {
         return $emailLocale === 'cg'
             ? "Poštovani %1\$s,\n\nVaša besplatna rezervacija parkinga je uspješno kreirana.\n\nUz ovu poruku u prilogu se nalazi potvrda besplatne rezervacije parkinga.\n\nMolimo Vas da je sačuvate radi evidencije.\n\nS poštovanjem,\nOpština Kotor"
-            : "Dear %1\$s,\n\nYour free parking reservation has been successfully created.\n\nAttached to this email you will find the free parking reservation confirmation.\n\nPlease keep this confirmation for your records.\n\nBest regards,\nMunicipality of Kotor";
+            : "Dear %1\$s,\n\nYour free parking reservation has been successfully created.\n\nAttached to this email you will find the free parking reservation confirmation.\n\nPlease keep this for your records.\n\nBest regards,\nMunicipality of Kotor";
     }
 }

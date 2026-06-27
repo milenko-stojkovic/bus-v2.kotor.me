@@ -30,8 +30,28 @@ final class ReservationPdfFilename
 
     public static function dateSegment(Reservation $reservation): string
     {
-        return $reservation->reservation_date?->format('Y-m-d')
+        $raw = $reservation->reservation_date?->format('Y-m-d')
             ?? $reservation->created_at?->format('Y-m-d')
             ?? now()->format('Y-m-d');
+
+        return self::sanitizeDateSegment($raw);
+    }
+
+    /**
+     * Safe attachment segment: digits and hyphens only (Y-m-d).
+     */
+    public static function sanitizeDateSegment(string $raw): string
+    {
+        if (preg_match('/(\d{4}-\d{2}-\d{2})/', $raw, $matches) === 1) {
+            return $matches[1];
+        }
+
+        $clean = preg_replace('/[^0-9-]/', '', $raw) ?? '';
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $clean) === 1) {
+            return $clean;
+        }
+
+        return now()->format('Y-m-d');
     }
 }

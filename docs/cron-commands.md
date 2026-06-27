@@ -103,11 +103,31 @@ Puna tabela rasporeda: **`docs/scheduled-tasks-overview.md`**.
 
 **Komanda:** `reservations:send-emails`
 
-**Opis:** Proverava reservations gde **`email_sent = Reservation::EMAIL_NOT_SENT` (0)**. Šalje potvrdu rezervacije korisniku. Nakon slanja → **`EMAIL_SENT` (1)** preko **`markConfirmationEmailSent()`**. *(Stanje **EMAIL_SENDING** (2) koriste queue jobovi za lock — v. `SendInvoiceEmailJob`.)*
+**Opis:** Fallback cron: za **`paid` / `free`** rezervacije sa **`email_sent = EMAIL_NOT_SENT`** i **`invoice_sent_at` null** i validnim **`email`** → **`dispatch`** odgovarajućeg queue joba (`SendInvoiceEmailJob` / `SendFreeReservationConfirmationJob`). **Ne** postavlja `email_sent=1` bez stvarnog slanja.
 
-**Frekvencija:** **nije** u Laravel `Schedule` u repozitorijumu — pokretanje **ručno** ili vlastiti cron ako operativno treba (u nekim tekstovima ostaje spomen opsega 5–10 min kao orijentacija).
+**Frekvencija:** **nije** u Laravel `Schedule` u repozitorijumu — pokretanje **ručno** ili vlastiti cron ako operativno treba.
 
 **Tabele:** reservations.
+
+---
+
+## 5a. AuditReservationDocuments
+
+**Komanda:** `mail:audit-reservation-documents {--date=Y-m-d} {--missing-only}`
+
+**Opis:** Dijagnostika za **`reservation_date`**: lista paid/free rezervacija sa `invoice_sent_at`, `email_sent`, očekivanim PDF imenom, i da li izgleda da email nedostaje (uključujući zaglavljeno **`EMAIL_SENDING`** > 15 min).
+
+**Frekvencija:** ručno (incident / jutarnja provera).
+
+---
+
+## 5b. ResendReservationDocument
+
+**Komanda:** `mail:resend-reservation-document {--id=}`
+
+**Opis:** Reset `invoice_sent_at` / `email_sent`, zatim queue job za regeneraciju PDF-a i slanje (paid → invoice, free → confirmation). Ne dira payment/fiscal podatke. Admin panel **Resend invoice** koristi isti `SendInvoiceEmailJob` tok.
+
+**Frekvencija:** ručno.
 
 ---
 

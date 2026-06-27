@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\User;
 use App\Models\VehicleType;
 use App\Services\Pdf\FreeReservationPdfGenerator;
+use App\Services\Reservation\ReservationEmailSendClaimService;
 use App\Support\ReservationPdfFilename;
 use Database\Seeders\UiTranslationsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,6 +43,7 @@ final class FreeReservationPlateChangeEmailTest extends TestCase
             (new SendAdminUpdatedReservationDocumentJob($reservation->id))->handle(
                 app(\App\Services\Pdf\PaidInvoicePdfGenerator::class),
                 app(FreeReservationPdfGenerator::class),
+                app(ReservationEmailSendClaimService::class),
             );
         });
 

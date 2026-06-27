@@ -115,6 +115,18 @@ final class AdvanceTopupConfirmationService
             return 'no_email';
         }
 
+        $attachmentFilename = sprintf('potvrda-avans-%d.pdf', $topupId);
+
+        Log::channel('payments')->info('advance_topup_confirmation_started', [
+            'event' => 'advance_topup_confirmation_started',
+            'agency_user_id' => $agencyUserId,
+            'topup_id' => $topupId,
+            'merchant_transaction_id' => $merchantTransactionId,
+            'recipient_email' => $email,
+            'amount' => $amount,
+            'attachment_filename' => $attachmentFilename,
+        ]);
+
         try {
             $balanceAfter = $this->advance->balance($agencyUserId);
             $pdfBinary = $this->pdf->renderBinary($agency, $topup, $balanceAfter);
@@ -128,11 +140,13 @@ final class AdvanceTopupConfirmationService
             ]);
 
             Log::channel('payments')->info('advance_topup_confirmation_sent', [
+                'event' => 'advance_topup_confirmation_sent',
                 'agency_user_id' => $agencyUserId,
                 'topup_id' => $topupId,
                 'merchant_transaction_id' => $merchantTransactionId,
                 'amount' => $amount,
-                'confirmation_email' => $email,
+                'recipient_email' => $email,
+                'attachment_filename' => $attachmentFilename,
             ]);
             return 'sent';
         } catch (Throwable $e) {
@@ -140,11 +154,13 @@ final class AdvanceTopupConfirmationService
             AgencyAdvanceTopup::query()->whereKey($topupId)->update(['confirmation_sending_at' => null]);
 
             Log::channel('payments')->warning('advance_topup_confirmation_failed', [
+                'event' => 'advance_topup_confirmation_failed',
                 'agency_user_id' => $agencyUserId,
                 'topup_id' => $topupId,
                 'merchant_transaction_id' => $merchantTransactionId,
                 'amount' => $amount,
-                'confirmation_email' => $email,
+                'recipient_email' => $email,
+                'attachment_filename' => $attachmentFilename,
                 'message' => $e->getMessage(),
                 'exception' => $e::class,
             ]);

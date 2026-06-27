@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Models\Reservation;
 use App\Services\Pdf\FreeReservationPdfGenerator;
 use App\Services\Pdf\PaidInvoicePdfGenerator;
+use App\Services\Reservation\ReservationEmailSendClaimService;
+use App\Support\ReservationDocumentEmailLogger;
 use App\Support\ReservationEmailReferenceLine;
 use App\Support\UiText;
 use Illuminate\Bus\Queueable;
@@ -12,7 +14,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use RuntimeException;
@@ -25,6 +26,8 @@ use Throwable;
 class SendAdminUpdatedReservationDocumentJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private const LOG_EVENT = 'admin_panel_reservation_update_email';
 
     public int $tries = 3;
 
@@ -53,7 +56,8 @@ class SendAdminUpdatedReservationDocumentJob implements ShouldQueue
             'email_sent' => Reservation::EMAIL_NOT_SENT,
         ]);
 
-        Log::channel('payments')->error('admin_panel_reservation_update_email_exhausted', [
+        Log::channel('payments')->error(self::LOG_EVENT.'_exhausted', [
+            'event' => self::LOG_EVENT.'_exhausted',
             'reservation_id' => $this->reservationId,
             'admin_id' => $this->adminId,
             'changed_fields' => $this->changedFields,
@@ -65,34 +69,15 @@ class SendAdminUpdatedReservationDocumentJob implements ShouldQueue
     public function handle(
         PaidInvoicePdfGenerator $paidPdfGenerator,
         FreeReservationPdfGenerator $freePdfGenerator,
+        ReservationEmailSendClaimService $claimService,
     ): void {
-        /** @var Reservation|null $reservation */
-        $reservation = null;
-        $claimed = false;
+        ['reservation' => $reservation, 'claimed' => $claimed] = $claimService->claim(
+            $this->reservationId,
+            skipIfInvoiceAlreadySent: false,
+            extraGuard: fn (Reservation $r): bool => in_array($r->status, ['paid', 'free'], true),
+        );
 
-        DB::transaction(function () use (&$reservation, &$claimed): void {
-            $reservation = Reservation::query()
-                ->whereKey($this->reservationId)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $reservation) {
-                return;
-            }
-
-            if (! in_array($reservation->status, ['paid', 'free'], true)) {
-                return;
-            }
-
-            if ((int) $reservation->email_sent === Reservation::EMAIL_SENDING) {
-                return;
-            }
-
-            $reservation->update(['email_sent' => Reservation::EMAIL_SENDING]);
-            $claimed = true;
-        });
-
-        if (! $reservation || ! $claimed) {
+        if ($reservation === null || ! $claimed) {
             return;
         }
 
@@ -102,6 +87,17 @@ class SendAdminUpdatedReservationDocumentJob implements ShouldQueue
 
             return;
         }
+
+        if ($reservation->status === 'free') {
+            $attachmentFilename = $reservation->freeConfirmationPdfFilename();
+        } else {
+            $attachmentFilename = $reservation->invoicePdfFilename();
+        }
+
+        ReservationDocumentEmailLogger::started(self::LOG_EVENT, $reservation, $attachmentFilename, [
+            'admin_id' => $this->adminId,
+            'changed_fields' => $this->changedFields,
+        ]);
 
         $emailLocale = $reservation->user_id
             ? ($reservation->user?->lang ?? 'en')
@@ -123,11 +119,9 @@ class SendAdminUpdatedReservationDocumentJob implements ShouldQueue
         try {
             if ($reservation->status === 'free') {
                 $pdfBinary = $freePdfGenerator->renderBinary($reservation);
-                $attachmentName = $reservation->freeConfirmationPdfFilename();
             } else {
                 $isFiscal = $reservation->fiscal_jir !== null;
                 $pdfBinary = $paidPdfGenerator->renderBinary($reservation, $isFiscal);
-                $attachmentName = $reservation->invoicePdfFilename();
             }
 
             if ($pdfBinary === '') {
@@ -141,34 +135,26 @@ class SendAdminUpdatedReservationDocumentJob implements ShouldQueue
 
             file_put_contents($tmpPath, $pdfBinary);
 
-            Mail::raw($body, function ($message) use ($email, $fromAddress, $fromName, $subject, $tmpPath, $attachmentName): void {
+            Mail::raw($body, function ($message) use ($email, $fromAddress, $fromName, $subject, $tmpPath, $attachmentFilename): void {
                 $message->to($email)
                     ->from($fromAddress, $fromName)
                     ->subject($subject);
                 $message->attach($tmpPath, [
-                    'as' => $attachmentName,
+                    'as' => $attachmentFilename,
                     'mime' => 'application/pdf',
                 ]);
             });
 
             $reservation->markConfirmationEmailSent();
 
-            Log::channel('payments')->info('admin_panel_reservation_update_email_sent', [
-                'reservation_id' => $reservation->id,
-                'reservation_kind' => $reservation->reservation_kind,
-                'merchant_transaction_id' => $reservation->merchant_transaction_id,
+            ReservationDocumentEmailLogger::sent(self::LOG_EVENT, $reservation, $attachmentFilename, [
                 'admin_id' => $this->adminId,
-                'email' => $email,
                 'changed_fields' => $this->changedFields,
-                'status' => $reservation->status,
             ]);
         } catch (Throwable $e) {
-            Log::channel('payments')->warning('admin_panel_reservation_update_email_failed', [
-                'reservation_id' => $reservation->id,
+            ReservationDocumentEmailLogger::failed(self::LOG_EVENT, $reservation, $attachmentFilename, $e, [
                 'admin_id' => $this->adminId,
                 'changed_fields' => $this->changedFields,
-                'message' => $e->getMessage(),
-                'exception' => $e::class,
             ]);
             $reservation->update(['email_sent' => Reservation::EMAIL_NOT_SENT]);
             throw $e;

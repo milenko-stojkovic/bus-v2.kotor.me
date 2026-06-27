@@ -11,7 +11,7 @@ use App\Models\Reservation;
 use App\Models\User;
 use App\Models\VehicleType;
 use App\Services\Pdf\FreeReservationPdfGenerator;
-use App\Services\Pdf\PaidInvoicePdfGenerator;
+use App\Services\Reservation\ReservationEmailSendClaimService;
 use App\Support\ReservationPdfFilename;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Mail\Events\MessageSending;
@@ -121,6 +121,7 @@ final class ReservationPdfFilenamePathsTest extends TestCase
         $names = $this->captureMailAttachmentNames(function () use ($reservation): void {
             (new SendInvoiceEmailJob($reservation->id, false))->handle(
                 app(PaidInvoicePdfGenerator::class),
+                app(ReservationEmailSendClaimService::class),
             );
         });
 
@@ -146,6 +147,7 @@ final class ReservationPdfFilenamePathsTest extends TestCase
         $names = $this->captureMailAttachmentNames(function () use ($reservation): void {
             (new SendFreeReservationConfirmationJob($reservation->id))->handle(
                 app(FreeReservationPdfGenerator::class),
+                app(ReservationEmailSendClaimService::class),
             );
         });
 
