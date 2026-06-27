@@ -142,6 +142,7 @@ return [
         'queue_stale_minutes' => (int) env('SYSTEM_HEALTH_QUEUE_STALE_MINUTES', 5),
         'queue_stale_confirm_minutes' => (int) env('SYSTEM_HEALTH_QUEUE_STALE_CONFIRM_MINUTES', 2),
         'queue_stale_marker_ttl_minutes' => (int) env('SYSTEM_HEALTH_QUEUE_STALE_MARKER_TTL_MINUTES', 1500),
+        'watchdog_stale_minutes' => (int) env('SYSTEM_HEALTH_WATCHDOG_STALE_MINUTES', 5),
     ],
 
 ];

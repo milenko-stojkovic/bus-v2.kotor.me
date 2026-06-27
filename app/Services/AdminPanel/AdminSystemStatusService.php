@@ -6,6 +6,7 @@ use App\Console\Commands\AlertsSystemHealthCommand;
 use App\Models\AdminAlert;
 use App\Models\ExternalFileArchive;
 use App\Models\PostFiscalizationData;
+use App\Services\Operational\BackgroundWatchdogService;
 use App\Support\OperationalHeartbeatCache;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -19,8 +20,12 @@ final class AdminSystemStatusService
 {
     public function snapshot(): array
     {
+        $watchdog = app(BackgroundWatchdogService::class);
+
         return [
-            'queue' => $this->queueSection(),
+            'scheduler' => $watchdog->schedulerStatusSnapshot(),
+            'queue_worker' => $watchdog->queueWorkerStatusSnapshot(),
+            'queue' => $this->queueSection($watchdog),
             'mega' => $this->megaSection(),
             'archive' => $this->archiveSection(),
             'fiscalization' => $this->fiscalizationSection(),
@@ -33,10 +38,12 @@ final class AdminSystemStatusService
     /**
      * @return array<string, mixed>
      */
-    private function queueSection(): array
+    private function queueSection(BackgroundWatchdogService $watchdog): array
     {
         $driver = (string) config('queue.default', 'sync');
         $isDatabase = $driver === 'database';
+        $workerSnapshot = $watchdog->queueWorkerStatusSnapshot();
+        $workerStale = (bool) ($workerSnapshot['is_stale'] ?? false);
 
         if (! $isDatabase) {
             return [
@@ -47,8 +54,10 @@ final class AdminSystemStatusService
                 'stale_threshold_minutes' => null,
                 'oldest_pending_age_seconds' => null,
                 'stale_marker' => null,
-                'section_status' => 'neutral',
-                'section_label' => 'Info',
+                'worker_heartbeat_stale' => $workerStale,
+                'worker_likely_down_hint' => null,
+                'section_status' => $workerStale ? 'warn' : 'neutral',
+                'section_label' => $workerStale ? 'Upozorenje' : 'Info',
             ];
         }
 
@@ -61,6 +70,8 @@ final class AdminSystemStatusService
                 'stale_threshold_minutes' => null,
                 'oldest_pending_age_seconds' => null,
                 'stale_marker' => null,
+                'worker_heartbeat_stale' => $workerStale,
+                'worker_likely_down_hint' => null,
                 'section_status' => 'warn',
                 'section_label' => 'Upozorenje',
             ];
@@ -101,6 +112,13 @@ final class AdminSystemStatusService
 
         $sectionStatus = 'ok';
         $sectionLabel = 'OK';
+        $workerHint = null;
+
+        if ($workerStale && ($pendingCount > 0 || $staleCount > 0)) {
+            $workerHint = 'Ima poslova u redu, ali queue worker heartbeat nije svjež — worker vjerovatno ne obrađuje.';
+        } elseif ($workerStale) {
+            $workerHint = 'Queue worker heartbeat nije svjež — provjeriti queue-worker.php cron.';
+        }
 
         if ($staleCount > 0) {
             if ($staleMarker !== null) {
@@ -110,7 +128,13 @@ final class AdminSystemStatusService
                 $sectionStatus = 'warn';
                 $sectionLabel = 'Upozorenje';
             }
+        } elseif ($workerStale && $pendingCount > 0) {
+            $sectionStatus = 'warn';
+            $sectionLabel = 'Upozorenje';
         } elseif ($pendingCount > 0 && $oldestAgeSec !== null && $oldestAgeSec >= $staleMinutes * 60) {
+            $sectionStatus = 'warn';
+            $sectionLabel = 'Upozorenje';
+        } elseif ($workerStale) {
             $sectionStatus = 'warn';
             $sectionLabel = 'Upozorenje';
         }
@@ -123,6 +147,8 @@ final class AdminSystemStatusService
             'stale_threshold_minutes' => $staleMinutes,
             'oldest_pending_age_seconds' => $oldestAgeSec,
             'stale_marker' => $staleMarker,
+            'worker_heartbeat_stale' => $workerStale,
+            'worker_likely_down_hint' => $workerHint,
             'section_status' => $sectionStatus,
             'section_label' => $sectionLabel,
         ];
@@ -274,7 +300,10 @@ final class AdminSystemStatusService
 
         $sectionStatus = 'neutral';
         $sectionLabel = 'Nepoznato';
-        if ($runAt !== null && $okAt !== null) {
+        if ($runAt === null && $okAt === null) {
+            $sectionStatus = 'neutral';
+            $sectionLabel = 'Nepoznato';
+        } elseif ($okAt !== null) {
             $sectionStatus = 'ok';
             $sectionLabel = 'OK';
         } elseif ($runAt !== null) {
@@ -287,6 +316,7 @@ final class AdminSystemStatusService
             'last_ok_at' => $okAt,
             'section_status' => $sectionStatus,
             'section_label' => $sectionLabel,
+            'note' => 'Dnevni rollup komande alerts:system-health (07:30), ne zamjenjuje scheduler/worker heartbeat iznad.',
         ];
     }
 

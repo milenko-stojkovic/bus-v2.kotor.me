@@ -18,6 +18,7 @@
  * Plesk fallback when Laravel Toolkit Queue cannot be enabled.
  */
 
+use App\Services\Operational\BackgroundWatchdogService;
 use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\Console\Input\ArgvInput;
@@ -35,14 +36,20 @@ $app = require_once __DIR__.'/bootstrap/app.php';
 
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
+/** @var BackgroundWatchdogService $watchdog */
+$watchdog = $app->make(BackgroundWatchdogService::class);
+
 $releaseLock = acquirePleskQueueWorkerLock();
 
 if ($releaseLock === null) {
-    // Another worker from the previous cron minute is still running.
+    $watchdog->evaluateStaleHeartbeats();
     exit(0);
 }
 
+$watchdog->recordQueueWorkerStarted();
+
 $status = 0;
+$workerError = null;
 
 try {
     $status = $app->handleCommand(new ArgvInput([
@@ -54,8 +61,14 @@ try {
         '--timeout=130',
         '--memory=512',
     ]));
+} catch (\Throwable $e) {
+    $workerError = $e->getMessage();
+    $status = 1;
+    throw $e;
 } finally {
     $releaseLock();
+    $watchdog->recordQueueWorkerFinished($status, $workerError);
+    $watchdog->evaluateStaleHeartbeats();
 }
 
 exit($status);

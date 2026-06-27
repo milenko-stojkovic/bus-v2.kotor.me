@@ -27,6 +27,18 @@ final class OperationalHeartbeatCache
 
     public const ARCHIVE_PRIVATE_LAST_SUMMARY = 'archive_private:last_summary';
 
+    public const SCHEDULER_LAST_RUN_AT = 'watchdog:scheduler:last_run_at';
+
+    public const SCHEDULER_LAST_OK_AT = 'watchdog:scheduler:last_ok_at';
+
+    public const SCHEDULER_LAST_ERROR = 'watchdog:scheduler:last_error';
+
+    public const QUEUE_WORKER_LAST_RUN_AT = 'watchdog:queue_worker:last_run_at';
+
+    public const QUEUE_WORKER_LAST_OK_AT = 'watchdog:queue_worker:last_ok_at';
+
+    public const QUEUE_WORKER_LAST_ERROR = 'watchdog:queue_worker:last_error';
+
     public static function ttl(): \DateTimeInterface
     {
         return now()->addSeconds(self::TTL_SECONDS);

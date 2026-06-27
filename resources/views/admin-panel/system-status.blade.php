@@ -33,9 +33,47 @@
 <x-admin-panel-layout page-title="Sistem status" nav-active="system-status">
     <div class="space-y-8">
         <p class="text-sm text-gray-600 max-w-3xl">
-            Pregled stanja iz baze i operativnog heartbeat keša (<code class="text-xs bg-red-50 px-1 rounded">alerts:system-health</code>,
+            Pregled stanja iz baze i operativnog heartbeat keša (<code class="text-xs bg-red-50 px-1 rounded">schedule-run.php</code>,
+            <code class="text-xs bg-red-50 px-1 rounded">queue-worker.php</code>,
+            <code class="text-xs bg-red-50 px-1 rounded">alerts:system-health</code>,
             <code class="text-xs bg-red-50 px-1 rounded">files:archive-private</code>). Samo čitanje — nema akcija, restarta ni živog MEGA poziva na učitavanju stranice.
         </p>
+
+        @php $sch = $status['scheduler']; @endphp
+        <section class="bg-white shadow rounded-lg border border-red-100 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h2 class="text-base font-semibold text-gray-900">Scheduler (Laravel schedule:run)</h2>
+                <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($sch['section_status']) }}">{{ $sch['section_label'] }}</span>
+            </div>
+            <dl class="text-sm text-gray-800 space-y-1">
+                <div><span class="text-gray-500">Poslednji run:</span> {{ $fmtTs($sch['last_run_at']) }}</div>
+                <div><span class="text-gray-500">Poslednji OK:</span> {{ $fmtTs($sch['last_ok_at']) }}</div>
+                @if ($sch['last_ok_age_minutes'] !== null)
+                    <div><span class="text-gray-500">Starost OK heartbeat-a:</span> ~{{ $sch['last_ok_age_minutes'] }} min (prag {{ $sch['stale_threshold_minutes'] }} min)</div>
+                @endif
+                @if (!empty($sch['last_error']))
+                    <div><span class="text-gray-500">Poslednja greška:</span> <span class="text-red-900 break-words">{{ $sch['last_error'] }}</span></div>
+                @endif
+            </dl>
+        </section>
+
+        @php $qw = $status['queue_worker']; @endphp
+        <section class="bg-white shadow rounded-lg border border-red-100 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h2 class="text-base font-semibold text-gray-900">Queue worker (queue-worker.php)</h2>
+                <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($qw['section_status']) }}">{{ $qw['section_label'] }}</span>
+            </div>
+            <dl class="text-sm text-gray-800 space-y-1">
+                <div><span class="text-gray-500">Poslednji run:</span> {{ $fmtTs($qw['last_run_at']) }}</div>
+                <div><span class="text-gray-500">Poslednji OK:</span> {{ $fmtTs($qw['last_ok_at']) }}</div>
+                @if ($qw['last_ok_age_minutes'] !== null)
+                    <div><span class="text-gray-500">Starost OK heartbeat-a:</span> ~{{ $qw['last_ok_age_minutes'] }} min (prag {{ $qw['stale_threshold_minutes'] }} min)</div>
+                @endif
+                @if (!empty($qw['last_error']))
+                    <div><span class="text-gray-500">Poslednja greška:</span> <span class="text-red-900 break-words">{{ $qw['last_error'] }}</span></div>
+                @endif
+            </dl>
+        </section>
 
         @php $q = $status['queue']; @endphp
         <section class="bg-white shadow rounded-lg border border-red-100 p-5">
@@ -61,6 +99,9 @@
                         </div>
                     @else
                         <div class="text-xs text-gray-500 mt-1">Nema aktivnog markera u kešu.</div>
+                    @endif
+                    @if (!empty($q['worker_likely_down_hint']))
+                        <p class="text-xs text-yellow-900 bg-yellow-50 border border-yellow-200 rounded px-2 py-1.5 mt-2">{{ $q['worker_likely_down_hint'] }}</p>
                     @endif
                 @else
                     <p class="text-xs text-gray-600">Metrike pending/stale važe samo za <span class="font-mono">database</span> driver.</p>
@@ -240,6 +281,9 @@
                 <div><span class="text-gray-500">Poslednji run komande:</span> {{ $fmtTs($sh['last_run_at']) }}</div>
                 <div><span class="text-gray-500">Poslednji OK završetak:</span> {{ $fmtTs($sh['last_ok_at']) }}</div>
             </dl>
+            @if (!empty($sh['note']))
+                <p class="text-xs text-gray-500 mt-2">{{ $sh['note'] }}</p>
+            @endif
         </section>
     </div>
 </x-admin-panel-layout>

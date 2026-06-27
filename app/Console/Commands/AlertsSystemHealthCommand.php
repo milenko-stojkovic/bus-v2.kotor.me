@@ -7,6 +7,7 @@ use App\Models\ExternalFileArchive;
 use App\Models\PostFiscalizationData;
 use App\Services\AdminPanel\AdminAlertService;
 use App\Services\ExternalArchive\MegaDiagnoseService;
+use App\Services\Operational\BackgroundWatchdogService;
 use App\Support\OperationalHeartbeatCache;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -141,6 +142,8 @@ class AlertsSystemHealthCommand extends Command
             now()->toIso8601String(),
             OperationalHeartbeatCache::ttl(),
         );
+
+        app(BackgroundWatchdogService::class)->evaluateStaleHeartbeats($alerts);
 
         return self::SUCCESS;
     }

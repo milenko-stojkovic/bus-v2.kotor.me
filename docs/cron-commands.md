@@ -351,9 +351,10 @@ Kada **Laravel Toolkit Queue** nije dostupan (nema SSH/supervisor), koristi se r
 - Pokreće `queue:work` **bez** `--stop-when-empty` — worker ostaje aktivan do **`--max-time=55`** i provjerava red svake **`--sleep=1`** sekunde, pa job koji stigne nekoliko sekundi poslije starta crona ne čeka do sljedeće minute.
 - **`--tries=3`**, **`--timeout=130`**, **`--memory=512`** — ne mijenjati bez usklađivanja sa `docs/production-hardening.md`.
 - **Lock** `plesk_queue_worker_bus_v2` (TTL **70s**, malo iznad max-time) preko **`Cache::lock`** (`CACHE_STORE=database` + tabela `cache_locks`); ako cache lock nije dostupan, **`flock`** na `storage/framework/queue-worker.lock`. Drugi poziv dok prvi traje → **exit 0** (nema preklapanja).
+- **Watchdog heartbeat (cache):** na startu i uspješnom završetku piše **`watchdog:queue_worker:last_run_at`** / **`last_ok_at`** (`BackgroundWatchdogService`); log **`queue_worker_heartbeat`** / **`queue_worker_stale`** na `payments`. Stale alert **`queue_worker_heartbeat_stale`** ako OK nije svjež > **`watchdog_stale_minutes`** (default 5).
 - Preferirano rješenje i dalje: **supervisor/systemd** sa trajnim `queue:work`; ova skripta je kompromis za Plesk-only hosting.
 
-Paralelno: **`schedule-run.php`** (isti cron pattern) za `php artisan schedule:run`.
+Paralelno: **`schedule-run.php`** (isti cron pattern) za `php artisan schedule:run` — heartbeat **`watchdog:scheduler:*`**, log **`scheduler_watchdog_heartbeat`** / **`scheduler_watchdog_stale`**, alert **`scheduler_heartbeat_stale`**. Evaluacija stale stanja i na kraju svakog run-a.
 
 ### Verifikacija
 

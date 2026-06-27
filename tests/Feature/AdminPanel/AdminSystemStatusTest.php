@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\ExternalFileArchive;
 use App\Models\User;
 use App\Support\OperationalHeartbeatCache;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -76,6 +77,52 @@ class AdminSystemStatusTest extends TestCase
         $this->assertStringContainsString('Pending', $html);
         $this->assertStringContainsString('Stale', $html);
         $this->assertStringContainsString('1', $html);
+    }
+
+    public function test_page_shows_scheduler_and_queue_worker_heartbeat_sections(): void
+    {
+        $fresh = now()->subMinutes(1)->toIso8601String();
+        Cache::put(OperationalHeartbeatCache::SCHEDULER_LAST_OK_AT, $fresh, 600);
+        Cache::put(OperationalHeartbeatCache::QUEUE_WORKER_LAST_OK_AT, $fresh, 600);
+
+        $admin = $this->makeAdmin();
+        $html = $this->actingAs($admin, 'panel_admin')
+            ->get(route('panel_admin.system-status', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Scheduler (Laravel schedule:run)', $html);
+        $this->assertStringContainsString('Queue worker (queue-worker.php)', $html);
+    }
+
+    public function test_page_shows_worker_down_hint_when_pending_jobs_and_stale_worker_heartbeat(): void
+    {
+        config(['queue.default' => 'database']);
+        Carbon::setTestNow(Carbon::parse('2026-06-27 12:10:00', 'Europe/Podgorica'));
+
+        Cache::put(
+            OperationalHeartbeatCache::QUEUE_WORKER_LAST_OK_AT,
+            now()->subMinutes(10)->toIso8601String(),
+            600,
+        );
+
+        $old = now()->subMinutes(10)->timestamp;
+        DB::table('jobs')->insert([
+            'queue' => 'default',
+            'payload' => '{"t":1}',
+            'attempts' => 0,
+            'reserved_at' => null,
+            'available_at' => $old,
+            'created_at' => $old,
+        ]);
+
+        $admin = $this->makeAdmin();
+        $html = $this->actingAs($admin, 'panel_admin')
+            ->get(route('panel_admin.system-status', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('worker vjerovatno ne obrađuje', $html);
     }
 
     public function test_page_shows_heartbeat_cache_values(): void
