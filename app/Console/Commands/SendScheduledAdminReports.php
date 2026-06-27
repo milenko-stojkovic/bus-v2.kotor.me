@@ -32,14 +32,18 @@ class SendScheduledAdminReports extends Command
         $tz = 'Europe/Podgorica';
         [$from, $to, $subjectLabel, $fileLabel] = $this->resolvePeriod($periodType, $tz);
 
-        $recipients = ReportEmail::allRecipients()->pluck('email')->filter()->values();
-        if ($recipients->isEmpty()) {
+        $periodStart = $from->toDateString();
+        $periodEnd = $to->toDateString();
+        $recipientEmails = $this->normalizedReportRecipientEmails();
+
+        if ($recipientEmails->isEmpty()) {
             Log::channel('payments')->info('scheduled_reports_no_recipients', [
                 'period_type' => $periodType,
-                'period_start' => $from->toDateString(),
-                'period_end' => $to->toDateString(),
+                'period_start' => $periodStart,
+                'period_end' => $periodEnd,
             ]);
             $this->info('No recipients found in report_emails; skipped.');
+
             return self::SUCCESS;
         }
 
@@ -62,24 +66,29 @@ class SendScheduledAdminReports extends Command
         $skipped = 0;
         $failed = 0;
         $failedRecipients = [];
+        $skippedRecipients = [];
 
-        foreach ($recipients as $email) {
-            $email = (string) $email;
-            if ($email === '') {
-                continue;
-            }
-
-            $delivery = $this->claimDelivery($periodType, $from, $to, $email);
-            if ($delivery === null) {
+        foreach ($recipientEmails as $email) {
+            $claim = $this->claimDelivery($periodType, $periodStart, $periodEnd, $email);
+            if ($claim['delivery'] === null) {
                 $skipped++;
-                Log::channel('payments')->info('scheduled_reports_delivery_skipped_already_sent', [
+                $skippedRecipients[] = [
+                    'email' => $email,
+                    'reason' => $claim['skip_reason'] ?? 'already_sent',
+                    'sent_at' => $claim['sent_at'] ?? null,
+                ];
+                Log::channel('payments')->info('scheduled_reports_delivery_skipped', [
                     'period_type' => $periodType,
-                    'period_start' => $from->toDateString(),
-                    'period_end' => $to->toDateString(),
+                    'period_start' => $periodStart,
+                    'period_end' => $periodEnd,
                     'recipient_email' => $email,
+                    'reason' => $claim['skip_reason'] ?? 'already_sent',
+                    'sent_at' => $claim['sent_at'] ?? null,
                 ]);
                 continue;
             }
+
+            $delivery = $claim['delivery'];
 
             $subject = $this->subjectFor($periodType, $subjectLabel);
             $body = $this->bodyFor($periodType, $subjectLabel);
@@ -113,11 +122,15 @@ class SendScheduledAdminReports extends Command
                 ]);
 
                 $failed++;
-                $failedRecipients[] = $email;
+                $failedRecipients[] = [
+                    'email' => $email,
+                    'error' => $e->getMessage(),
+                    'exception' => $e::class,
+                ];
                 Log::channel('payments')->warning('scheduled_reports_delivery_failed', [
                     'period_type' => $periodType,
-                    'period_start' => $from->toDateString(),
-                    'period_end' => $to->toDateString(),
+                    'period_start' => $periodStart,
+                    'period_end' => $periodEnd,
                     'recipient_email' => $email,
                     'message' => $e->getMessage(),
                     'exception' => $e::class,
@@ -131,14 +144,64 @@ class SendScheduledAdminReports extends Command
                 periodType: $periodType,
                 from: $from,
                 to: $to,
-                error: 'Failed recipients: '.implode(', ', array_slice($failedRecipients, 0, 20)),
+                error: collect($failedRecipients)
+                    ->map(fn (array $row): string => sprintf(
+                        '%s (%s: %s)',
+                        $row['email'],
+                        $row['exception'],
+                        mb_substr((string) $row['error'], 0, 200),
+                    ))
+                    ->implode('; '),
                 exceptionClass: 'ScheduledReportDeliveryFailure'
             );
         }
 
-        $this->info("scheduled reports done: sent={$sent}, skipped={$skipped}, failed={$failed}, recipients={$recipients->count()}");
+        $this->info(sprintf(
+            'scheduled reports done: sent=%d, skipped=%d, failed=%d, recipients=%d',
+            $sent,
+            $skipped,
+            $failed,
+            $recipientEmails->count(),
+        ));
+
+        foreach ($skippedRecipients as $row) {
+            $sentAt = $row['sent_at'] ? ' sent_at='.$row['sent_at'] : '';
+            $this->line(sprintf(
+                '  skipped: %s (%s%s)',
+                $row['email'],
+                $row['reason'],
+                $sentAt,
+            ));
+        }
+
+        foreach ($failedRecipients as $row) {
+            $this->line(sprintf(
+                '  failed: %s (%s: %s)',
+                $row['email'],
+                $row['exception'],
+                mb_substr((string) $row['error'], 0, 200),
+            ));
+        }
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    private function normalizedReportRecipientEmails(): \Illuminate\Support\Collection
+    {
+        return ReportEmail::allRecipients()
+            ->pluck('email')
+            ->map(fn ($email) => $this->normalizeRecipientEmail((string) $email))
+            ->filter(fn (string $email) => $email !== '')
+            ->unique()
+            ->values();
+    }
+
+    private function normalizeRecipientEmail(string $email): string
+    {
+        return mb_strtolower(trim($email));
     }
 
     /**
@@ -292,28 +355,36 @@ class SendScheduledAdminReports extends Command
     }
 
     /**
-     * Claim delivery row for this recipient/period. Returns null when already sent.
+     * Claim delivery row for this recipient/period. Returns null delivery when already sent.
+     *
+     * @return array{delivery: ?ScheduledReportDelivery, skip_reason: ?string, sent_at: ?string}
      */
-    private function claimDelivery(string $periodType, Carbon $from, Carbon $to, string $email): ?ScheduledReportDelivery
+    private function claimDelivery(string $periodType, string $periodStart, string $periodEnd, string $email): array
     {
-        return DB::transaction(function () use ($periodType, $from, $to, $email): ?ScheduledReportDelivery {
+        $email = $this->normalizeRecipientEmail($email);
+
+        return DB::transaction(function () use ($periodType, $periodStart, $periodEnd, $email): array {
             $row = ScheduledReportDelivery::query()
                 ->where('period_type', $periodType)
-                ->whereDate('period_start', $from->toDateString())
-                ->whereDate('period_end', $to->toDateString())
+                ->whereDate('period_start', $periodStart)
+                ->whereDate('period_end', $periodEnd)
                 ->where('recipient_email', $email)
                 ->lockForUpdate()
                 ->first();
 
             if ($row && $row->status === ScheduledReportDelivery::STATUS_SENT) {
-                return null;
+                return [
+                    'delivery' => null,
+                    'skip_reason' => 'already_sent',
+                    'sent_at' => $row->sent_at?->toDateTimeString(),
+                ];
             }
 
             if (! $row) {
                 $row = ScheduledReportDelivery::query()->create([
                     'period_type' => $periodType,
-                    'period_start' => $from->toDateString(),
-                    'period_end' => $to->toDateString(),
+                    'period_start' => $periodStart,
+                    'period_end' => $periodEnd,
                     'recipient_email' => $email,
                     'status' => ScheduledReportDelivery::STATUS_SENDING,
                     'sent_at' => null,
@@ -327,7 +398,11 @@ class SendScheduledAdminReports extends Command
                 ]);
             }
 
-            return $row;
+            return [
+                'delivery' => $row,
+                'skip_reason' => null,
+                'sent_at' => null,
+            ];
         });
     }
 

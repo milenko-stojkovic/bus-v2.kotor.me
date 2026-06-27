@@ -150,6 +150,181 @@ class SendScheduledAdminReportsTest extends TestCase
         $this->assertDatabaseCount('scheduled_report_deliveries', 2);
     }
 
+    public function test_a_daily_sends_to_all_three_report_recipients(): void
+    {
+        $this->setNow('2026-05-02 08:00:00');
+        Config::set('features.advance_payments', true);
+
+        ReportEmail::query()->create(['email' => 'informatika@kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+        ReportEmail::query()->create(['email' => 'prihodi@kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+        ReportEmail::query()->create(['email' => 'ksenija.prorokovic@kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+
+        Mail::fake();
+
+        $this->artisan('reports:send-scheduled daily')
+            ->assertExitCode(0)
+            ->expectsOutputToContain('sent=3, skipped=0, failed=0, recipients=3');
+
+        Mail::assertSent(ScheduledAdminReportsMail::class, 3);
+        Mail::assertSent(ScheduledAdminReportsMail::class, fn (ScheduledAdminReportsMail $m): bool => $m->hasTo('informatika@kotor.me'));
+        Mail::assertSent(ScheduledAdminReportsMail::class, fn (ScheduledAdminReportsMail $m): bool => $m->hasTo('prihodi@kotor.me'));
+        Mail::assertSent(ScheduledAdminReportsMail::class, fn (ScheduledAdminReportsMail $m): bool => $m->hasTo('ksenija.prorokovic@kotor.me'));
+        $this->assertDatabaseCount('scheduled_report_deliveries', 3);
+    }
+
+    public function test_three_recipients_one_already_sent_skips_only_that_one(): void
+    {
+        $this->setNow('2026-05-02 08:00:00');
+        Config::set('features.advance_payments', true);
+
+        ReportEmail::query()->create(['email' => 'informatika@kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+        ReportEmail::query()->create(['email' => 'prihodi@kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+        ReportEmail::query()->create(['email' => 'ksenija.prorokovic@kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+
+        ScheduledReportDelivery::query()->create([
+            'period_type' => 'daily',
+            'period_start' => '2026-05-01',
+            'period_end' => '2026-05-01',
+            'recipient_email' => 'prihodi@kotor.me',
+            'status' => ScheduledReportDelivery::STATUS_SENT,
+            'sent_at' => now(),
+        ]);
+
+        Mail::fake();
+
+        $this->artisan('reports:send-scheduled daily')
+            ->assertExitCode(0)
+            ->expectsOutputToContain('sent=2, skipped=1, failed=0, recipients=3')
+            ->expectsOutputToContain('skipped: prihodi@kotor.me (already_sent');
+
+        Mail::assertSent(ScheduledAdminReportsMail::class, 2);
+        Mail::assertSent(ScheduledAdminReportsMail::class, fn (ScheduledAdminReportsMail $m): bool => $m->hasTo('informatika@kotor.me'));
+        Mail::assertSent(ScheduledAdminReportsMail::class, fn (ScheduledAdminReportsMail $m): bool => $m->hasTo('ksenija.prorokovic@kotor.me'));
+        Mail::assertNotSent(ScheduledAdminReportsMail::class, fn (ScheduledAdminReportsMail $m): bool => $m->hasTo('prihodi@kotor.me'));
+    }
+
+    public function test_rerun_skips_all_recipients_as_already_sent(): void
+    {
+        $this->setNow('2026-05-02 08:00:00');
+        Config::set('features.advance_payments', true);
+
+        ReportEmail::query()->create(['email' => 'a@example.com']);
+        ReportEmail::query()->create(['email' => 'b@example.com']);
+        ReportEmail::query()->create(['email' => 'c@example.com']);
+        Mail::fake();
+
+        $this->artisan('reports:send-scheduled daily')->assertExitCode(0);
+        $this->artisan('reports:send-scheduled daily')
+            ->assertExitCode(0)
+            ->expectsOutputToContain('sent=0, skipped=3, failed=0, recipients=3')
+            ->expectsOutputToContain('skipped: a@example.com (already_sent')
+            ->expectsOutputToContain('skipped: b@example.com (already_sent')
+            ->expectsOutputToContain('skipped: c@example.com (already_sent');
+
+        Mail::assertSent(ScheduledAdminReportsMail::class, 3);
+    }
+
+    public function test_monthly_per_recipient_idempotency(): void
+    {
+        $this->setNow('2026-06-01 08:00:00');
+        Config::set('features.advance_payments', true);
+
+        ReportEmail::query()->create(['email' => 'a@example.com']);
+        ReportEmail::query()->create(['email' => 'b@example.com']);
+
+        ScheduledReportDelivery::query()->create([
+            'period_type' => 'monthly',
+            'period_start' => '2026-05-01',
+            'period_end' => '2026-05-31',
+            'recipient_email' => 'a@example.com',
+            'status' => ScheduledReportDelivery::STATUS_SENT,
+            'sent_at' => now(),
+        ]);
+
+        Mail::fake();
+
+        $this->artisan('reports:send-scheduled monthly')
+            ->assertExitCode(0)
+            ->expectsOutputToContain('sent=1, skipped=1, failed=0, recipients=2')
+            ->expectsOutputToContain('skipped: a@example.com (already_sent');
+
+        Mail::assertSent(ScheduledAdminReportsMail::class, 1);
+        Mail::assertSent(ScheduledAdminReportsMail::class, fn (ScheduledAdminReportsMail $m): bool => $m->hasTo('b@example.com'));
+    }
+
+    public function test_yearly_per_recipient_idempotency(): void
+    {
+        $this->setNow('2027-01-01 08:00:00');
+        Config::set('features.advance_payments', true);
+
+        ReportEmail::query()->create(['email' => 'a@example.com']);
+        ReportEmail::query()->create(['email' => 'b@example.com']);
+
+        ScheduledReportDelivery::query()->create([
+            'period_type' => 'yearly',
+            'period_start' => '2026-01-01',
+            'period_end' => '2026-12-31',
+            'recipient_email' => 'b@example.com',
+            'status' => ScheduledReportDelivery::STATUS_SENT,
+            'sent_at' => now(),
+        ]);
+
+        Mail::fake();
+
+        $this->artisan('reports:send-scheduled yearly')
+            ->assertExitCode(0)
+            ->expectsOutputToContain('sent=1, skipped=1, failed=0, recipients=2')
+            ->expectsOutputToContain('skipped: b@example.com (already_sent');
+
+        Mail::assertSent(ScheduledAdminReportsMail::class, 1);
+        Mail::assertSent(ScheduledAdminReportsMail::class, fn (ScheduledAdminReportsMail $m): bool => $m->hasTo('a@example.com'));
+    }
+
+    public function test_duplicate_report_email_rows_send_once_and_skip_duplicates(): void
+    {
+        $this->setNow('2026-05-02 08:00:00');
+        Config::set('features.advance_payments', true);
+
+        ReportEmail::query()->create(['email' => 'informatika@kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+        ReportEmail::query()->create(['email' => 'informatika@kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+        ReportEmail::query()->create(['email' => 'informatika@kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+
+        Mail::fake();
+
+        $this->artisan('reports:send-scheduled daily')
+            ->assertExitCode(0)
+            ->expectsOutputToContain('sent=1, skipped=0, failed=0, recipients=1');
+
+        Mail::assertSent(ScheduledAdminReportsMail::class, 1);
+        $this->assertDatabaseCount('scheduled_report_deliveries', 1);
+    }
+
+    public function test_normalized_email_matches_existing_delivery_row(): void
+    {
+        $this->setNow('2026-05-02 08:00:00');
+        Config::set('features.advance_payments', true);
+
+        ReportEmail::query()->create(['email' => 'Prihodi@Kotor.me', 'purpose' => ReportEmail::PURPOSE_REPORT]);
+
+        ScheduledReportDelivery::query()->create([
+            'period_type' => 'daily',
+            'period_start' => '2026-05-01',
+            'period_end' => '2026-05-01',
+            'recipient_email' => 'prihodi@kotor.me',
+            'status' => ScheduledReportDelivery::STATUS_SENT,
+            'sent_at' => now(),
+        ]);
+
+        Mail::fake();
+
+        $this->artisan('reports:send-scheduled daily')
+            ->assertExitCode(0)
+            ->expectsOutputToContain('sent=0, skipped=1, failed=0, recipients=1')
+            ->expectsOutputToContain('skipped: prihodi@kotor.me (already_sent');
+
+        Mail::assertNothingSent();
+    }
+
     public function test_e_no_recipients_skips_without_sending(): void
     {
         $this->setNow('2026-05-02 08:00:00');
@@ -206,7 +381,9 @@ class SendScheduledAdminReportsTest extends TestCase
         Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('SMTP down'));
         Mail::shouldReceive('raw')->once();
 
-        $this->artisan('reports:send-scheduled daily')->assertExitCode(1);
+        $this->artisan('reports:send-scheduled daily')
+            ->assertExitCode(1)
+            ->expectsOutputToContain('failed: a@example.com (RuntimeException: SMTP down');
 
         $this->assertDatabaseHas('admin_alerts', [
             'type' => 'scheduled_admin_reports_failed',

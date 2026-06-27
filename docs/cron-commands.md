@@ -234,9 +234,10 @@ Ovi job-ovi su dodati u `routes/console.php` i smatraju se bezbednim za lokalni 
   - **daily**: `dailyAt('07:00')` — period = prethodni dan
   - **monthly**: `monthlyOn(1, '07:05')` — period = prethodni mjesec
   - **yearly**: `yearlyOn(1, 1, '07:10')` — period = prethodna godina
-  - Primalac(i): tabela `report_emails` (jedan email po primaocu; nema fallback primaoca ako je tabela prazna)
+  - Primalac(i): tabela `report_emails` gdje je **`purpose=report`**; adrese se normalizuju (trim + lowercase) i **deduplikuju** prije slanja (duplikati u tabeli ne smiju uzrokovati `sent=1 skipped=2` za isti email)
   - PDF paketi: “po uplati”, “po tipu vozila” i (kada je `advance_payments` ON) “obaveze po avansu”
-  - Idempotency: tabela `scheduled_report_deliveries` (unique: period + recipient)
+  - Idempotency: tabela `scheduled_report_deliveries` (unique: `period_type` + `period_start` + `period_end` + `recipient_email`); skip samo za primaoca koji već ima `status=sent`
+  - CLI output: `skipped: email (already_sent sent_at=...)` po preskočenom primaocu; `failed: email (Exception: message)` po grešci
   - Failure: bez parcijalnih emailova ako PDF generisanje padne; admin email `bus@kotor.me` + `admin_alerts` zapis (idempotentno po periodu)
 - `alerts:system-health` — **`dailyAt('07:30')`** (`Europe/Podgorica`)
   - Kreira **`admin_alerts`** samo kada je potrebno; **v1** — nije pun monitoring, nema posebnog email kanala za ove tipove.
