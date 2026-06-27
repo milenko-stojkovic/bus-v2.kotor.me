@@ -17,6 +17,12 @@ class AdminSystemStatusTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     private function makeAdmin(): Admin
     {
         return Admin::query()->create([
@@ -223,9 +229,136 @@ class AdminSystemStatusTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('nije još provjereno', $html);
-        $this->assertStringContainsString('Nema sačuvanog sažetka u kešu', $html);
-        $this->assertStringContainsString('—', $html);
+        $this->assertStringContainsString('Nema sačuvane posebne MEGA dijagnostike u kešu', $html);
+        $this->assertStringContainsString('Ovo nije greška. Stranica ne pokreće živi MEGA test pri učitavanju.', $html);
+        $this->assertStringContainsString('Još nije zabilježen nakon poslednjeg čišćenja keša ili deploy-a', $html);
+        $this->assertStringContainsString('Dnevni health rollup', $html);
+        $this->assertStringNotContainsString('nije još provjereno', $html);
+        $this->assertStringNotContainsString('Nije provjereno', $html);
+    }
+
+    public function test_no_mega_diagnostic_cache_shows_non_alarming_explanatory_text(): void
+    {
+        Cache::flush();
+
+        $admin = $this->makeAdmin();
+        $html = $this->actingAs($admin, 'panel_admin')
+            ->get(route('panel_admin.system-status', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Nema sačuvane posebne MEGA dijagnostike u kešu', $html);
+        $this->assertStringContainsString('Provjerite sekciju Privatna arhiva za poslednji arhivski run', $html);
+        $this->assertStringNotContainsString('Nije provjereno', $html);
+    }
+
+    public function test_private_archive_ok_still_displays_as_ok_and_hints_mega_section(): void
+    {
+        Cache::flush();
+        Cache::put(OperationalHeartbeatCache::ARCHIVE_PRIVATE_LAST_RUN_AT, now()->subHour()->toIso8601String(), 600);
+        Cache::put(OperationalHeartbeatCache::ARCHIVE_PRIVATE_LAST_OK_AT, now()->subHour()->toIso8601String(), 600);
+
+        $admin = $this->makeAdmin();
+        $html = $this->actingAs($admin, 'panel_admin')
+            ->get(route('panel_admin.system-status', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Privatna arhiva (heartbeat + DB)', $html);
+        $this->assertStringContainsString('Poslednji arhivski run je završen bez greške.', $html);
+    }
+
+    public function test_missing_daily_system_health_rollup_shows_not_yet_recorded_wording(): void
+    {
+        Cache::flush();
+
+        $admin = $this->makeAdmin();
+        $html = $this->actingAs($admin, 'panel_admin')
+            ->get(route('panel_admin.system-status', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Dnevni health rollup', $html);
+        $this->assertStringContainsString('Još nije zabilježen', $html);
+        $this->assertStringContainsString('Ovo nije isto što i scheduler/queue heartbeat', $html);
+        $this->assertStringNotContainsString('Sistemsko zdravlje (heartbeat)', $html);
+    }
+
+    public function test_scheduler_and_queue_fresh_heartbeat_still_show_ok(): void
+    {
+        Cache::flush();
+        $fresh = now()->subMinutes(1)->toIso8601String();
+        Cache::put(OperationalHeartbeatCache::SCHEDULER_LAST_RUN_AT, $fresh, 600);
+        Cache::put(OperationalHeartbeatCache::SCHEDULER_LAST_OK_AT, $fresh, 600);
+        Cache::put(OperationalHeartbeatCache::QUEUE_WORKER_LAST_RUN_AT, $fresh, 600);
+        Cache::put(OperationalHeartbeatCache::QUEUE_WORKER_LAST_OK_AT, $fresh, 600);
+
+        $admin = $this->makeAdmin();
+        $html = $this->actingAs($admin, 'panel_admin')
+            ->get(route('panel_admin.system-status', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $schedulerPos = strpos($html, 'Scheduler (Laravel schedule:run)');
+        $queueWorkerPos = strpos($html, 'Queue worker (queue-worker.php)');
+        $this->assertNotFalse($schedulerPos);
+        $this->assertNotFalse($queueWorkerPos);
+        $this->assertLessThan(
+            strpos($html, 'Queue worker', $schedulerPos),
+            strpos($html, 'OK', $schedulerPos),
+        );
+        $this->assertLessThan(
+            strpos($html, 'Queue', $queueWorkerPos + 1),
+            strpos($html, 'OK', $queueWorkerPos),
+        );
+    }
+
+    public function test_stale_scheduler_heartbeat_still_shows_warning(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-27 12:10:00', 'Europe/Podgorica'));
+        Cache::flush();
+        Cache::put(
+            OperationalHeartbeatCache::SCHEDULER_LAST_OK_AT,
+            now()->subMinutes(10)->toIso8601String(),
+            600,
+        );
+
+        $admin = $this->makeAdmin();
+        $html = $this->actingAs($admin, 'panel_admin')
+            ->get(route('panel_admin.system-status', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $schedulerPos = strpos($html, 'Scheduler (Laravel schedule:run)');
+        $this->assertNotFalse($schedulerPos);
+        $this->assertLessThan(
+            strpos($html, 'Queue worker', $schedulerPos),
+            strpos($html, 'Upozorenje', $schedulerPos),
+        );
+    }
+
+    public function test_stale_queue_worker_heartbeat_still_shows_warning(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-27 12:10:00', 'Europe/Podgorica'));
+        Cache::flush();
+        Cache::put(
+            OperationalHeartbeatCache::QUEUE_WORKER_LAST_OK_AT,
+            now()->subMinutes(10)->toIso8601String(),
+            600,
+        );
+
+        $admin = $this->makeAdmin();
+        $html = $this->actingAs($admin, 'panel_admin')
+            ->get(route('panel_admin.system-status', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $queueWorkerPos = strpos($html, 'Queue worker (queue-worker.php)');
+        $this->assertNotFalse($queueWorkerPos);
+        $this->assertLessThan(
+            strpos($html, 'Queue', $queueWorkerPos + 20),
+            strpos($html, 'Upozorenje', $queueWorkerPos),
+        );
     }
 
     public function test_page_shows_critical_alerts_summary(): void

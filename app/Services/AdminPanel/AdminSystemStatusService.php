@@ -166,11 +166,11 @@ final class AdminSystemStatusService
 
         $neverChecked = $at === null || $at === '';
         $sectionStatus = 'neutral';
-        $sectionLabel = 'Nepoznato';
+        $sectionLabel = 'Nema sačuvane posebne MEGA dijagnostike u kešu.';
 
         if ($neverChecked) {
-            $sectionStatus = 'warn';
-            $sectionLabel = 'Nije provjereno';
+            $sectionStatus = 'neutral';
+            $sectionLabel = 'Nema sačuvane posebne MEGA dijagnostike u kešu.';
         } elseif ($ok === true) {
             $sectionStatus = 'ok';
             $sectionLabel = 'OK';
@@ -297,12 +297,13 @@ final class AdminSystemStatusService
     {
         $runAt = $this->cacheStringOrNull(OperationalHeartbeatCache::SYSTEM_HEALTH_LAST_RUN_AT);
         $okAt = $this->cacheStringOrNull(OperationalHeartbeatCache::SYSTEM_HEALTH_LAST_OK_AT);
+        $notRecordedYet = $runAt === null && $okAt === null;
 
         $sectionStatus = 'neutral';
-        $sectionLabel = 'Nepoznato';
-        if ($runAt === null && $okAt === null) {
+        $sectionLabel = 'Još nije zabilježen';
+        if ($notRecordedYet) {
             $sectionStatus = 'neutral';
-            $sectionLabel = 'Nepoznato';
+            $sectionLabel = 'Još nije zabilježen';
         } elseif ($okAt !== null) {
             $sectionStatus = 'ok';
             $sectionLabel = 'OK';
@@ -314,9 +315,11 @@ final class AdminSystemStatusService
         return [
             'last_run_at' => $runAt,
             'last_ok_at' => $okAt,
+            'not_recorded_yet' => $notRecordedYet,
             'section_status' => $sectionStatus,
             'section_label' => $sectionLabel,
-            'note' => 'Dnevni rollup komande alerts:system-health (07:30), ne zamjenjuje scheduler/worker heartbeat iznad.',
+            'note' => 'Ovo nije isto što i scheduler/queue heartbeat. Scheduler i queue worker se prate u sekcijama iznad.',
+            'not_recorded_message' => 'Još nije zabilježen nakon poslednjeg čišćenja keša ili deploy-a.',
         ];
     }
 

@@ -36,7 +36,7 @@ Specifikacija admin funkcionalnosti. Modeli: Reservation, TempData, DailyParking
 
 - **Namjena:** jednostavan **read-only** pregled operativnog stanja (metrike iz baze + heartbeat keš). **Bez** akcija, restarta workera, retry-a ili novih tabela.
 - **Middleware / kontroler:** `auth:panel_admin` + `admin.panel`; **`App\Http\Controllers\AdminPanel\SystemStatusController`**, servis **`App\Services\AdminPanel\AdminSystemStatusService`**.
-- **Podaci:** **Scheduler** i **Queue worker** heartbeat (OK / Upozorenje / Nepoznato po starosti OK run-a, prag **5 min**); queue (driver; za `database` — pending, stale, starost najstarijeg, hint ako worker heartbeat stale + pending); MEGA; privatna arhiva; fiskalizacija; `failed_jobs` (24h); kritični `admin_alerts`; **`system_health:last_*`** (dnevni rollup **`alerts:system-health`**, ne zamjenjuje scheduler/worker heartbeat).
+- **Podaci:** **Scheduler** i **Queue worker** heartbeat (OK / Upozorenje / Nepoznato po starosti OK run-a, prag **5 min**); queue (driver; za `database` — pending, stale, starost najstarijeg, hint ako worker heartbeat stale + pending); MEGA (keš dijagnostike — **nema keša ≠ greška**; objašnjenje + opcioni hint iz Privatne arhive); privatna arhiva; fiskalizacija; `failed_jobs` (24h); kritični `admin_alerts`; **Dnevni health rollup** (`system_health:last_*` iz **`alerts:system-health`**, 07:30 — **Još nije zabilježen** nakon deploy-a/flush keša, odvojeno od scheduler/worker heartbeat iznad).
 - **Navigacija:** stavka **Sistem status** u layoutu admin panela.
 - **Testovi:** `tests/Feature/AdminPanel/AdminSystemStatusTest.php`, `tests/Feature/Console/BackgroundWatchdogTest.php`.
 

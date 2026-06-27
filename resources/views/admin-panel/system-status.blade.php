@@ -4,7 +4,8 @@
         'ok' => 'bg-red-100 text-red-900',
         'warn' => 'bg-yellow-100 text-yellow-900',
         'bad' => 'bg-red-100 text-red-900',
-        default => 'bg-red-100 text-red-900',
+        'neutral' => 'bg-gray-100 text-gray-700',
+        default => 'bg-gray-100 text-gray-700',
     };
     $fmtTs = function (?string $iso): string {
         if ($iso === null || $iso === '') {
@@ -116,7 +117,17 @@
                 <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($m['section_status']) }}">{{ $m['section_label'] }}</span>
             </div>
             @if ($m['never_checked'])
-                <p class="text-sm text-gray-700">nije još provjereno</p>
+                <p class="text-sm text-gray-800">
+                    <span class="text-gray-500">Status:</span>
+                    Nema sačuvane posebne MEGA dijagnostike u kešu.
+                </p>
+                <p class="text-xs text-gray-600 mt-2">
+                    Ovo nije greška. Stranica ne pokreće živi MEGA test pri učitavanju. Provjerite sekciju Privatna arhiva za poslednji arhivski run.
+                </p>
+                @php $archForMega = $status['archive']; @endphp
+                @if (($archForMega['last_ok_at'] ?? null) !== null && ($archForMega['section_status'] ?? '') === 'ok')
+                    <p class="text-xs text-gray-700 mt-2">Poslednji arhivski run je završen bez greške.</p>
+                @endif
             @else
                 <dl class="text-sm text-gray-800 space-y-1">
                     <div><span class="text-gray-500">Zadnja dijagnostika:</span> {{ $fmtTs($m['last_diagnose_at']) }}</div>
@@ -274,15 +285,23 @@
         @php $sh = $status['system_health']; @endphp
         <section class="bg-white shadow rounded-lg border border-red-100 p-5">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <h2 class="text-base font-semibold text-gray-900">Sistemsko zdravlje (heartbeat)</h2>
+                <h2 class="text-base font-semibold text-gray-900">Dnevni health rollup</h2>
                 <span class="text-xs font-medium px-2 py-0.5 rounded {{ $badge($sh['section_status']) }}">{{ $sh['section_label'] }}</span>
             </div>
-            <dl class="text-sm text-gray-800 space-y-1">
-                <div><span class="text-gray-500">Poslednji run komande:</span> {{ $fmtTs($sh['last_run_at']) }}</div>
-                <div><span class="text-gray-500">Poslednji OK završetak:</span> {{ $fmtTs($sh['last_ok_at']) }}</div>
-            </dl>
-            @if (!empty($sh['note']))
-                <p class="text-xs text-gray-500 mt-2">{{ $sh['note'] }}</p>
+            @if (!empty($sh['not_recorded_yet']))
+                <p class="text-sm text-gray-800">{{ $sh['not_recorded_message'] ?? 'Još nije zabilježen nakon poslednjeg čišćenja keša ili deploy-a.' }}</p>
+                @if (!empty($sh['note']))
+                    <p class="text-xs text-gray-600 mt-2">{{ $sh['note'] }}</p>
+                @endif
+            @else
+                <dl class="text-sm text-gray-800 space-y-1">
+                    <div><span class="text-gray-500">Poslednji run komande:</span> {{ $fmtTs($sh['last_run_at']) }}</div>
+                    <div><span class="text-gray-500">Poslednji OK završetak:</span> {{ $fmtTs($sh['last_ok_at']) }}</div>
+                </dl>
+                <p class="text-xs text-gray-500 mt-2">Dnevni rollup komande <span class="font-mono">alerts:system-health</span> (07:30).</p>
+                @if (!empty($sh['note']))
+                    <p class="text-xs text-gray-600 mt-1">{{ $sh['note'] }}</p>
+                @endif
             @endif
         </section>
     </div>
