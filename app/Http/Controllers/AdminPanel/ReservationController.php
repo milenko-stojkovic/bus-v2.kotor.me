@@ -61,7 +61,7 @@ class ReservationController extends Controller
             'hasCriteria' => $hasCriteria,
             'dateMin' => $dateBounds->searchMinDate()->toDateString(),
             'dateMax' => $dateBounds->searchMaxDate()->toDateString(),
-            'countries' => (array) config('countries', []),
+            'countries' => self::billingCountriesForDropdown(),
             'vehicleTypes' => VehicleType::query()->with('translations')->orderBy('price')->orderBy('id')->get(),
             'agencies' => User::query()->orderBy('name')->orderBy('email')->get(['id', 'name', 'email', 'country']),
         ]);
@@ -101,7 +101,7 @@ class ReservationController extends Controller
                 'returnQuery' => $returnQuery,
                 'dateMin' => $boundsMin,
                 'dateMax' => $boundsMax,
-                'countries' => BankartBillingCountry::selectableCountries(),
+                'countries' => self::billingCountriesForDropdown(),
                 'vehicleTypesAllowed' => $vehicleTypesAllowed,
                 'cancelUrl' => route('panel_admin.reservations', [], false)
                     .($returnQuery !== '' ? '?'.$returnQuery : ''),
@@ -149,7 +149,7 @@ class ReservationController extends Controller
             'dateMin' => $boundsMin,
             'dateMax' => $boundsMax,
             'slotOptions' => $slotOptions,
-            'countries' => BankartBillingCountry::selectableCountries(),
+            'countries' => self::billingCountriesForDropdown(),
             'vehicleTypesAllowed' => $vehicleTypesAllowed,
             'returnQuery' => (string) $request->query('rq', ''),
             'pickUpOnly' => AdminReservationEditPolicy::isPickUpOnlyMode($reservation),
@@ -200,6 +200,19 @@ class ReservationController extends Controller
         }
 
         return $this->redirectAfterUpdate($rq, 'Izmjena je sačuvana; dokument je u redu za slanje.');
+    }
+
+    /**
+     * @return array<string, array{cg: string, en: string}>
+     */
+    private static function billingCountriesForDropdown(): array
+    {
+        $locale = app()->getLocale();
+        if (! in_array($locale, ['cg', 'en'], true)) {
+            $locale = 'cg';
+        }
+
+        return BankartBillingCountry::selectableCountries($locale);
     }
 
     private function redirectAfterUpdate(string $rq, string $statusMessage): RedirectResponse
