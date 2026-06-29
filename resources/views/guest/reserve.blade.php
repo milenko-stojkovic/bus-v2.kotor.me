@@ -3,7 +3,7 @@
         $minDate = now()->toDateString();
         $maxDate = now()->addDays(90)->toDateString();
         $locale = app()->getLocale();
-        $ui = fn (string $key) => \App\Support\UiText::t('reservation', $key);
+        $ui = fn (string $key, ?string $fallback = null) => \App\Support\UiText::t('reservation', $key, $fallback);
         $pn = fn (string $key, ?string $fallback = null) => \App\Support\UiText::t('panel', $key, $fallback);
         $termsTitle = $locale === 'cg' ? 'Uslovi korišćenja' : 'Terms and Conditions';
         $termsLinkLabel = $locale === 'cg' ? 'uslovima korišćenja' : 'terms and conditions';
@@ -198,7 +198,8 @@
             </div>
 
             <div>
-                <x-input-label for="country" :value="$ui('country')" />
+                <x-input-label for="country" :value="$ui('country', app()->getLocale() === 'cg' ? 'Država naplatne adrese kartice' : 'Card billing country')" />
+                <p class="mt-1 text-sm text-gray-600">{{ $ui('country_help', app()->getLocale() === 'cg' ? 'Odaberite državu koja odgovara naplatnoj adresi kartice kojom će biti izvršeno plaćanje.' : 'Select the country corresponding to the billing address of the payment card.') }}</p>
                 <select id="country" name="country" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                     <option value="">{{ $ui('select_country') }}</option>
                     @foreach (($countries ?? []) as $code => $labels)

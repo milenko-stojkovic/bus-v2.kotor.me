@@ -97,7 +97,7 @@ final class RealAdvanceTopupPaymentProvider
             $payload['customer'] = [
                 'billingAddress1' => (string) (config('services.bankart.billing_address1') ?: ($country ? 'Address '.$country : 'Address')),
                 'billingCity' => (string) (config('services.bankart.billing_city') ?: 'Kotor'),
-                'billingCountry' => $billingCountry ?? 'ME',
+                'billingCountry' => $billingCountry,
                 'billingPostcode' => (string) (config('services.bankart.billing_postcode') ?: '85330'),
                 'email' => $email,
             ];

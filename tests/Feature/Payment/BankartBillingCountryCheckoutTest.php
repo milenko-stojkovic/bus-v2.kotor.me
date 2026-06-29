@@ -29,9 +29,9 @@ final class BankartBillingCountryCheckoutTest extends TestCase
 
     private const MSG_CG = 'Država za naplatu nije ispravno podešena. Molimo kontaktirajte podršku na bus@kotor.me.';
 
-    private const SELECT_MSG_EN = 'Please select your country. If your country is not listed, contact bus@kotor.me.';
+    private const ADMIN_MSG_EN = 'If your country is not listed, contact the administrator at bus@kotor.me.';
 
-    private const SELECT_MSG_CG = 'Molimo izaberite državu. Ako Vaša država nije na spisku, kontaktirajte bus@kotor.me.';
+    private const SELECT_MSG_CG = 'Ako Vaša država nije na spisku, kontaktirajte administratora na bus@kotor.me.';
 
     protected function tearDown(): void
     {
@@ -63,15 +63,16 @@ final class BankartBillingCountryCheckoutTest extends TestCase
         return compact('drop', 'pick', 'date', 'vt');
     }
 
-    public function test_bankart_billing_country_normalizes_and_rejects_other(): void
+    public function test_bankart_billing_country_normalizes_and_rejects_unknown_codes(): void
     {
         $this->assertNull(BankartBillingCountry::normalize('OTHER'));
-        $this->assertNull(BankartBillingCountry::normalize('other'));
-        $this->assertSame('ME', BankartBillingCountry::normalize('me'));
-        $this->assertSame('ME', BankartBillingCountry::resolveForPayload(''));
         $this->assertNull(BankartBillingCountry::resolveForPayload('OTHER'));
+        $this->assertNull(BankartBillingCountry::resolveForPayload(''));
+        $this->assertNull(BankartBillingCountry::resolveForPayload('ZZ'));
         $this->assertFalse(BankartBillingCountry::isValidForBankart('OTHER'));
+        $this->assertFalse(BankartBillingCountry::isValidForBankart('ZZ'));
         $this->assertTrue(BankartBillingCountry::isValidForBankart('HR'));
+        $this->assertSame('ME', BankartBillingCountry::normalize('me'));
     }
 
     public function test_agency_with_country_other_is_blocked_before_bankart_create_session(): void

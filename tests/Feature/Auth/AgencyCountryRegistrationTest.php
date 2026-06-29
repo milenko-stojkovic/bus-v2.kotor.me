@@ -13,7 +13,7 @@ final class AgencyCountryRegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const MSG_EN = 'Please select your country. If your country is not listed, contact bus@kotor.me.';
+    private const ADMIN_MSG_EN = 'If your country is not listed, contact the administrator at bus@kotor.me.';
 
     public function test_registration_page_does_not_offer_other(): void
     {
@@ -37,7 +37,7 @@ final class AgencyCountryRegistrationTest extends TestCase
             ->assertSessionHasErrors('country');
 
         $errors = session('errors')->get('country');
-        $this->assertStringContainsString('bus@kotor.me', (string) ($errors[0] ?? ''));
+        $this->assertStringContainsString('administrator', strtolower((string) ($errors[0] ?? '')));
         $this->assertSame(0, User::query()->count());
     }
 

@@ -17,9 +17,10 @@
             <x-input-error :messages="$errors->get('name')" class="mt-2" />
         </div>
 
-        <!-- Country -->
+        <!-- Card billing country -->
         <div class="mt-4">
-            <x-input-label for="country" :value="$ui('country', 'Country')" />
+            <x-input-label for="country" :value="$ui('country', 'Card billing country')" />
+            <p class="mt-1 text-sm text-gray-600">{{ $ui('country_help', 'Select the country corresponding to the billing address of the payment card.') }}</p>
             <select id="country" name="country" class="block mt-1 w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                 <option value="">{{ $ui('select_country') }}</option>
                 @foreach (($countries ?? []) as $code => $labels)

@@ -62,10 +62,13 @@
         </div>
 
         <div>
-            <x-input-label for="country" :value="__('Country')" />
+            <x-input-label for="country" :value="__('Card billing country')" />
             @php($countries = \App\Support\BankartBillingCountry::selectableCountries())
+            <p class="mt-1 text-sm text-gray-600">
+                {{ \App\Support\UiText::t('auth', 'country_help', 'Select the country corresponding to the billing address of the payment card.') }}
+            </p>
             <select id="country" name="country" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
-                <option value="">{{ app()->getLocale() === 'cg' ? 'Izaberite državu' : 'Select country' }}</option>
+                <option value="">{{ app()->getLocale() === 'cg' ? 'Odaberite državu' : 'Select country' }}</option>
                 @foreach ($countries as $code => $labels)
                     @php
                         $label = is_array($labels) ? ($labels[app()->getLocale()] ?? ($labels['en'] ?? $code)) : (string) $labels;
