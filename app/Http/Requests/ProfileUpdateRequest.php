@@ -24,6 +24,25 @@ class ProfileUpdateRequest extends FormRequest
                 'current_password' => null,
             ]);
         }
+
+        if ($this->has('country') && is_string($this->input('country'))) {
+            $this->merge(['country' => strtoupper(trim($this->input('country')))]);
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        $message = BankartBillingCountry::selectionValidationMessage(
+            is_string($this->user()?->lang) ? $this->user()->lang : null,
+        );
+
+        return [
+            'country.required' => $message,
+            'country.in' => $message,
+        ];
     }
 
     /**
@@ -54,13 +73,7 @@ class ProfileUpdateRequest extends FormRequest
                 'required',
                 'string',
                 'max:100',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (! BankartBillingCountry::isValidForBankart(is_string($value) ? $value : null)) {
-                        $fail(app()->getLocale() === 'cg'
-                            ? 'Izaberite državu iz liste (ISO kod). Vrijednost „Ostalo“ nije dozvoljena za agencijske profile.'
-                            : 'Please select a country from the list (ISO code). “Other” is not allowed for agency profiles.');
-                    }
-                },
+                Rule::in(BankartBillingCountry::selectableCountryCodes()),
             ],
             'current_password' => $currentPasswordRules,
             'password' => $passwordRules,

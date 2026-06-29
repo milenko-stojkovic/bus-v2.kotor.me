@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Vehicle;
 use App\Services\Reservation\ReservationVehicleEligibilityService;
+use App\Support\BankartBillingCountry;
 use App\Support\CheckoutAuditLogger;
 use App\Support\ReservationKind;
 use App\Support\UiText;
@@ -44,6 +45,10 @@ class CheckoutReservationRequest extends FormRequest
                 'drop_off_time_slot_id' => null,
                 'pick_up_time_slot_id' => null,
             ]);
+        }
+
+        if ($this->has('country') && is_string($this->input('country'))) {
+            $this->merge(['country' => strtoupper(trim($this->input('country')))]);
         }
     }
 
@@ -86,7 +91,12 @@ class CheckoutReservationRequest extends FormRequest
                 : ['required', 'integer', 'exists:list_of_time_slots,id'],
             'reservation_date' => ['required', 'date', 'after_or_equal:today'],
             'name' => [$usingSavedVehicle ? 'nullable' : 'required', 'string', 'min:2', 'max:255'],
-            'country' => [$usingSavedVehicle ? 'nullable' : 'required', 'string', 'max:100'],
+            'country' => [
+                $usingSavedVehicle ? 'nullable' : 'required',
+                'string',
+                'max:100',
+                Rule::in(BankartBillingCountry::selectableCountryCodes()),
+            ],
             'license_plate' => [
                 $usingSavedVehicle ? 'nullable' : 'required',
                 'string',
@@ -101,6 +111,19 @@ class CheckoutReservationRequest extends FormRequest
             'accept_privacy' => $isDailyTicket
                 ? ['prohibited']
                 : ['required', 'accepted'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        $message = BankartBillingCountry::selectionValidationMessage();
+
+        return [
+            'country.required' => $message,
+            'country.in' => $message,
         ];
     }
 

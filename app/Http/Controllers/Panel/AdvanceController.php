@@ -54,7 +54,7 @@ final class AdvanceController extends Controller
 
         $bankDriver = (string) config('services.bank.driver', 'fake');
         $country = (string) ($request->user()->country ?? '');
-        if ($bankDriver !== 'fake' && ! BankartBillingCountry::isValidForBankart($country)) {
+        if ($bankDriver !== 'fake' && ! BankartBillingCountry::isSelectablePaymentCountry($country)) {
             app(BankartBillingCountryAlertService::class)->notifyAndLog(
                 $country,
                 BankartBillingCountry::normalize($country),

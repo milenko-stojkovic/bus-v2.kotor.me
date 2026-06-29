@@ -1,9 +1,14 @@
 @php
     $u = fn (string $key, ?string $fallback = null) => \App\Support\UiText::t('user', $key, $fallback);
+    $countries = \App\Support\BankartBillingCountry::selectableCountries();
+    $storedCountry = old('country', $user->country);
+    $storedCountrySelectable = \App\Support\BankartBillingCountry::isSelectablePaymentCountry($storedCountry);
+    $selectedCountry = old('country', $storedCountrySelectable ? $storedCountry : '');
     $initial = [
         'name' => old('name', $user->name),
         'email' => old('email', $user->email),
         'lang' => old('lang', $user->lang ?? 'en'),
+        'country' => $selectedCountry,
     ];
 @endphp
 
@@ -18,11 +23,12 @@
         name: @js($initial['name']),
         email: @js($initial['email']),
         lang: @js($initial['lang']),
+        country: @js($initial['country']),
         current_password: '',
         password: '',
         password_confirmation: '',
         isDirty() {
-            if (this.name !== this.initial.name || this.email !== this.initial.email || this.lang !== this.initial.lang) {
+            if (this.name !== this.initial.name || this.email !== this.initial.email || this.lang !== this.initial.lang || this.country !== this.initial.country) {
                 return true;
             }
             return (this.current_password || this.password || this.password_confirmation).length > 0;
@@ -31,6 +37,7 @@
             this.name = this.initial.name;
             this.email = this.initial.email;
             this.lang = this.initial.lang;
+            this.country = this.initial.country;
             this.current_password = '';
             this.password = '';
             this.password_confirmation = '';
@@ -40,8 +47,6 @@
     <form method="post" action="{{ route('profile.update') }}" class="space-y-6">
         @csrf
         @method('patch')
-
-        <input type="hidden" name="country" value="{{ old('country', $user->country) }}" />
 
         <div>
             <x-input-label for="user_name" :value="$u('name', 'Name')" />
@@ -56,6 +61,33 @@
                 autocomplete="name"
             />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
+        </div>
+
+        <div>
+            <x-input-label for="user_country" :value="$u('country', 'Country')" />
+            @if (! $storedCountrySelectable && (string) $storedCountry !== '')
+                <p class="mt-1 text-sm text-amber-800">
+                    {{ app()->getLocale() === 'cg'
+                        ? 'Trenutna država na profilu nije validna za plaćanje. Molimo izaberite državu iz liste.'
+                        : 'The country on your profile is not valid for payment. Please select a country from the list.' }}
+                </p>
+            @endif
+            <select
+                id="user_country"
+                name="country"
+                class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500"
+                x-model="country"
+                required
+            >
+                <option value="">{{ \App\Support\UiText::t('auth', 'select_country', app()->getLocale() === 'cg' ? 'Izaberite državu' : 'Select country') }}</option>
+                @foreach ($countries as $code => $labels)
+                    @php
+                        $label = is_array($labels) ? ($labels[app()->getLocale()] ?? ($labels['en'] ?? $code)) : (string) $labels;
+                    @endphp
+                    <option value="{{ $code }}" @selected($selectedCountry === $code)>{{ $label }}</option>
+                @endforeach
+            </select>
+            <x-input-error class="mt-2" :messages="$errors->get('country')" />
         </div>
 
         <div>

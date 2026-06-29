@@ -29,6 +29,10 @@ final class BankartBillingCountryCheckoutTest extends TestCase
 
     private const MSG_CG = 'Država za naplatu nije ispravno podešena. Molimo kontaktirajte podršku na bus@kotor.me.';
 
+    private const SELECT_MSG_EN = 'Please select your country. If your country is not listed, contact bus@kotor.me.';
+
+    private const SELECT_MSG_CG = 'Molimo izaberite državu. Ako Vaša država nije na spisku, kontaktirajte bus@kotor.me.';
+
     protected function tearDown(): void
     {
         Mockery::close();
@@ -205,6 +209,13 @@ final class BankartBillingCountryCheckoutTest extends TestCase
         $this->assertSame(1, TempData::query()->where('country', 'HR')->count());
     }
 
+    public function test_guest_reserve_page_does_not_offer_other(): void
+    {
+        $html = $this->get(route('guest.reserve', [], false))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('value="OTHER"', $html);
+    }
+
     public function test_guest_with_other_country_is_blocked_with_support_message(): void
     {
         $fixtures = $this->seedTerminiFixtures();
@@ -230,8 +241,11 @@ final class BankartBillingCountryCheckoutTest extends TestCase
                 'accept_privacy' => 1,
             ])
             ->assertRedirect('/guest/reserve')
-            ->assertSessionHas('error', self::MSG_CG)
             ->assertSessionHasErrors('country');
+
+        $errors = session('errors')->get('country');
+        $this->assertStringContainsString('bus@kotor.me', (string) ($errors[0] ?? ''));
+        $this->assertSame(self::SELECT_MSG_CG, (string) ($errors[0] ?? ''));
 
         $this->assertSame(0, TempData::query()->count());
     }

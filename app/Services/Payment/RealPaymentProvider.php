@@ -85,7 +85,7 @@ class RealPaymentProvider implements PaymentService
         $billingCountry = null;
         if ($sendCustomer) {
             $billingCountry = BankartBillingCountry::resolveForPayload($tempData->country);
-            if ($billingCountry === null) {
+            if ($billingCountry === null || ! BankartBillingCountry::isSelectablePaymentCountry($tempData->country)) {
                 app(BankartBillingCountryAlertService::class)->notifyForTempData($tempData, 'create_session');
 
                 return PaymentSessionResult::unavailable(

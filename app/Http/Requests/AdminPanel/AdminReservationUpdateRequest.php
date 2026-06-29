@@ -5,6 +5,7 @@ namespace App\Http\Requests\AdminPanel;
 use App\Models\Reservation;
 use App\Models\VehicleType;
 use App\Services\AdminPanel\Reservation\AdminReservationDateBounds;
+use App\Support\BankartBillingCountry;
 use App\Services\Reservation\PanelReservationListService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -40,7 +41,7 @@ class AdminReservationUpdateRequest extends FormRequest
         $bounds = app(AdminReservationDateBounds::class);
         $min = $bounds->editMinDate()->toDateString();
         $max = $bounds->editMaxDate()->toDateString();
-        $countries = array_keys((array) config('countries', []));
+        $countries = BankartBillingCountry::selectableCountryCodes();
 
         return [
             'reservation_date' => ['required', 'date', 'after_or_equal:'.$min, 'before_or_equal:'.$max],

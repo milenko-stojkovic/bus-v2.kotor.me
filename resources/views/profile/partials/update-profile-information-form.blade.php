@@ -63,17 +63,16 @@
 
         <div>
             <x-input-label for="country" :value="__('Country')" />
-            @php($countries = (array) config('countries', []))
+            @php($countries = \App\Support\BankartBillingCountry::selectableCountries())
             <select id="country" name="country" class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500" required>
                 <option value="">{{ app()->getLocale() === 'cg' ? 'Izaberite državu' : 'Select country' }}</option>
                 @foreach ($countries as $code => $labels)
-                    @if ($code === 'OTHER')
-                        @continue
-                    @endif
                     @php
                         $label = is_array($labels) ? ($labels[app()->getLocale()] ?? ($labels['en'] ?? $code)) : (string) $labels;
+                        $current = old('country', $user->country);
+                        $selected = \App\Support\BankartBillingCountry::isSelectablePaymentCountry($current) ? $current : old('country', '');
                     @endphp
-                    <option value="{{ $code }}" @selected(old('country', $user->country) === $code)>{{ $label }}</option>
+                    <option value="{{ $code }}" @selected($selected === $code)>{{ $label }}</option>
                 @endforeach
             </select>
             <x-input-error class="mt-2" :messages="$errors->get('country')" />

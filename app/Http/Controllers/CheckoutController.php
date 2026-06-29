@@ -853,7 +853,7 @@ class CheckoutController extends Controller
         }
 
         $rawCountry = (string) ($snapshot['country'] ?? '');
-        if (BankartBillingCountry::isValidForBankart($rawCountry)) {
+        if (BankartBillingCountry::isSelectablePaymentCountry($rawCountry)) {
             return null;
         }
 
@@ -901,7 +901,7 @@ class CheckoutController extends Controller
         string $reservationDate,
         string $reservationKind,
     ): RedirectResponse|JsonResponse|null {
-        if (BankartBillingCountry::isValidForBankart($temp->country)) {
+        if (BankartBillingCountry::isSelectablePaymentCountry($temp->country)) {
             return null;
         }
 

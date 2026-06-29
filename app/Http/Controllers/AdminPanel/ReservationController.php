@@ -20,6 +20,7 @@ use App\Services\AdminPanel\Reservation\AdminReservationUpdateService;
 use App\Services\Pdf\FreeReservationPdfGenerator;
 use App\Services\Pdf\PaidInvoicePdfGenerator;
 use App\Services\Reservation\PanelReservationListService;
+use App\Support\BankartBillingCountry;
 use App\Support\ReservationPdfFilename;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -100,7 +101,7 @@ class ReservationController extends Controller
                 'returnQuery' => $returnQuery,
                 'dateMin' => $boundsMin,
                 'dateMax' => $boundsMax,
-                'countries' => (array) config('countries', []),
+                'countries' => BankartBillingCountry::selectableCountries(),
                 'vehicleTypesAllowed' => $vehicleTypesAllowed,
                 'cancelUrl' => route('panel_admin.reservations', [], false)
                     .($returnQuery !== '' ? '?'.$returnQuery : ''),
@@ -148,7 +149,7 @@ class ReservationController extends Controller
             'dateMin' => $boundsMin,
             'dateMax' => $boundsMax,
             'slotOptions' => $slotOptions,
-            'countries' => (array) config('countries', []),
+            'countries' => BankartBillingCountry::selectableCountries(),
             'vehicleTypesAllowed' => $vehicleTypesAllowed,
             'returnQuery' => (string) $request->query('rq', ''),
             'pickUpOnly' => AdminReservationEditPolicy::isPickUpOnlyMode($reservation),

@@ -7,6 +7,7 @@ use App\Models\ListOfTimeSlot;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
+use App\Support\BankartBillingCountry;
 use App\Support\ReservationKind;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -90,7 +91,7 @@ final class ReservationBookingPageData
             $reservationKind,
         );
 
-        $countries = (array) config('countries', []);
+        $countries = BankartBillingCountry::selectableCountries();
 
         $vehicleTypeId = $this->asIntOrNull($request->query('vehicle_type_id'));
         $selectedVehicleType = $vehicleTypeId ? $vehicleTypes->firstWhere('id', $vehicleTypeId) : null;
@@ -161,7 +162,7 @@ final class ReservationBookingPageData
             ->orderBy('id')
             ->get();
 
-        $countries = (array) config('countries', []);
+        $countries = BankartBillingCountry::selectableCountries();
 
         unset($slotPayload['effective_departure_id']);
 
