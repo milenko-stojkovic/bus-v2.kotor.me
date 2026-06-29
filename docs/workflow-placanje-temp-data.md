@@ -53,6 +53,9 @@ Ako **Bankart `createSession`** padne **prije** nego što korisnik stigne na pay
   - **`releaseSoftLock`** — decrement `pending` na oba slota (**Termini**)
 - Korisnik dobija **503** + generičku poruku (`payment_processing_issue` / `UiText`) — **ne** sirovi bankarski tekst.
 - Log: **`payment_init_failed`** (`merchant_transaction_id`, `temp_data_id`, `http_status`, `reason`, `stage`).
+- Strukturisani checkout logovi (kanal **`payments`**): `checkout_started`, `checkout_validation_failed`, `checkout_guest_lower_category_blocked`, `checkout_temp_data_created`, `checkout_bankart_create_session_*`, `checkout_redirect_created`, `checkout_failed_generic`.
+- Korisnik (HTML forma) dobija **redirect nazad** na guest/panel formu sa jasnom porukom **`payment_window_unavailable`** (ne sirovi 503 na `/checkout`).
+- Dijagnostika: `php artisan payment:inspect-checkout-attempt --email=... --date=Y-m-d` (ili `--plate=`, `--merchant-transaction-id=`).
 - Provider i dalje loguje **`bankart_create_session_failed`** sa detaljima HTTP odgovora.
 - **Retry** istog slot/tablice odmah moguć — red **nije** blocking `pending`.
 

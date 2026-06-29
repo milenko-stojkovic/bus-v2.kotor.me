@@ -197,6 +197,8 @@ class TerminiDuplicateReservationTest extends TestCase
             'pick_up_time_slot_id' => $pick->id,
             'reservation_date' => $d,
             'license_plate' => 'KO444',
+            'vehicle_type_id' => $vt->id,
+            'invoice_amount' => '10.00',
         ]);
 
         $this->seedDailyCapacity($d, [$other->id, $fourth->id]);
@@ -230,6 +232,8 @@ class TerminiDuplicateReservationTest extends TestCase
             'pick_up_time_slot_id' => $pick->id,
             'reservation_date' => $d,
             'license_plate' => 'KO111',
+            'vehicle_type_id' => $vt->id,
+            'invoice_amount' => '10.00',
         ]);
 
         $this->seedDailyCapacity($d, [$pick->id, $other->id]);

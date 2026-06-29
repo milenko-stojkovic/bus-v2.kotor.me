@@ -99,7 +99,8 @@ class CheckoutCreateSessionFailureTest extends TestCase
 
         $response = $this->from('/guest/reserve')
             ->post(route('checkout.store', [], false), $this->guestCheckoutPayload($fixtures))
-            ->assertStatus(503);
+            ->assertRedirect(route('guest.reserve', [], false))
+            ->assertSessionHas('error');
 
         $temp = TempData::query()->firstOrFail();
         $this->assertSame(TempData::STATUS_CANCELED, (string) $temp->status);
@@ -115,7 +116,7 @@ class CheckoutCreateSessionFailureTest extends TestCase
 
         $this->from('/guest/reserve')
             ->post(route('checkout.store', [], false), $this->guestCheckoutPayload($fixtures))
-            ->assertStatus(503);
+            ->assertRedirect(route('guest.reserve', [], false));
 
         $dropPending = (int) DailyParkingData::query()
             ->whereDate('date', $fixtures['date'])
@@ -148,7 +149,7 @@ class CheckoutCreateSessionFailureTest extends TestCase
 
         $this->from('/guest/reserve')
             ->post(route('checkout.store', [], false), $payload)
-            ->assertStatus(503);
+            ->assertRedirect(route('guest.reserve', [], false));
 
         $this->from('/guest/reserve')
             ->post(route('checkout.store', [], false), $payload)

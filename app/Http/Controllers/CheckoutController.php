@@ -15,11 +15,13 @@ use App\Models\TempData;
 use App\Models\Vehicle;
 use App\Models\User;
 use App\Models\AgencyAdvanceTransaction;
+use App\Services\Payment\CheckoutPaymentInitAlertService;
 use App\Services\Payment\PaymentInitFailureService;
 use App\Services\Payment\PaymentSuccessHandler;
 use App\Services\Reservation\DuplicateReservationAttemptService;
 use App\Services\Reservation\FreeReservationRules;
 use App\Services\Reservation\GuestPaidLowerCategoryCheckoutGuard;
+use App\Support\CheckoutAuditLogger;
 use App\Support\CheckoutResultFlash;
 use App\Support\QueueMode;
 use App\Support\ReservationInvoiceAmount;
@@ -58,6 +60,9 @@ class CheckoutController extends Controller
         if ($request->isDailyTicketBooking()) {
             return $this->storeDailyTicketBooking($request, $paymentService, $successHandler);
         }
+
+        $snapshotEarly = $this->resolveSnapshotInput($request);
+        CheckoutAuditLogger::log('checkout_started', CheckoutAuditLogger::contextFromRequest($request, $snapshotEarly));
 
         $date = $request->validated('reservation_date');
         $dropOffSlotId = (int) $request->validated('drop_off_time_slot_id');
@@ -244,9 +249,9 @@ class CheckoutController extends Controller
                 return $this->redirectAfterFreeCheckout($request, $created, $existingBySlot->merchant_transaction_id);
             }
 
-            $session = $paymentService->createSession($existingBySlot);
+            $session = $this->startBankartCreateSession($paymentService, $existingBySlot, 'checkout_existing_pending');
             if ($session->success && $session->paymentUrl) {
-                return redirect()->away($session->paymentUrl);
+                return $this->redirectToPaymentUrl($request, $existingBySlot, $session->paymentUrl);
             }
 
             return $this->createSessionFailedResponse($request, $existingBySlot, $session, 'checkout_existing_pending');
@@ -334,6 +339,8 @@ class CheckoutController extends Controller
                     'retry_token' => $retryToken,
                 ]);
 
+                CheckoutAuditLogger::log('checkout_temp_data_created', CheckoutAuditLogger::contextFromTemp($temp));
+
                 return $temp;
             });
         } catch (DuplicateTerminiReservationException $e) {
@@ -362,9 +369,9 @@ class CheckoutController extends Controller
                     return $this->redirectAfterFreeCheckout($request, $created, $existingByMtid->merchant_transaction_id);
                 }
 
-                $session = $paymentService->createSession($existingByMtid);
+                $session = $this->startBankartCreateSession($paymentService, $existingByMtid, 'checkout_after_unique_violation');
                 if ($session->success && $session->paymentUrl) {
-                    return redirect()->away($session->paymentUrl);
+                    return $this->redirectToPaymentUrl($request, $existingByMtid, $session->paymentUrl);
                 }
 
                 return $this->createSessionFailedResponse($request, $existingByMtid, $session, 'checkout_after_unique_violation');
@@ -378,13 +385,58 @@ class CheckoutController extends Controller
             return $this->redirectAfterFreeCheckout($request, $created, $temp->merchant_transaction_id);
         }
 
-        $session = $paymentService->createSession($temp);
+        $session = $this->startBankartCreateSession($paymentService, $temp, 'checkout_after_temp_created');
 
         if ($session->success && $session->paymentUrl) {
-            return redirect()->away($session->paymentUrl);
+            return $this->redirectToPaymentUrl($request, $temp, $session->paymentUrl);
         }
 
         return $this->createSessionFailedResponse($request, $temp, $session, 'checkout_after_temp_created');
+    }
+
+    private function startBankartCreateSession(
+        PaymentService $paymentService,
+        TempData $temp,
+        string $stage,
+    ): PaymentSessionResult {
+        CheckoutAuditLogger::log('checkout_bankart_create_session_started', array_merge(
+            CheckoutAuditLogger::contextFromTemp($temp),
+            ['stage' => $stage],
+        ));
+
+        $session = $paymentService->createSession($temp);
+
+        if ($session->success && $session->paymentUrl) {
+            CheckoutAuditLogger::log('checkout_bankart_create_session_success', array_merge(
+                CheckoutAuditLogger::contextFromTemp($temp),
+                ['stage' => $stage],
+            ));
+        }
+
+        return $session;
+    }
+
+    private function redirectToPaymentUrl(
+        CheckoutReservationRequest $request,
+        TempData $temp,
+        string $paymentUrl,
+    ): RedirectResponse {
+        CheckoutAuditLogger::log('checkout_redirect_created', CheckoutAuditLogger::contextFromTemp($temp));
+
+        return redirect()->away($paymentUrl);
+    }
+
+    private function checkoutReturnUrl(CheckoutReservationRequest $request): string
+    {
+        if ($request->user() && $request->boolean('auth_panel_booking')) {
+            return route('panel.reservations', [], false);
+        }
+
+        if ($request->resolvedReservationKind() === ReservationKind::DAILY_TICKET) {
+            return route('guest.reserve', ['reservation_kind' => ReservationKind::DAILY_TICKET], false);
+        }
+
+        return route('guest.reserve', [], false);
     }
 
     private function createSessionFailedResponse(
@@ -392,7 +444,9 @@ class CheckoutController extends Controller
         TempData $temp,
         ?PaymentSessionResult $session = null,
         string $stage = 'checkout',
-    ): JsonResponse|Response {
+    ): JsonResponse|RedirectResponse|Response {
+        $locale = $request->user()?->lang ?? app()->getLocale();
+
         app(PaymentInitFailureService::class)->failAndRelease(
             $temp,
             $stage,
@@ -400,12 +454,38 @@ class CheckoutController extends Controller
             $session?->failureReason,
         );
 
-        $message = $session?->errorMessage
-            ?? UiText::t('payment', 'payment_processing_issue', 'Payment temporarily unavailable.');
+        app(CheckoutPaymentInitAlertService::class)->notifyIfNeeded(
+            $temp,
+            $stage,
+            $session?->httpStatus,
+            $session?->failureReason,
+        );
+
+        $failureContext = array_merge(
+            CheckoutAuditLogger::contextFromTemp($temp),
+            array_filter([
+                'stage' => $stage,
+                'http_status' => $session?->httpStatus,
+                'failure_reason' => $session?->failureReason,
+            ], static fn ($v) => $v !== null && $v !== ''),
+        );
+        CheckoutAuditLogger::log('checkout_bankart_create_session_failed', $failureContext, 'warning');
+        CheckoutAuditLogger::log('checkout_failed_generic', $failureContext, 'warning');
+
+        $message = UiText::t(
+            'payment',
+            'payment_window_unavailable',
+            $locale === 'cg'
+                ? 'Trenutno nije moguće otvoriti prozor za plaćanje. Molimo pokušajte ponovo za nekoliko minuta. Ako se problem ponovi, pišite na bus@kotor.me.'
+                : 'The payment window cannot be opened at the moment. Please try again in a few minutes. If the problem continues, contact bus@kotor.me.',
+            $locale,
+        );
 
         return $request->expectsJson()
             ? response()->json(['message' => $message], Response::HTTP_SERVICE_UNAVAILABLE)
-            : response($message, Response::HTTP_SERVICE_UNAVAILABLE);
+            : redirect()->to($this->checkoutReturnUrl($request))
+                ->withInput()
+                ->with('error', $message);
     }
 
     private function redirectAfterFreeCheckout(CheckoutReservationRequest $request, bool $created, ?string $merchantTransactionId = null): RedirectResponse
@@ -465,6 +545,8 @@ class CheckoutController extends Controller
     ): RedirectResponse|Response|JsonResponse {
         $date = $request->validated('reservation_date');
         $snapshot = $this->resolveSnapshotInput($request);
+        CheckoutAuditLogger::log('checkout_started', CheckoutAuditLogger::contextFromRequest($request, $snapshot));
+
         $panelAuthBooking = $request->isPanelAuthBooking();
         $paymentMethod = $panelAuthBooking ? (string) ($request->validated('payment_method') ?? 'card') : 'card';
 
@@ -612,6 +694,8 @@ class CheckoutController extends Controller
                     'reservation_kind' => ReservationKind::DAILY_TICKET,
                 ]);
 
+                CheckoutAuditLogger::log('checkout_temp_data_created', CheckoutAuditLogger::contextFromTemp($temp));
+
                 return $temp;
             });
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
@@ -619,9 +703,9 @@ class CheckoutController extends Controller
                 ->where('status', TempData::STATUS_PENDING)
                 ->first();
             if ($existingByMtid) {
-                $session = $paymentService->createSession($existingByMtid);
+                $session = $this->startBankartCreateSession($paymentService, $existingByMtid, 'checkout_daily_ticket_after_unique_violation');
                 if ($session->success && $session->paymentUrl) {
-                    return redirect()->away($session->paymentUrl);
+                    return $this->redirectToPaymentUrl($request, $existingByMtid, $session->paymentUrl);
                 }
 
                 return $this->createSessionFailedResponse($request, $existingByMtid, $session, 'checkout_daily_ticket_after_unique_violation');
@@ -629,10 +713,10 @@ class CheckoutController extends Controller
             throw $e;
         }
 
-        $session = $paymentService->createSession($temp);
+        $session = $this->startBankartCreateSession($paymentService, $temp, 'checkout_daily_ticket_after_temp_created');
 
         if ($session->success && $session->paymentUrl) {
-            return redirect()->away($session->paymentUrl);
+            return $this->redirectToPaymentUrl($request, $temp, $session->paymentUrl);
         }
 
         return $this->createSessionFailedResponse($request, $temp, $session, 'checkout_daily_ticket_after_temp_created');
@@ -716,6 +800,15 @@ class CheckoutController extends Controller
             $reservationDate,
             $reservationKind,
         );
+
+        CheckoutAuditLogger::log('checkout_guest_lower_category_blocked', array_merge(
+            CheckoutAuditLogger::contextFromRequest($request, $snapshot),
+            [
+                'reservation_date' => $reservationDate,
+                'historical_reservation_id' => $block['historical_reservation_id'],
+                'submitted_vehicle_type_id' => $block['submitted_vehicle_type_id'],
+            ],
+        ));
 
         $message = $block['plain_message'];
 

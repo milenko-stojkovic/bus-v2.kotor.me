@@ -45,12 +45,26 @@ class PaymentInitFailureService
             app(BlockZoneWorklistService::class)->onTempDataFailedOrExpired($temp, 'canceled');
         });
 
-        Log::channel('payments')->warning('payment_init_failed', [
-            'stage' => $stage,
-            'merchant_transaction_id' => $merchantTransactionId,
-            'temp_data_id' => $tempDataId,
-            'http_status' => $httpStatus,
-            'reason' => $reason ?? 'unavailable',
-        ]);
+        Log::channel('payments')->warning('payment_init_failed', array_merge(
+            [
+                'stage' => $stage,
+                'merchant_transaction_id' => $merchantTransactionId,
+                'temp_data_id' => $tempDataId,
+                'http_status' => $httpStatus,
+                'reason' => $reason ?? 'unavailable',
+            ],
+            array_filter([
+                'guest' => $temp->user_id === null,
+                'user_id' => $temp->user_id,
+                'email' => $temp->email,
+                'user_name' => $temp->user_name,
+                'license_plate' => $temp->license_plate,
+                'reservation_kind' => $temp->reservation_kind,
+                'reservation_date' => $temp->reservation_date?->format('Y-m-d'),
+                'drop_off_time_slot_id' => $temp->drop_off_time_slot_id,
+                'pick_up_time_slot_id' => $temp->pick_up_time_slot_id,
+                'vehicle_type_id' => $temp->vehicle_type_id,
+            ], static fn ($v) => $v !== null && $v !== ''),
+        ));
     }
 }

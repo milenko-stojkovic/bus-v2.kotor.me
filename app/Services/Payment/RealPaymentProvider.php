@@ -16,6 +16,15 @@ use Throwable;
 
 class RealPaymentProvider implements PaymentService
 {
+    private function unavailableMessage(): string
+    {
+        return UiText::t(
+            'payment',
+            'payment_window_unavailable',
+            'The payment window cannot be opened at the moment. Please try again in a few minutes. If the problem continues, contact bus@kotor.me.',
+        );
+    }
+
     public function createSession(TempData $tempData): PaymentSessionResult
     {
         $cfg = config('services.bankart');
@@ -42,7 +51,7 @@ class RealPaymentProvider implements PaymentService
             ]);
 
             return PaymentSessionResult::unavailable(
-                UiText::t('payment', 'payment_processing_issue', 'Payment temporarily unavailable.'),
+                $this->unavailableMessage(),
                 null,
                 'missing_configuration',
             );
@@ -59,7 +68,7 @@ class RealPaymentProvider implements PaymentService
             ]);
 
             return PaymentSessionResult::unavailable(
-                UiText::t('payment', 'payment_processing_issue', 'Payment temporarily unavailable.'),
+                $this->unavailableMessage(),
                 null,
                 'missing_amount',
             );
@@ -114,7 +123,7 @@ class RealPaymentProvider implements PaymentService
             ]);
 
             return PaymentSessionResult::unavailable(
-                UiText::t('payment', 'payment_processing_issue', 'Payment temporarily unavailable.'),
+                $this->unavailableMessage(),
                 null,
                 'payload_encode_failed',
             );
@@ -136,7 +145,7 @@ class RealPaymentProvider implements PaymentService
                 ]);
 
                 return PaymentSessionResult::unavailable(
-                    UiText::t('payment', 'payment_processing_issue', 'Payment temporarily unavailable.'),
+                    $this->unavailableMessage(),
                     null,
                     'signing_failed',
                 );
@@ -176,7 +185,7 @@ class RealPaymentProvider implements PaymentService
             ]);
 
             return PaymentSessionResult::unavailable(
-                UiText::t('payment', 'payment_processing_issue', 'Payment temporarily unavailable.'),
+                $this->unavailableMessage(),
                 null,
                 'http_exception',
             );
@@ -198,7 +207,7 @@ class RealPaymentProvider implements PaymentService
             ]);
 
             return PaymentSessionResult::unavailable(
-                UiText::t('payment', 'payment_processing_issue', 'Payment temporarily unavailable.'),
+                $this->unavailableMessage(),
                 $httpStatus,
                 'invalid_json',
             );

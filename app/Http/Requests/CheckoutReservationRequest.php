@@ -4,11 +4,13 @@ namespace App\Http\Requests;
 
 use App\Models\Vehicle;
 use App\Services\Reservation\ReservationVehicleEligibilityService;
+use App\Support\CheckoutAuditLogger;
 use App\Support\ReservationKind;
 use App\Support\UiText;
-use Illuminate\Validation\Rule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class CheckoutReservationRequest extends FormRequest
 {
@@ -177,5 +179,20 @@ class CheckoutReservationRequest extends FormRequest
     public function isPanelAuthBooking(): bool
     {
         return $this->user() !== null && $this->boolean('auth_panel_booking');
+    }
+
+    protected function failedValidation(Validator $validator): void
+    {
+        CheckoutAuditLogger::log('checkout_validation_failed', array_filter([
+            'guest' => $this->user() === null,
+            'user_id' => $this->user()?->id,
+            'email' => $this->input('email'),
+            'license_plate' => $this->input('license_plate'),
+            'reservation_kind' => $this->input('reservation_kind'),
+            'reservation_date' => $this->input('reservation_date'),
+            'error_fields' => array_keys($validator->errors()->toArray()),
+        ], static fn ($v) => $v !== null && $v !== '' && $v !== []), 'warning');
+
+        parent::failedValidation($validator);
     }
 }
