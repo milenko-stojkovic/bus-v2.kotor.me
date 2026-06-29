@@ -91,7 +91,7 @@ final class ReservationBookingPageData
             $reservationKind,
         );
 
-        $countries = BankartBillingCountry::selectableCountries();
+        $countries = BankartBillingCountry::selectableCountries($locale);
 
         $vehicleTypeId = $this->asIntOrNull($request->query('vehicle_type_id'));
         $selectedVehicleType = $vehicleTypeId ? $vehicleTypes->firstWhere('id', $vehicleTypeId) : null;
@@ -162,7 +162,7 @@ final class ReservationBookingPageData
             ->orderBy('id')
             ->get();
 
-        $countries = BankartBillingCountry::selectableCountries();
+        $countries = BankartBillingCountry::selectableCountries($locale);
 
         unset($slotPayload['effective_departure_id']);
 
