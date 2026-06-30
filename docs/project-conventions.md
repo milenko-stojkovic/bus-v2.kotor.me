@@ -1,6 +1,6 @@
 ﻿# Konvencije projekta (bus.kotor.me)
 
-**Poslednje ažuriranje:** 2026-06-30  
+**Poslednje ažuriranje:** 2026-06-25  
 
 Za AI i ljude: držati se ovoga pri novim izmenama da ostane konzistentno.
 
@@ -161,6 +161,7 @@ Svako polje za **registarsku tablicu** (booking, panel, admin pretraga, Control,
 ### 3.2 Admin UI: jezik (sr-Latn-ME)
 
 - U admin panelu koristiti ispravan oblik: **„Izvještaji“** (ne „Izveštaji“).
+- Za riječ **istorija** (i prideve *istorijski*, *istorijska*, genitiv *istorije*, akuzativ *istoriju*) koristiti oblik sa **i**, ne **historija** / *historijski* — u svim vidljivim labelama, porukama i docs tekstu na srpskom. **Ne** mijenjati engleske identifikatore u kodu (`historical_*`, `*_than_history`, imena klasa/servisa).
 - **Queue:** za lokalni QA bez workera, **`QUEUE_CONNECTION=sync`** u `.env` — tada **nema** posebnog workera (jobovi se izvršavaju u istom zahtevu). Za **`database`** / **`redis`** mora da radi **`queue:work`** (npr. **`.\laragon-artisan.cmd queue:work --tries=1`**). **Provera da li worker radi (Windows):** u Task Manageru pogledati **`php.exe`** i komandnu liniju da sadrži `artisan queue:work`, ili u PowerShellu npr. `Get-CimInstance Win32_Process -Filter "Name = 'php.exe'" | Select-Object CommandLine`. Ako se poslovi gomilaju, proveri tabelu **`jobs`** (driver `database`). **Test mejlova:** uz `sync` dovoljno je **`MAIL_MAILER=log`** (ili Mailtrap); uz asinhroni red pokreni worker pre akcije koja dispatchuje mejl.
 - **Queue worker u pozadini (PowerShell, bez zauzimanja terminala):** ako `php` nije u PATH-u, koristi **punu putanju** do Laragon `php.exe`.
   - Pokretanje:

@@ -1,9 +1,10 @@
 ﻿# Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-06-30  
+**Poslednje ažuriranje:** 2026-06-25  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
+- **2026-06-25** — **Admin UI / docs — pravopis *istorija*:** u korisničkom tekstu (admin Blade, docs) zamenjeno **historija** → **istorija** u svim padežima i pridevima (*istorijska aktivnost*, *od istorije*, …). Engleski identifikatori u kodu (`historical_reservation_id`, `than_history`, klase) **nisu** mijenjani. Konvencija: **`project-conventions.md`** §3.2.
 - **2026-06-25** — **Admin Agencije — statistika rezervacija (dopuna):** kolona **Država** u procijenjenoj V1 tabeli; **Aktivnost agencije** (V2 prva/posljednja u godini) i **Procijenjena istorijska aktivnost** + **Sažetak pouzdanosti** u V1 bloku. Testovi: **`AdminAgencyReservationStatisticsTest`**. Docs: **`admin-panel.md`** §9.2.
 - **2026-06-25** — **Admin Agencije — statistika rezervacija na detalju:** sekcija **Statistika rezervacija** na **`GET /admin/agencije/{user}`** — **službena V2** (tekuća godina, `user_id` agencije; **`AgencyV2ReservationStatisticsService`**) i **procijenjena V1 istorija** (heuristika bez upisa `user_id`; pool `user_id IS NULL` + `created_at <` cut-over; **`AgencyV1HistoricalEstimateService`** + keš). Testovi: **`AdminAgencyReservationStatisticsTest`**. Docs: **`admin-panel.md`** §9.2.
 - **2026-06-30** — **Bankart callback ACK — HTTP 200 + OK:** svi validni postback-i (`POST /api/payment/callback`) vraćaju **200** + plain text **`OK`** (NLB/Bankart zahtjev; V1 ponašanje). Uključuje duplicate terminal processed shortcut. Invalid potpis/payload i dalje **400** JSON. Testovi: **`PaymentCallbackDuplicateTerminalTest`**, **`PaymentCallbackBankartSignatureTest`**. Docs: **`payment-callback-handling.md`**, **`payment-architecture.md`**, **`production-hardening.md`**, **`payment-states.md`**, **`payment-v1-production-audit.md`**.
