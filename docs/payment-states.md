@@ -18,6 +18,7 @@ Stanja plaćanja i fiskalizacije. Rezervacija se **uvek** kreira na **success**;
 
 - Bank callback **SUCCESS** → rezervacija se kreira, temp_data = processed.
 - Bank callback **CANCEL/ERROR** → temp_data = canceled, rezervacija se **ne** kreira.
+- **Ponovljeni SUCCESS** nakon **`processed` + postojeće rezervacije** → controller ACK bez novog job-a (v. **`payment-callback-handling.md`** §2).
 
 ---
 

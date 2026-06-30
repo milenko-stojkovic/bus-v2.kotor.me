@@ -85,3 +85,11 @@ Callback prima i dalje: `Payment callback received` / `accepted` / itd.
 
 - **`isImplemented()`:** `false` za fake bank driver; za Bankart kada je `BANKART_STATUS_INQUIRY_ENABLED` i konfiguracija (`BANKART_API_URL`, ključevi, kredencijali, shared secret ako je potpis uključen) kompletna.
 - **`inquire()`:** vraća `['outcome' => 'success'|'failed'|null, 'raw' => …]`; poziva se **samo** ako je `isImplemented()` true. **null** = pending / greška API-ja / HTTP — bez promene `temp_data` u tom koraku. Cron dispatchuje **`PaymentCallbackJob`** za `success` i `failed`.
+
+---
+
+## 7. Ponovljeni Bankart SUCCESS callback-i
+
+- Nakon **`temp_data.processed`** + postojeće **`reservations`** za isti MTID, webhook je **idempotentan** u job-u, ali ponavljanja (minute → sati → dnevno) zagušuju logove i Admin Uvid timeline.
+- **`PaymentCallbackDuplicateTerminalAckService`** + rana grana u **`PaymentCallbackController`**: validan potpis → ako je SUCCESS i već obrađeno → **202** + `{"accepted":true}` bez **`PaymentCallbackJob`**; log **`payment_callback_duplicate_terminal_acknowledged`**.
+- **Ne** utiče na kasni SUCCESS (`expired` / `canceled`). Detalji: **`payment-callback-handling.md`** §2.

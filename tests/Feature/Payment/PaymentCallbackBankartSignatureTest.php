@@ -3,12 +3,15 @@
 namespace Tests\Feature\Payment;
 
 use App\Jobs\PaymentCallbackJob;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class PaymentCallbackBankartSignatureTest extends TestCase
 {
+    use RefreshDatabase;
+
     private const SECRET = 'test-bankart-shared-secret-for-hmac';
 
     private const DATE = 'Thu, 01 Jan 2026 12:00:00 GMT';

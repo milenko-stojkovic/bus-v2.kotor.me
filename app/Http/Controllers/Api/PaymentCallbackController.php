@@ -6,6 +6,7 @@ use App\Contracts\CallbackSignatureValidator;
 use App\Http\Controllers\Controller;
 use App\Jobs\PaymentCallbackJob;
 use App\Models\TempData;
+use App\Services\Payment\PaymentCallbackDuplicateTerminalAckService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -23,8 +24,11 @@ class PaymentCallbackController extends Controller
     /**
      * Validate bank signature (first), then payload; dispatch job; return 202 or 400.
      */
-    public function handle(Request $request, CallbackSignatureValidator $signatureValidator): JsonResponse
-    {
+    public function handle(
+        Request $request,
+        CallbackSignatureValidator $signatureValidator,
+        PaymentCallbackDuplicateTerminalAckService $duplicateTerminalAck,
+    ): JsonResponse {
         Log::channel('payments')->info('Payment callback received', [
             'ip' => $request->ip(),
             'content_type' => $request->header('Content-Type'),
@@ -43,10 +47,6 @@ class PaymentCallbackController extends Controller
             return response()->json(['message' => 'Invalid callback signature.'], 400);
         }
 
-        Log::channel('payments')->info('Payment callback signature valid', [
-            'ip' => $request->ip(),
-        ]);
-
         $rawBody = $request->getContent();
         $decoded = json_decode($rawBody, true);
         if (! is_array($decoded)) {
@@ -62,12 +62,6 @@ class PaymentCallbackController extends Controller
         }
 
         $normalized = $this->normalizePayload($decoded);
-        Log::channel('payments')->info('Payment callback normalized payload', [
-            'merchant_transaction_id' => $normalized['merchant_transaction_id'] ?? null,
-            'status' => $normalized['status'] ?? null,
-            'result' => $decoded['result'] ?? null,
-            'raw_status' => $decoded['status'] ?? null,
-        ]);
 
         $validator = Validator::make($normalized, [
             'merchant_transaction_id' => ['required', 'string', 'max:64'],
@@ -88,6 +82,34 @@ class PaymentCallbackController extends Controller
             return response()->json(['message' => 'Invalid callback payload.'], 400);
         }
         $validated = $validator->validated();
+
+        $duplicateAck = $duplicateTerminalAck->contextForImmediateAck(
+            $validated['merchant_transaction_id'],
+            $validated['status'],
+        );
+        if ($duplicateAck !== null) {
+            Log::channel('payments')->info('payment_callback_duplicate_terminal_acknowledged', [
+                'merchant_transaction_id' => $validated['merchant_transaction_id'],
+                'temp_data_id' => $duplicateAck['temp_data_id'],
+                'reservation_id' => $duplicateAck['reservation_id'],
+                'temp_status' => $duplicateAck['temp_status'],
+                'callback_status' => $validated['status'],
+                'received_at' => now()->toIso8601String(),
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json(['accepted' => true], 202);
+        }
+
+        Log::channel('payments')->info('Payment callback signature valid', [
+            'ip' => $request->ip(),
+        ]);
+        Log::channel('payments')->info('Payment callback normalized payload', [
+            'merchant_transaction_id' => $normalized['merchant_transaction_id'] ?? null,
+            'status' => $normalized['status'] ?? null,
+            'result' => $decoded['result'] ?? null,
+            'raw_status' => $decoded['status'] ?? null,
+        ]);
 
         $rawPayload = $decoded;
 
