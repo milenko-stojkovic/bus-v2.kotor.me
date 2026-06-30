@@ -7,28 +7,28 @@ use App\Http\Controllers\Controller;
 use App\Jobs\PaymentCallbackJob;
 use App\Models\TempData;
 use App\Services\Payment\PaymentCallbackDuplicateTerminalAckService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Bank callback endpoint – API only. Fully stateless.
  *
  * - No session, no cookies, no redirects.
- * - Returns simple HTTP: 202 Accepted or 400 Bad Request.
+ * - Returns Bankart ACK: HTTP 200 + body `OK` (text/plain), or 400 Bad Request on errors.
  * - User redirect is handled later via frontend polling GET /payment/result.
  */
 class PaymentCallbackController extends Controller
 {
     /**
-     * Validate bank signature (first), then payload; dispatch job; return 202 or 400.
+     * Validate bank signature (first), then payload; dispatch job; return Bankart ACK or 400.
      */
     public function handle(
         Request $request,
         CallbackSignatureValidator $signatureValidator,
         PaymentCallbackDuplicateTerminalAckService $duplicateTerminalAck,
-    ): JsonResponse {
+    ): Response {
         Log::channel('payments')->info('Payment callback received', [
             'ip' => $request->ip(),
             'content_type' => $request->header('Content-Type'),
@@ -98,7 +98,7 @@ class PaymentCallbackController extends Controller
                 'ip' => $request->ip(),
             ]);
 
-            return response()->json(['accepted' => true], 202);
+            return $this->bankartAck();
         }
 
         Log::channel('payments')->info('Payment callback signature valid', [
@@ -128,7 +128,13 @@ class PaymentCallbackController extends Controller
             'status' => $validated['status'],
         ]);
 
-        return response()->json(['accepted' => true], 202);
+        return $this->bankartAck();
+    }
+
+    /** Bankart/NLB postback ACK: HTTP 200 + plain text body `OK`. */
+    private function bankartAck(): Response
+    {
+        return response('OK', 200)->header('Content-Type', 'text/plain');
     }
 
     /**

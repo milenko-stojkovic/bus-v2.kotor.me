@@ -1,8 +1,8 @@
 # Payment callback handling
 
-**Bank callback mora biti na API ruti (`POST /api/payment/callback`), ne na web.** (U kodu: `routes/api.php` → `payment/callback`.) Ne oslanjati se na cookies, session ili browser language. Identifikacija samo po merchant_transaction_id. Račun (PDF) je uvek na crnogorskom (cg) – v. docs/language-and-invoice-rules.md. Razlozi: banka ne šalje cookies/CSRF; web middleware (session, redirects) može odbiti ili pokvariti callback (dokazano u produkciji V1). Callback je stateless; vraća **202** + `{"accepted":true}` ili **400**; redirect korisnika kasnije preko **GET /payment/return** i/ili **GET /payment/result** (JSON).
+**Bank callback mora biti na API ruti (`POST /api/payment/callback`), ne na web.** (U kodu: `routes/api.php` → `payment/callback`.) Ne oslanjati se na cookies, session ili browser language. Identifikacija samo po merchant_transaction_id. Račun (PDF) je uvek na crnogorskom (cg) – v. docs/language-and-invoice-rules.md. Razlozi: banka ne šalje cookies/CSRF; web middleware (session, redirects) može odbiti ili pokvariti callback (dokazano u produkciji V1). Callback je stateless; na **validan** postback vraća **HTTP 200** + telo **`OK`** (`text/plain`); na grešku **400** JSON. Redirect korisnika kasnije preko **GET /payment/return** i/ili **GET /payment/result** (JSON).
 
-**Bankart ACK (dokumentacija u repou):** nema zasebnog zahtjeva za telo `OK` ili isključivo HTTP **200** — kanonski opis u ovom fajlu je **202 Accepted** + JSON. Ako Bankart i dalje šalje ponovljene SUCCESS callback-e, provjeriti sa NLB/Bankart da li očekuju drugačiji status/telo (npr. **200**). Ponavljanja nakon uspješne obrade često prate gateway retry raspored (minute, zatim dnevno).
+**Bankart ACK (NLB podrška):** postback mora biti potvrđen sa **HTTP 200** i telom **`OK`** — time Bankart zna da je callback prihvaćen. V1 je tako radio; V2 je greškom vraćao **202** + JSON (`{"accepted":true}`), što vjerovatno uzrokuje ponovljene SUCCESS callback-e. Isti ACK važi za prvi validan callback, duplicate terminal processed, i validan FAILED/CANCEL/ERROR.
 
 **Nikad ne koristiti bank callback za frontend redirect ili UI flow. Bank callback je isključivo machine-to-machine.** Frontend NIKAD ne sme da poziva `POST /api/payment/callback`. Za test (fake bank + fake fiskal u jednom koraku) koristi se **`POST /payment/fake-bank/complete`** (`bank_scenario`, `fiscal_scenario` kad je bank success) ili **`GET /fake-bank/complete`** sa query parametrima (lokalni QA). Ne koristiti `POST /api/payment/callback` iz browsera.
 
@@ -24,7 +24,7 @@ Pravila za validaciju callback-a, idempotentnost, CANCEL/ERROR, notifikacije i r
 ## 2. Idempotentnost (callback može stići više puta)
 
 - Ako je **temp_data.status** već **canceled** ili **processed** (ili drugi terminalni status) → prekinuti obradu (return) — v. `TempData::TERMINAL_STATES` u kodu.
-- **Ponovljeni SUCCESS** kad je **`temp_data.status = processed`** i **rezervacija već postoji** za isti `merchant_transaction_id`: **`PaymentCallbackController`** (poslije validacije potpisa i payload-a) odmah vraća **HTTP 202** + `{"accepted":true}` **bez** dispatch-a **`PaymentCallbackJob`**. Log: **`payment_callback_duplicate_terminal_acknowledged`** (jedan red u `payments` logu). Ne šalje se admin alert; stanje se ne mijenja.
+- **Ponovljeni SUCCESS** kad je **`temp_data.status = processed`** i **rezervacija već postoji** za isti `merchant_transaction_id`: **`PaymentCallbackController`** (poslije validacije potpisa i payload-a) odmah vraća **HTTP 200** + **`OK`** **bez** dispatch-a **`PaymentCallbackJob`**. Log: **`payment_callback_duplicate_terminal_acknowledged`** (jedan red u `payments` logu). Ne šalje se admin alert; stanje se ne mijenja.
 - **Ne** primjenjuje se na: **`pending`** (prvi SUCCESS), **`expired`** / **`canceled`** / **`late_success`** (kasni SUCCESS i admin obavještenja idu i dalje kroz job), niti na **`processed` bez rezervacije** (job se i dalje dispatch-uje).
 - **Nikad ne brisati temp_data fizički** (audit trail); samo menjati status.
 - Cleanup `temp-data:cleanup` briše samo **stare ne-pending** redove po retention pravilu (default 180 dana) i **nikad** ne briše `pending`.
@@ -77,7 +77,7 @@ Job **emituje PaymentFailed** event koji frontend ne prima direktno – frontend
 ## 7. Frontend flow
 
 - Callback endpoint je **API** (`POST /api/payment/callback`); **ne radi redirect**, nema session/cookies. Nevažeći potpis / loš JSON / validacija → **HTTP 400**; po mogućstvu audit u `temp_data` (`auditTempDataCallback400`) ako je poznat `merchant_transaction_id`.
-- Callback setuje status u bazi (preko job-a); vraća samo 202 ili 400.
+- Callback setuje status u bazi (preko job-a); na uspjeh vraća **200 OK**; na grešku **400**.
 - **Success/cancel URL** (stranica na koju banka vrati korisnika): **GET /payment/return?merchant_transaction_id=...**
   - Stranica **uvek čita status iz baze** (**`PaymentResultResolver`**) – UI nije izvor istine.
   - Ako je status **`pending`** → prikaže se stranica sa porukom „u obradi“ i **polling** na **`GET /payment/result`**. Okvir: **`x-guest-layout`** (gost) ili **`x-app-layout`** (ulogovan korisnik).

@@ -69,7 +69,8 @@ class PaymentCallbackBankartSignatureTest extends TestCase
             'HTTP_X_SIGNATURE' => $sig,
         ]);
 
-        $response->assertStatus(202);
+        $response->assertOk();
+        $this->assertSame('OK', $response->getContent());
         Queue::assertPushed(PaymentCallbackJob::class, function (PaymentCallbackJob $job): bool {
             return ($job->payload['merchant_transaction_id'] ?? null) === 'mt-hmac-ok-1';
         });
@@ -135,7 +136,8 @@ class PaymentCallbackBankartSignatureTest extends TestCase
 
         $response = $this->postCallback($rawBody);
 
-        $response->assertStatus(202);
+        $response->assertOk();
+        $this->assertSame('OK', $response->getContent());
         Queue::assertPushed(PaymentCallbackJob::class, function (PaymentCallbackJob $job): bool {
             return ($job->payload['merchant_transaction_id'] ?? null) === 'mt-fake-no-hmac';
         });

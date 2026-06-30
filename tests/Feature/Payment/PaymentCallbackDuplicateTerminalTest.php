@@ -41,6 +41,13 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
         ], $rawBody);
     }
 
+    private function assertBankartAck(\Illuminate\Testing\TestResponse $response): void
+    {
+        $response->assertOk();
+        $this->assertSame('OK', $response->getContent());
+        $this->assertStringContainsString('text/plain', (string) $response->headers->get('Content-Type'));
+    }
+
     /**
      * @return array{temp: TempData, reservation: Reservation}
      */
@@ -114,9 +121,7 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
             'status' => 'success',
         ], JSON_THROW_ON_ERROR);
 
-        $this->postCallback($rawBody)
-            ->assertStatus(202)
-            ->assertJson(['accepted' => true]);
+        $this->assertBankartAck($this->postCallback($rawBody));
 
         Queue::assertPushed(PaymentCallbackJob::class, function (PaymentCallbackJob $job): bool {
             return ($job->payload['merchant_transaction_id'] ?? null) === 'mt-dup-first';
@@ -133,7 +138,7 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
         $this->assertSame(1, Reservation::query()->where('merchant_transaction_id', 'mt-dup-create')->count());
     }
 
-    public function test_repeated_success_for_processed_temp_returns_202_ack(): void
+    public function test_repeated_success_for_processed_temp_returns_200_ok_ack(): void
     {
         Queue::fake();
         $this->useFakeBankDriver();
@@ -145,9 +150,7 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
             'merchantTransactionId' => 'mt-dup-repeat',
         ], JSON_THROW_ON_ERROR);
 
-        $this->postCallback($rawBody)
-            ->assertStatus(202)
-            ->assertJson(['accepted' => true]);
+        $this->assertBankartAck($this->postCallback($rawBody));
     }
 
     public function test_repeated_success_for_processed_temp_does_not_dispatch_job(): void
@@ -161,7 +164,7 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
             'status' => 'success',
         ], JSON_THROW_ON_ERROR);
 
-        $this->postCallback($rawBody)->assertStatus(202);
+        $this->assertBankartAck($this->postCallback($rawBody));
 
         Queue::assertNothingPushed();
     }
@@ -177,7 +180,7 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
             'status' => 'success',
         ], JSON_THROW_ON_ERROR);
 
-        $this->postCallback($rawBody)->assertStatus(202);
+        $this->assertBankartAck($this->postCallback($rawBody));
 
         $this->assertSame(1, Reservation::query()->where('merchant_transaction_id', 'mt-dup-no-res')->count());
         $this->assertSame((int) $seed['reservation']->id, (int) Reservation::query()->where('merchant_transaction_id', 'mt-dup-no-res')->value('id'));
@@ -194,7 +197,7 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
             'status' => 'success',
         ], JSON_THROW_ON_ERROR);
 
-        $this->postCallback($rawBody)->assertStatus(202);
+        $this->assertBankartAck($this->postCallback($rawBody));
 
         Queue::assertNotPushed(ProcessReservationAfterPaymentJob::class);
         Queue::assertNotPushed(SendInvoiceEmailJob::class);
@@ -230,7 +233,7 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
             'status' => 'ERROR',
         ], JSON_THROW_ON_ERROR);
 
-        $this->postCallback($rawBody)->assertStatus(202);
+        $this->assertBankartAck($this->postCallback($rawBody));
 
         Queue::assertPushed(PaymentCallbackJob::class, function (PaymentCallbackJob $job): bool {
             return ($job->payload['merchant_transaction_id'] ?? null) === 'mt-dup-failed';
@@ -263,7 +266,7 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
             'status' => 'success',
         ], JSON_THROW_ON_ERROR);
 
-        $this->postCallback($rawBody)->assertStatus(202);
+        $this->assertBankartAck($this->postCallback($rawBody));
 
         Queue::assertPushed(PaymentCallbackJob::class);
     }
@@ -326,7 +329,7 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
             'status' => 'success',
         ], JSON_THROW_ON_ERROR);
 
-        $this->postCallback($rawBody)->assertStatus(202);
+        $this->assertBankartAck($this->postCallback($rawBody));
 
         Queue::assertPushed(PaymentCallbackJob::class);
     }
@@ -358,6 +361,6 @@ class PaymentCallbackDuplicateTerminalTest extends TestCase
             'status' => 'success',
         ], JSON_THROW_ON_ERROR);
 
-        $this->postCallback($rawBody)->assertStatus(202);
+        $this->assertBankartAck($this->postCallback($rawBody));
     }
 }

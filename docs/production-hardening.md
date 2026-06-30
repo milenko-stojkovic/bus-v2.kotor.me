@@ -91,5 +91,5 @@ Callback prima i dalje: `Payment callback received` / `accepted` / itd.
 ## 7. Ponovljeni Bankart SUCCESS callback-i
 
 - Nakon **`temp_data.processed`** + postojeće **`reservations`** za isti MTID, webhook je **idempotentan** u job-u, ali ponavljanja (minute → sati → dnevno) zagušuju logove i Admin Uvid timeline.
-- **`PaymentCallbackDuplicateTerminalAckService`** + rana grana u **`PaymentCallbackController`**: validan potpis → ako je SUCCESS i već obrađeno → **202** + `{"accepted":true}` bez **`PaymentCallbackJob`**; log **`payment_callback_duplicate_terminal_acknowledged`**.
+- **`PaymentCallbackDuplicateTerminalAckService`** + rana grana u **`PaymentCallbackController`**: validan potpis → ako je SUCCESS i već obrađeno → **200** + **`OK`** bez **`PaymentCallbackJob`**; log **`payment_callback_duplicate_terminal_acknowledged`**. Svi validni postback-i (uključujući prvi i FAILED) takođe vraćaju **200 OK** (Bankart/NLB zahtjev).
 - **Ne** utiče na kasni SUCCESS (`expired` / `canceled`). Detalji: **`payment-callback-handling.md`** §2.
