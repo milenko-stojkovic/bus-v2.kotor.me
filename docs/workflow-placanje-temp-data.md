@@ -74,8 +74,6 @@ Ako korisnik ponovo klikne **Plati** za **isti** booking (isti korisnik/gost ema
 
 Servis: **`PendingBankartRedirectService`**. Testovi: **`CheckoutExistingPendingRedirectTest`**, ažurirani **`CheckoutCreateSessionFailureTest`**.
 
-**Migracija:** `2026_06_30_100000_add_payment_redirect_url_to_temp_data.php` — kolona `payment_redirect_url` (nullable).
-
 #### 1b. Dnevna naknada (`daily_ticket`)
 
 - Nema provjere konflikta po slotovima (nema slotova).
