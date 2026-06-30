@@ -365,7 +365,10 @@ final class AdminAgencyReservationStatisticsTest extends TestCase
             ->assertOk()
             ->assertSee('Statistika rezervacija', false)
             ->assertSee('Službena V2 statistika', false)
+            ->assertSee('Aktivnost agencije', false)
             ->assertSee('Procijenjena V1 historija', false)
+            ->assertSee('Procijenjena historijska aktivnost', false)
+            ->assertSee('Sažetak pouzdanosti', false)
             ->assertSee('heurističkim uparivanjem', false);
     }
 
@@ -385,5 +388,257 @@ final class AdminAgencyReservationStatisticsTest extends TestCase
         $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
 
         $this->assertSame(0, $v1['linked_total']);
+    }
+
+    public function test_country_column_is_rendered_in_estimated_table(): void
+    {
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+
+        $agency = User::factory()->create(['email' => 'info@montetravel.me']);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'info@montetravel.me',
+            'country' => 'HR',
+        ]);
+
+        $this->get(route('panel_admin.agencies.show', $agency, false))
+            ->assertOk()
+            ->assertSee('Država', false)
+            ->assertSee('HR', false);
+    }
+
+    public function test_official_first_reservation_is_correct(): void
+    {
+        $agency = User::factory()->create();
+        $slot = $this->seedSlot();
+        $vt = VehicleType::query()->create(['price' => 20]);
+        $year = (int) now()->year;
+
+        Reservation::query()->create([
+            'user_id' => $agency->id,
+            'vehicle_type_id' => $vt->id,
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => sprintf('%d-05-10', $year),
+            'user_name' => $agency->name,
+            'country' => 'ME',
+            'license_plate' => 'KO100AA',
+            'email' => $agency->email,
+            'status' => 'paid',
+            'invoice_amount' => '20.00',
+            'reservation_kind' => ReservationKind::TIME_SLOTS,
+            'email_sent' => 0,
+            'created_by_admin' => false,
+        ]);
+        Reservation::query()->create([
+            'user_id' => $agency->id,
+            'vehicle_type_id' => $vt->id,
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => sprintf('%d-09-20', $year),
+            'user_name' => $agency->name,
+            'country' => 'ME',
+            'license_plate' => 'KO101BB',
+            'email' => $agency->email,
+            'status' => 'paid',
+            'invoice_amount' => '20.00',
+            'reservation_kind' => ReservationKind::TIME_SLOTS,
+            'email_sent' => 0,
+            'created_by_admin' => false,
+        ]);
+
+        $stats = app(AgencyV2ReservationStatisticsService::class)->compute($agency);
+
+        $this->assertSame(sprintf('%d-05-10', $year), $stats['first_reservation_date']);
+    }
+
+    public function test_official_last_reservation_is_correct(): void
+    {
+        $agency = User::factory()->create();
+        $slot = $this->seedSlot();
+        $vt = VehicleType::query()->create(['price' => 20]);
+        $year = (int) now()->year;
+
+        Reservation::query()->create([
+            'user_id' => $agency->id,
+            'vehicle_type_id' => $vt->id,
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => sprintf('%d-02-01', $year),
+            'user_name' => $agency->name,
+            'country' => 'ME',
+            'license_plate' => 'KO200AA',
+            'email' => $agency->email,
+            'status' => 'paid',
+            'invoice_amount' => '20.00',
+            'reservation_kind' => ReservationKind::TIME_SLOTS,
+            'email_sent' => 0,
+            'created_by_admin' => false,
+        ]);
+        Reservation::query()->create([
+            'user_id' => $agency->id,
+            'vehicle_type_id' => $vt->id,
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => sprintf('%d-11-30', $year),
+            'user_name' => $agency->name,
+            'country' => 'ME',
+            'license_plate' => 'KO201BB',
+            'email' => $agency->email,
+            'status' => 'paid',
+            'invoice_amount' => '20.00',
+            'reservation_kind' => ReservationKind::TIME_SLOTS,
+            'email_sent' => 0,
+            'created_by_admin' => false,
+        ]);
+
+        $stats = app(AgencyV2ReservationStatisticsService::class)->compute($agency);
+
+        $this->assertSame(sprintf('%d-11-30', $year), $stats['last_reservation_date']);
+    }
+
+    public function test_estimated_first_reservation_uses_heuristic_matches_only(): void
+    {
+        $agency = User::factory()->create(['email' => 'info@montetravel.me']);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'nobody@other.test',
+            'license_plate' => 'KO999XX',
+            'reservation_date' => '2018-01-01',
+        ]);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'info@montetravel.me',
+            'license_plate' => 'KO111AA',
+            'reservation_date' => '2020-03-15',
+        ]);
+
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+
+        $this->assertSame('2020-03-15', $v1['estimated_first_reservation']);
+        $this->assertSame(1, $v1['linked_total']);
+    }
+
+    public function test_estimated_last_reservation_uses_heuristic_matches_only(): void
+    {
+        $agency = User::factory()->create(['email' => 'info@montetravel.me']);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'nobody@other.test',
+            'license_plate' => 'KO888XX',
+            'reservation_date' => '2025-12-31',
+        ]);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'info@montetravel.me',
+            'license_plate' => 'KO222BB',
+            'reservation_date' => '2019-07-01',
+        ]);
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'booking@montetravel.me',
+            'license_plate' => 'KO333CC',
+            'reservation_date' => '2021-08-20',
+        ]);
+
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+
+        $this->assertSame('2021-08-20', $v1['estimated_last_reservation']);
+        $this->assertSame(2, $v1['linked_total']);
+    }
+
+    public function test_confidence_counts_are_correct(): void
+    {
+        $agency = User::factory()->create(['email' => 'info@montetravel.me', 'name' => 'Monte Travel DOO']);
+        $slot = $this->seedSlot();
+        $vt = VehicleType::query()->create(['price' => 20]);
+
+        Reservation::query()->create([
+            'user_id' => $agency->id,
+            'vehicle_type_id' => $vt->id,
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => now()->toDateString(),
+            'user_name' => $agency->name,
+            'country' => 'ME',
+            'license_plate' => 'KOREP01',
+            'email' => $agency->email,
+            'status' => 'paid',
+            'invoice_amount' => '20.00',
+            'reservation_kind' => ReservationKind::TIME_SLOTS,
+            'email_sent' => 0,
+            'created_by_admin' => false,
+        ]);
+        Reservation::query()->create([
+            'user_id' => $agency->id,
+            'vehicle_type_id' => $vt->id,
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => now()->toDateString(),
+            'user_name' => $agency->name,
+            'country' => 'ME',
+            'license_plate' => 'KOREP01',
+            'email' => $agency->email,
+            'status' => 'paid',
+            'invoice_amount' => '20.00',
+            'reservation_kind' => ReservationKind::TIME_SLOTS,
+            'email_sent' => 0,
+            'created_by_admin' => false,
+        ]);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'info@montetravel.me',
+            'license_plate' => 'KO111AA',
+        ]);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'booking@montetravel.me',
+            'license_plate' => 'KO222BB',
+        ]);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'other@freemail.com',
+            'license_plate' => 'KOREP01',
+            'user_name' => 'Unrelated Guest',
+        ]);
+
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+
+        $this->assertSame(3, $v1['linked_total']);
+        $this->assertSame(1, $v1['high_confidence']);
+        $this->assertSame(2, $v1['medium_confidence']);
+        $this->assertSame(0, $v1['low_confidence']);
+    }
+
+    public function test_no_reservations_shows_dash_for_activity_dates(): void
+    {
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+
+        $agency = User::factory()->create(['name' => 'Empty Agency']);
+
+        $stats = app(AgencyV2ReservationStatisticsService::class)->compute($agency);
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+
+        $this->assertNull($stats['first_reservation_date']);
+        $this->assertNull($stats['last_reservation_date']);
+        $this->assertNull($v1['estimated_first_reservation']);
+        $this->assertNull($v1['estimated_last_reservation']);
+
+        $response = $this->get(route('panel_admin.agencies.show', $agency, false));
+        $response->assertOk();
+
+        $html = $response->getContent();
+        $this->assertIsString($html);
+        $this->assertGreaterThanOrEqual(4, substr_count($html, '—'));
     }
 }

@@ -428,7 +428,7 @@ Uvijek prikazuje sekciju **Statistika rezervacija** (ne zavisi od `advance_payme
 - Period: **tekuća kalendarska godina** (`reservation_date`, timezone `Europe/Podgorica`).
 - Izvor: samo rezervacije sa `reservations.user_id = {agencija}`.
 - Servis: **`AgencyV2ReservationStatisticsService`**.
-- Prikaz: ukupno / plaćene / besplatne; Termini vs dnevna naknada (`reservation_kind`); sume `invoice_amount` po tipu; broj različitih tablica u godini; broj aktivnih vozila agencije; prva/posljednja rezervacija u godini; prosjek rezervacija po mjesecu (do tekućeg mjeseca).
+- Prikaz: ukupno / plaćene / besplatne; Termini vs dnevna naknada (`reservation_kind`); sume `invoice_amount` po tipu; broj različitih tablica u godini; broj aktivnih vozila agencije; **aktivnost agencije** (prva/posljednja rezervacija u godini, `—` ako nema); prosjek rezervacija po mjesecu (do tekućeg mjeseca).
 
 **Procijenjena V1 historija (heuristika, informativno):**
 
@@ -449,7 +449,7 @@ Uvijek prikazuje sekciju **Statistika rezervacija** (ne zavisi od `advance_payme
 | Sličnost imena agencije i `user_name` (similar_text ≥ prag) | Niska |
 | ≥2 signala | Visoka („Multiple signals”) |
 
-Prikaz: zbirni brojevi po nivou pouzdanosti, procijenjeni paid/free/prihod, raspon datuma; expandable tabela **Procijenjene povezane rezervacije** (sort `?v1_sort=confidence|date`).
+Prikaz: **procijenjena historijska aktivnost** (prva/posljednja procijenjena rezervacija — samo iz heurističkih pogodaka, `—` ako nema); **sažetak pouzdanosti** (ukupno povezanih + High/Medium/Low); procijenjeni paid/free/prihod; expandable tabela **Procijenjene povezane rezervacije** sa kolonom **Država** (`reservations.country`, iza Email-a; sort `?v1_sort=confidence|date`).
 
 Kada je `advance_payments` ON, dodatno prikazuje:
 - trenutno stanje avansa (`AgencyAdvanceService::balance`)

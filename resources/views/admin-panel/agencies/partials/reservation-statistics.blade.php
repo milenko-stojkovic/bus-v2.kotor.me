@@ -56,10 +56,13 @@
                 <div>Različite tablice (godina): <span class="font-semibold">{{ $v2['distinct_license_plates'] ?? 0 }}</span></div>
                 <div>Aktivna vozila agencije: <span class="font-semibold">{{ $v2['active_vehicles'] ?? 0 }}</span></div>
             </div>
-            <div class="space-y-1 sm:col-span-2">
+            <div class="space-y-1">
+                <div class="font-medium text-gray-800">Aktivnost agencije</div>
+                <div>Prva rezervacija: <span class="font-semibold">{{ $fmtDate($v2['first_reservation_date'] ?? null) }}</span></div>
+                <div>Posljednja rezervacija: <span class="font-semibold">{{ $fmtDate($v2['last_reservation_date'] ?? null) }}</span></div>
+            </div>
+            <div class="space-y-1">
                 <div class="font-medium text-gray-800">Dodatno</div>
-                <div>Prva rezervacija (godina): <span class="font-semibold">{{ $fmtDate($v2['first_reservation_date'] ?? null) }}</span></div>
-                <div>Posljednja rezervacija (godina): <span class="font-semibold">{{ $fmtDate($v2['last_reservation_date'] ?? null) }}</span></div>
                 <div>Prosjek rezervacija / mjesec: <span class="font-semibold">{{ $v2['avg_reservations_per_month'] ?? 0 }}</span></div>
             </div>
         </div>
@@ -76,22 +79,22 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
             <div class="space-y-1">
-                <div class="font-medium text-gray-800">Procijenjene povezane V1 rezervacije</div>
-                <div>Ukupno: <span class="font-semibold">{{ $v1['linked_total'] ?? 0 }}</span></div>
-                <div>Visoka pouzdanost: <span class="font-semibold">{{ $v1['high_confidence'] ?? 0 }}</span></div>
-                <div>Srednja pouzdanost: <span class="font-semibold">{{ $v1['medium_confidence'] ?? 0 }}</span></div>
-                <div>Niska pouzdanost: <span class="font-semibold">{{ $v1['low_confidence'] ?? 0 }}</span></div>
+                <div class="font-medium text-gray-800">Procijenjena historijska aktivnost</div>
+                <div>Prva procijenjena rezervacija: <span class="font-semibold">{{ $fmtDate($v1['estimated_first_reservation'] ?? null) }}</span></div>
+                <div>Posljednja procijenjena rezervacija: <span class="font-semibold">{{ $fmtDate($v1['estimated_last_reservation'] ?? null) }}</span></div>
+            </div>
+            <div class="space-y-1">
+                <div class="font-medium text-gray-800">Sažetak pouzdanosti</div>
+                <div class="text-gray-700">Procijenjene povezane rezervacije: <span class="font-semibold text-gray-900">{{ $v1['linked_total'] ?? 0 }}</span></div>
+                <div>Visoka: <span class="font-semibold">{{ $v1['high_confidence'] ?? 0 }}</span></div>
+                <div>Srednja: <span class="font-semibold">{{ $v1['medium_confidence'] ?? 0 }}</span></div>
+                <div>Niska: <span class="font-semibold">{{ $v1['low_confidence'] ?? 0 }}</span></div>
             </div>
             <div class="space-y-1">
                 <div class="font-medium text-gray-800">Status</div>
                 <div>Procijenjene plaćene: <span class="font-semibold">{{ $v1['estimated_paid'] ?? 0 }}</span></div>
                 <div>Procijenjene besplatne: <span class="font-semibold">{{ $v1['estimated_free'] ?? 0 }}</span></div>
                 <div>Procijenjeni prihod: <span class="font-semibold">{{ $fmtMoney($v1['estimated_revenue'] ?? 0) }}</span></div>
-            </div>
-            <div class="space-y-1">
-                <div class="font-medium text-gray-800">Raspon</div>
-                <div>Procijenjena prva: <span class="font-semibold">{{ $fmtDate($v1['estimated_first_reservation'] ?? null) }}</span></div>
-                <div>Procijenjena posljednja: <span class="font-semibold">{{ $fmtDate($v1['estimated_last_reservation'] ?? null) }}</span></div>
             </div>
         </div>
 
@@ -119,6 +122,7 @@
                                 <th class="py-2 pr-4">Datum</th>
                                 <th class="py-2 pr-4">Tablica</th>
                                 <th class="py-2 pr-4">Email</th>
+                                <th class="py-2 pr-4">Država</th>
                                 <th class="py-2 pr-4">Tip</th>
                                 <th class="py-2 pr-4">Iznos</th>
                                 <th class="py-2 pr-4">Pouzdanost</th>
@@ -136,6 +140,7 @@
                                     <td class="py-2 pr-4 whitespace-nowrap">{{ $fmtDate($row['reservation_date'] ?? null) }}</td>
                                     <td class="py-2 pr-4 whitespace-nowrap">{{ $row['license_plate'] ?? '—' }}</td>
                                     <td class="py-2 pr-4">{{ $row['email'] ?? '—' }}</td>
+                                    <td class="py-2 pr-4 whitespace-nowrap">{{ $row['country'] ?? '—' }}</td>
                                     <td class="py-2 pr-4 whitespace-nowrap">{{ $row['reservation_kind_label'] ?? '—' }}</td>
                                     <td class="py-2 pr-4 whitespace-nowrap">
                                         @if (($row['status'] ?? '') === 'paid')
@@ -152,7 +157,7 @@
                                     <td class="py-2 pr-4 text-gray-700">{{ $row['matching_reason'] ?? '—' }}</td>
                                 </tr>
                             @empty
-                                <tr><td class="py-4 text-gray-600" colspan="8">Nema procijenjenih povezanih V1 rezervacija.</td></tr>
+                                <tr><td class="py-4 text-gray-600" colspan="9">Nema procijenjenih povezanih V1 rezervacija.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
