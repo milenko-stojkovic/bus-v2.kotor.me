@@ -43,6 +43,7 @@ class TempData extends Model
         'merchant_transaction_id',
         'reservation_kind',
         'retry_token',
+        'payment_redirect_url',
         'user_id',
         'vehicle_id',
         'drop_off_time_slot_id',

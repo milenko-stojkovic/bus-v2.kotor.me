@@ -19,6 +19,7 @@ use App\Services\Payment\BankartBillingCountryAlertService;
 use App\Services\Payment\CheckoutPaymentInitAlertService;
 use App\Services\Payment\PaymentInitFailureService;
 use App\Services\Payment\PaymentSuccessHandler;
+use App\Services\Payment\PendingBankartRedirectService;
 use App\Services\Reservation\DuplicateReservationAttemptService;
 use App\Services\Reservation\FreeReservationRules;
 use App\Services\Reservation\GuestPaidLowerCategoryCheckoutGuard;
@@ -82,6 +83,19 @@ class CheckoutController extends Controller
         $snapshot = $this->resolveSnapshotInput($request);
         $panelAuthBooking = $request->user() !== null && $request->boolean('auth_panel_booking');
         $paymentMethod = $panelAuthBooking ? (string) ($request->validated('payment_method') ?? 'card') : 'card';
+
+        $existingPendingResponse = $this->tryResumeExistingPendingTimeSlotsCheckout(
+            $request,
+            $paymentService,
+            $successHandler,
+            $date,
+            $dropOffSlotId,
+            $pickUpSlotId,
+            $snapshot,
+        );
+        if ($existingPendingResponse !== null) {
+            return $existingPendingResponse;
+        }
 
         $duplicateResponse = $this->duplicateConflictResponse(
             $request,
@@ -252,36 +266,6 @@ class CheckoutController extends Controller
                 ->with('checkout_banner', CheckoutResultFlash::forReservationSuccess(false, true, false));
         }
 
-        // Već postoji pending za iste slotove + user/email
-        $existingBySlot = $this->findExistingPendingForSlot($request, $date, $dropOffSlotId, $pickUpSlotId);
-        if ($existingBySlot) {
-            $exArrival = ListOfTimeSlot::query()->find($existingBySlot->drop_off_time_slot_id);
-            $exDeparture = ListOfTimeSlot::query()->find($existingBySlot->pick_up_time_slot_id);
-            if ($exArrival && $exDeparture && FreeReservationRules::isFreeReservation($exArrival, $exDeparture)) {
-                $created = $successHandler->handle($existingBySlot, ['source' => 'free_checkout', 'context' => 'existing_pending'], false);
-
-                return $this->redirectAfterFreeCheckout($request, $created, $existingBySlot->merchant_transaction_id);
-            }
-
-            $existingBillingBlock = $this->bankartBillingCountryBlockForExistingTemp(
-                $request,
-                $existingBySlot,
-                $snapshot,
-                $date,
-                ReservationKind::TIME_SLOTS,
-            );
-            if ($existingBillingBlock !== null) {
-                return $existingBillingBlock;
-            }
-
-            $session = $this->startBankartCreateSession($paymentService, $existingBySlot, 'checkout_existing_pending');
-            if ($session->success && $session->paymentUrl) {
-                return $this->redirectToPaymentUrl($request, $existingBySlot, $session->paymentUrl);
-            }
-
-            return $this->createSessionFailedResponse($request, $existingBySlot, $session, 'checkout_existing_pending');
-        }
-
         // merchant_transaction_id i retry_token uvek generiše backend (pre job-a i redirect-a)
         $merchantTransactionId = Str::uuid()->toString();
         $retryToken = Str::uuid()->toString();
@@ -405,12 +389,7 @@ class CheckoutController extends Controller
                     return $existingBillingBlock;
                 }
 
-                $session = $this->startBankartCreateSession($paymentService, $existingByMtid, 'checkout_after_unique_violation');
-                if ($session->success && $session->paymentUrl) {
-                    return $this->redirectToPaymentUrl($request, $existingByMtid, $session->paymentUrl);
-                }
-
-                return $this->createSessionFailedResponse($request, $existingByMtid, $session, 'checkout_after_unique_violation');
+                return $this->resumeOrStartBankartSession($request, $paymentService, $existingByMtid, 'checkout_after_unique_violation');
             }
             throw $e;
         }
@@ -428,6 +407,72 @@ class CheckoutController extends Controller
         }
 
         return $this->createSessionFailedResponse($request, $temp, $session, 'checkout_after_temp_created');
+    }
+
+    private function resumeOrStartBankartSession(
+        CheckoutReservationRequest $request,
+        PaymentService $paymentService,
+        TempData $temp,
+        string $stage,
+    ): RedirectResponse|JsonResponse|Response {
+        $redirectService = app(PendingBankartRedirectService::class);
+
+        $storedUrl = $redirectService->storedRedirectUrl($temp);
+        if ($storedUrl !== null) {
+            CheckoutAuditLogger::log('checkout_existing_pending_reused_redirect', array_merge(
+                CheckoutAuditLogger::contextFromTemp($temp),
+                ['stage' => $stage],
+            ));
+
+            return redirect()->away($storedUrl);
+        }
+
+        $session = $this->startBankartCreateSession($paymentService, $temp, $stage);
+        if ($session->success && $session->paymentUrl) {
+            return $this->redirectToPaymentUrl($request, $temp, $session->paymentUrl);
+        }
+
+        if (PendingBankartRedirectService::isExistingPendingStage($stage)) {
+            return $this->existingPendingSessionResponse($request, $temp, $session, $stage);
+        }
+
+        return $this->createSessionFailedResponse($request, $temp, $session, $stage);
+    }
+
+    private function existingPendingSessionResponse(
+        CheckoutReservationRequest $request,
+        TempData $temp,
+        ?PaymentSessionResult $session,
+        string $stage,
+    ): RedirectResponse|JsonResponse {
+        $redirectService = app(PendingBankartRedirectService::class);
+        $isDuplicate = $session !== null && $redirectService->isDuplicateTransactionSession($session);
+
+        Log::channel('payments')->info('checkout_existing_pending_session_open', array_merge(
+            CheckoutAuditLogger::contextFromTemp($temp),
+            array_filter([
+                'stage' => $stage,
+                'http_status' => $session?->httpStatus,
+                'gateway_error_code' => $session?->gatewayErrorCode,
+                'duplicate_transaction' => $isDuplicate,
+            ], static fn ($v) => $v !== null && $v !== ''),
+        ));
+
+        $locale = $request->user()?->lang ?? app()->getLocale();
+        $message = UiText::t(
+            'payment',
+            'payment_existing_session_open',
+            $locale === 'cg'
+                ? 'Prozor za plaćanje je već otvoren ili je sesija već kreirana. Nastavite postojeće plaćanje ili pokušajte ponovo za nekoliko minuta.'
+                : 'The payment window is already open or a session was already created. Please continue the existing payment or try again in a few minutes.',
+            $locale,
+        );
+
+        return $request->expectsJson()
+            ? response()->json(['message' => $message], Response::HTTP_CONFLICT)
+            : redirect()->to($this->checkoutReturnUrl($request))
+                ->withInput()
+                ->with('error', $message);
     }
 
     private function startBankartCreateSession(
@@ -457,6 +502,7 @@ class CheckoutController extends Controller
         TempData $temp,
         string $paymentUrl,
     ): RedirectResponse {
+        app(PendingBankartRedirectService::class)->persistRedirectUrl($temp, $paymentUrl);
         CheckoutAuditLogger::log('checkout_redirect_created', CheckoutAuditLogger::contextFromTemp($temp));
 
         return redirect()->away($paymentUrl);
@@ -549,13 +595,50 @@ class CheckoutController extends Controller
     }
 
     /** Pending temp_data za isti slot (reservation_date + drop_off) i isti user (user_id ili email). */
+    private function tryResumeExistingPendingTimeSlotsCheckout(
+        CheckoutReservationRequest $request,
+        PaymentService $paymentService,
+        PaymentSuccessHandler $successHandler,
+        string $date,
+        int $dropOffSlotId,
+        int $pickUpSlotId,
+        array $snapshot,
+    ): RedirectResponse|JsonResponse|Response|null {
+        $existingBySlot = $this->findExistingPendingForSlot($request, $date, $dropOffSlotId, $pickUpSlotId);
+        if (! $existingBySlot) {
+            return null;
+        }
+
+        $exArrival = ListOfTimeSlot::query()->find($existingBySlot->drop_off_time_slot_id);
+        $exDeparture = ListOfTimeSlot::query()->find($existingBySlot->pick_up_time_slot_id);
+        if ($exArrival && $exDeparture && FreeReservationRules::isFreeReservation($exArrival, $exDeparture)) {
+            $created = $successHandler->handle($existingBySlot, ['source' => 'free_checkout', 'context' => 'existing_pending'], false);
+
+            return $this->redirectAfterFreeCheckout($request, $created, $existingBySlot->merchant_transaction_id);
+        }
+
+        $existingBillingBlock = $this->bankartBillingCountryBlockForExistingTemp(
+            $request,
+            $existingBySlot,
+            $snapshot,
+            $date,
+            ReservationKind::TIME_SLOTS,
+        );
+        if ($existingBillingBlock !== null) {
+            return $existingBillingBlock;
+        }
+
+        return $this->resumeOrStartBankartSession($request, $paymentService, $existingBySlot, 'checkout_existing_pending');
+    }
+
     private function findExistingPendingForSlot(
         CheckoutReservationRequest $request,
         string $date,
         int $dropOffSlotId,
         int $pickUpSlotId,
     ): ?TempData {
-        $query = TempData::where('reservation_date', $date)
+        $query = TempData::query()
+            ->whereDate('reservation_date', $date)
             ->where('drop_off_time_slot_id', $dropOffSlotId)
             ->where('pick_up_time_slot_id', $pickUpSlotId)
             ->where('status', TempData::STATUS_PENDING);
@@ -765,12 +848,7 @@ class CheckoutController extends Controller
                     return $existingBillingBlock;
                 }
 
-                $session = $this->startBankartCreateSession($paymentService, $existingByMtid, 'checkout_daily_ticket_after_unique_violation');
-                if ($session->success && $session->paymentUrl) {
-                    return $this->redirectToPaymentUrl($request, $existingByMtid, $session->paymentUrl);
-                }
-
-                return $this->createSessionFailedResponse($request, $existingByMtid, $session, 'checkout_daily_ticket_after_unique_violation');
+                return $this->resumeOrStartBankartSession($request, $paymentService, $existingByMtid, 'checkout_daily_ticket_after_unique_violation');
             }
             throw $e;
         }

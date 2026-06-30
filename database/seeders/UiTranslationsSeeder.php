@@ -206,6 +206,8 @@ class UiTranslationsSeeder extends Seeder
             ['group' => 'payment', 'key' => 'payment_authentication_failed', 'locale' => 'cg', 'text' => 'Potvrda plaćanja nije uspjela. Pokušajte ponovo.'],
             ['group' => 'payment', 'key' => 'payment_processing_issue', 'locale' => 'cg', 'text' => 'Došlo je do problema pri obradi plaćanja. Ako je potrebno, kontaktirajte podršku.'],
             ['group' => 'payment', 'key' => 'payment_window_unavailable', 'locale' => 'cg', 'text' => 'Trenutno nije moguće otvoriti prozor za plaćanje. Molimo pokušajte ponovo za nekoliko minuta. Ako se problem ponovi, pišite na bus@kotor.me.'],
+            ['group' => 'payment', 'key' => 'payment_existing_session_open', 'locale' => 'cg', 'text' => 'Prozor za plaćanje je već otvoren ili je sesija već kreirana. Nastavite postojeće plaćanje ili pokušajte ponovo za nekoliko minuta.'],
+            ['group' => 'payment', 'key' => 'payment_existing_session_open', 'locale' => 'en', 'text' => 'The payment window is already open or a session was already created. Please continue the existing payment or try again in a few minutes.'],
             ['group' => 'payment', 'key' => 'billing_country_invalid', 'locale' => 'cg', 'text' => 'Država za naplatu nije ispravno podešena. Molimo kontaktirajte podršku na bus@kotor.me.'],
             ['group' => 'payment', 'key' => 'payment_try_again', 'locale' => 'cg', 'text' => 'Plaćanje nije uspelo. Pokušajte ponovo.'],
             ['group' => 'payment', 'key' => 'reservation_confirmed_fiscal_pending', 'locale' => 'cg', 'text' => 'Rezervacija je potvrđena. Fiskalni račun će biti poslat naknadno.'],

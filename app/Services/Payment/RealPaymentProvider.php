@@ -289,7 +289,12 @@ class RealPaymentProvider implements PaymentService
 
         $userLine = UiText::t('payment', $classified['user_message_key'], 'Payment temporarily unavailable.');
 
-        return PaymentSessionResult::unavailable($userLine, $httpStatus, 'gateway_rejected');
+        return PaymentSessionResult::unavailable(
+            $userLine,
+            $httpStatus,
+            'gateway_rejected',
+            is_scalar($rawCode) ? (string) $rawCode : null,
+        );
     }
 
     public function pay(TempData $tempData): PaymentResult

@@ -192,10 +192,10 @@ class CheckoutCreateSessionFailureTest extends TestCase
 
         $this->from('/guest/reserve')
             ->post(route('checkout.store', [], false), $payload)
-            ->assertRedirect('/guest/reserve')
-            ->assertSessionHas('error');
+            ->assertRedirect('https://bank.example/pay');
 
         $this->assertSame(1, TempData::query()->where('status', TempData::STATUS_PENDING)->count());
+        $this->assertSame('https://bank.example/pay', (string) TempData::query()->firstOrFail()->payment_redirect_url);
     }
 
     public function test_late_success_callback_after_payment_init_failure_does_not_create_reservation(): void

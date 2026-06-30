@@ -14,6 +14,7 @@ final readonly class PaymentSessionResult
         public ?string $errorMessage = null,
         public ?int $httpStatus = null,
         public ?string $failureReason = null,
+        public ?string $gatewayErrorCode = null,
     ) {}
 
     public static function ok(string $paymentUrl): self
@@ -25,6 +26,7 @@ final readonly class PaymentSessionResult
         ?string $message = null,
         ?int $httpStatus = null,
         ?string $failureReason = null,
+        ?string $gatewayErrorCode = null,
     ): self {
         return new self(
             false,
@@ -32,6 +34,7 @@ final readonly class PaymentSessionResult
             $message ?? 'Payment temporarily unavailable.',
             $httpStatus,
             $failureReason,
+            $gatewayErrorCode,
         );
     }
 }
