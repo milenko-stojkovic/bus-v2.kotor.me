@@ -195,5 +195,58 @@ class AdminPanelInsightTest extends TestCase
         $resp->assertOk()
             ->assertSee('Detaljni payment logovi nisu dostupni u retention periodu.', false);
     }
+
+    public function test_insight_detail_timeline_renders_events_in_chronological_order(): void
+    {
+        Carbon::setTestNow('2026-06-30 12:00:00');
+
+        $admin = $this->seedAdmin();
+        $this->actingAs($admin, 'panel_admin');
+
+        $slot = ListOfTimeSlot::query()->create(['time_slot' => '08:00 - 08:20']);
+        $vt = VehicleType::query()->create(['price' => 10]);
+
+        TempData::query()->create([
+            'merchant_transaction_id' => 'mt-ins-order',
+            'retry_token' => 'rt-order',
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => Carbon::now()->addDay()->toDateString(),
+            'user_name' => 'R',
+            'country' => 'ME',
+            'license_plate' => 'KO8',
+            'vehicle_type_id' => $vt->id,
+            'email' => 'order@example.com',
+            'status' => TempData::STATUS_PENDING,
+        ]);
+
+        $logDir = storage_path('logs');
+        @mkdir($logDir, 0777, true);
+        file_put_contents(
+            $logDir.DIRECTORY_SEPARATOR.'payments-2026-06-30.log',
+            '[2026-06-30 05:32:00] local.INFO: inquiry {"merchant_transaction_id":"mt-ins-order"}'."\n"
+            .'[2026-06-30 00:01:00] local.INFO: callback {"merchant_transaction_id":"mt-ins-order"}'."\n"
+        );
+        file_put_contents(
+            $logDir.DIRECTORY_SEPARATOR.'payments-2026-06-29.log',
+            '[2026-06-29 22:35:00] local.INFO: createSession {"merchant_transaction_id":"mt-ins-order"}'."\n"
+        );
+
+        $html = $this->get(route('panel_admin.insight.show', ['merchantTransactionId' => 'mt-ins-order'], false))
+            ->assertOk()
+            ->getContent();
+
+        $pos2235 = strpos($html, '2026-06-29 22:35:00');
+        $pos0001 = strpos($html, '2026-06-30 00:01:00');
+        $pos0532 = strpos($html, '2026-06-30 05:32:00');
+
+        $this->assertNotFalse($pos2235);
+        $this->assertNotFalse($pos0001);
+        $this->assertNotFalse($pos0532);
+        $this->assertLessThan($pos0001, $pos2235);
+        $this->assertLessThan($pos0532, $pos0001);
+
+        Carbon::setTestNow();
+    }
 }
 

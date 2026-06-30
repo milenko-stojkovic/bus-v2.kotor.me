@@ -11,7 +11,7 @@ final class PaymentLogTimelineService
      * - only lines that explicitly contain the MTID substring are included
      * - primary source: payments-YYYY-MM-DD.log
      *
-     * @return array{available:bool,events:list<array{ts:string,label:string,raw:string}>,note:string}
+     * @return array{available:bool,events:list<array{ts:string,label:string,raw:string,timestamp_unparsed?:bool}>,note:string}
      */
     public function timelineForMtid(string $merchantTransactionId): array
     {
@@ -22,6 +22,7 @@ final class PaymentLogTimelineService
 
         $logDir = storage_path('logs');
         $events = [];
+        $sourceIndex = 0;
 
         $days = $this->retentionDays();
 
@@ -34,7 +35,8 @@ final class PaymentLogTimelineService
             }
 
             foreach ($this->readLinesContaining($path, $mtid) as $line) {
-                $events[] = $this->classifyLine($line);
+                $events[] = $this->classifyLine($line, $sourceIndex);
+                $sourceIndex++;
             }
         }
 
@@ -48,7 +50,7 @@ final class PaymentLogTimelineService
 
         return [
             'available' => true,
-            'events' => $events,
+            'events' => $this->sortEventsChronologically($events),
             'note' => '',
         ];
     }
@@ -90,18 +92,69 @@ final class PaymentLogTimelineService
     }
 
     /**
-     * @return array{ts:string,label:string,raw:string}
+     * @param  list<array{ts:string,label:string,raw:string,timestamp_unparsed?:bool,_source_index:int}>  $events
+     * @return list<array{ts:string,label:string,raw:string,timestamp_unparsed?:bool}>
      */
-    private function classifyLine(string $line): array
+    private function sortEventsChronologically(array $events): array
     {
-        $ts = $this->extractTimestamp($line) ?? '';
+        usort($events, function (array $a, array $b): int {
+            $aUnparsed = (bool) ($a['timestamp_unparsed'] ?? false);
+            $bUnparsed = (bool) ($b['timestamp_unparsed'] ?? false);
+
+            if ($aUnparsed !== $bUnparsed) {
+                return $aUnparsed <=> $bUnparsed;
+            }
+
+            if (! $aUnparsed) {
+                $tsCmp = $this->timestampSortKey((string) ($a['ts'] ?? '')) <=> $this->timestampSortKey((string) ($b['ts'] ?? ''));
+                if ($tsCmp !== 0) {
+                    return $tsCmp;
+                }
+            }
+
+            return (int) ($a['_source_index'] ?? 0) <=> (int) ($b['_source_index'] ?? 0);
+        });
+
+        return array_map(static function (array $event): array {
+            unset($event['_source_index']);
+
+            return $event;
+        }, $events);
+    }
+
+    private function timestampSortKey(string $ts): int
+    {
+        if ($ts === '') {
+            return PHP_INT_MAX;
+        }
+
+        try {
+            return Carbon::parse(str_replace('T', ' ', $ts))->getTimestamp();
+        } catch (\Throwable) {
+            return PHP_INT_MAX;
+        }
+    }
+
+    /**
+     * @return array{ts:string,label:string,raw:string,timestamp_unparsed?:bool,_source_index:int}
+     */
+    private function classifyLine(string $line, int $sourceIndex): array
+    {
+        $parsedTs = $this->extractTimestamp($line);
         $label = $this->extractLabel($line);
 
-        return [
-            'ts' => $ts,
+        $event = [
+            'ts' => $parsedTs ?? '',
             'label' => $label,
             'raw' => $line,
+            '_source_index' => $sourceIndex,
         ];
+
+        if ($parsedTs === null) {
+            $event['timestamp_unparsed'] = true;
+        }
+
+        return $event;
     }
 
     private function extractTimestamp(string $line): ?string
