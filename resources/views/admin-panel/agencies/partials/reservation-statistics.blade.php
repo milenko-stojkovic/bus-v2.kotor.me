@@ -133,7 +133,7 @@
                             @forelse ($linked as $row)
                                 <tr class="border-b border-gray-100">
                                     <td class="py-2 pr-4 whitespace-nowrap">
-                                        <a class="text-red-700 underline font-medium" href="{{ route('panel_admin.reservations.edit', ['reservation' => $row['id']], false) }}">
+                                        <a class="text-red-700 underline font-medium" href="{{ route('panel_admin.reservations.show', ['reservation' => $row['id']], false) }}">
                                             #{{ $row['id'] }}
                                         </a>
                                     </td>

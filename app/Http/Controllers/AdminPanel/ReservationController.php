@@ -71,6 +71,17 @@ class ReservationController extends Controller
         ]);
     }
 
+    public function show(Reservation $reservation): View
+    {
+        $reservation->load(['pickUpTimeSlot', 'dropOffTimeSlot', 'vehicleType.translations', 'user']);
+
+        return view('admin-panel.reservations.show', [
+            'navActive' => 'reservations',
+            'pageTitle' => 'Rezervacija #'.$reservation->id,
+            'reservation' => $reservation,
+        ]);
+    }
+
     public function edit(
         Request $request,
         Reservation $reservation,

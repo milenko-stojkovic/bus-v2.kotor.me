@@ -70,6 +70,7 @@ Route::prefix('admin')->name('panel_admin.')->group(function () {
         Route::get('besplatne-rezervacije/zahtjevi/{freeReservationRequest}/attachments/{attachment}/preview', [AdminPanelFreeReservationController::class, 'previewAttachment'])->name('free-reservation-requests.attachments.preview');
 
         Route::get('rezervacije', [AdminPanelReservationController::class, 'index'])->name('reservations');
+        Route::get('rezervacije/{reservation}', [AdminPanelReservationController::class, 'show'])->name('reservations.show');
         Route::get('rezervacije/{reservation}/uredi', [AdminPanelReservationController::class, 'edit'])->name('reservations.edit');
         Route::put('rezervacije/{reservation}', [AdminPanelReservationController::class, 'update'])->name('reservations.update');
         Route::get('rezervacije/{reservation}/pdf', [AdminPanelReservationController::class, 'pdf'])->name('reservations.pdf');

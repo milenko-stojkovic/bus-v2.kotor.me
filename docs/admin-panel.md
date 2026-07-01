@@ -156,6 +156,7 @@ Kontroler: **`WarningsController::index`**. Stranica ima tri bloka: **Upozorenja
 | Ruta | Namena |
 |------|--------|
 | `GET /admin/rezervacije` | `panel_admin.reservations` — pretraga nad tabelom **`reservations`** (bez `temp_data`). |
+| `GET /admin/rezervacije/{reservation}` | `panel_admin.reservations.show` — **read-only** detalj bilo koje rezervacije (bez provjere vlasništva agencije); koristi se npr. sa stranice agencije za realizovane / V1 heurističke rezervacije gdje **`edit`** vraća 403. Akcija **PDF**; bez forme za izmjenu. |
 | `GET /admin/rezervacije/{reservation}/uredi` | `panel_admin.reservations.edit` — izmena samo **nerealizovanih** rezervacija (`PanelReservationListService::isRealized`); u listi akcije **PDF** + **Izmeni**. |
 | `PUT /admin/rezervacije/{reservation}` | `panel_admin.reservations.update` — **termine** (`time_slots`): transakcija, `lockForUpdate` na `daily_parking_data`, **`BlockReservationAdjustmentValidator`**, izmene `reserved`; **dnevna naknada**: samo sigurna polja, bez `daily_parking_data`. Reset `invoice_sent_at` / `email_sent`, dispatch email job. |
 | `GET /admin/rezervacije/{reservation}/pdf` | `panel_admin.reservations.pdf` — PDF računa (paid) ili potvrde (free) preko postojećih generatora. |

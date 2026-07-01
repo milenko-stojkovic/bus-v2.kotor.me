@@ -183,7 +183,7 @@
                                     <td class="py-2 pr-4 text-gray-700">{{ $tx->note ?? '—' }}</td>
                                     <td class="py-2 pr-4 text-gray-700">
                                         @if (($tx->reference_type ?? null) === 'reservation' && $tx->reference_id)
-                                            <a class="text-red-700 underline font-medium" href="{{ route('panel_admin.reservations.edit', ['reservation' => $tx->reference_id], false) }}">
+                                            <a class="text-red-700 underline font-medium" href="{{ route('panel_admin.reservations.show', ['reservation' => $tx->reference_id], false) }}">
                                                 reservation#{{ $tx->reference_id }}
                                             </a>
                                         @elseif (($tx->reference_type ?? null) === 'advance_topup' && $tx->reference_id)
