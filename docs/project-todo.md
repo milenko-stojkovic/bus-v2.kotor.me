@@ -1,6 +1,6 @@
 ﻿# Project TODO (otvoreno)
 
-**Poslednje ažuriranje:** 2026-06-19
+**Poslednje ažuriranje:** 2026-07-01
 
 Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/project-done.md` i ukloni odavde.
 
@@ -10,30 +10,26 @@ Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/pr
 
 ## 1. Operativno / audit — post-production hardening
 
-Ove stavke **nisu blokada za produkciju**. Predviđene su za **doradu nakon prvih dana ili sedmica** realnog rada V2, kada bude jasno šta predstavlja normalan produkcijski šum, koje operativne podatke treba trajno čuvati, a koje arhivirati ili uklanjati.
+Ove stavke **nisu blokada za produkciju**. Predviđene su za **doradu nakon realnog rada V2** — formalne politike, audit granice i fino podešavanje po iskustvu, ne za prvi deploy baseline-a.
 
-**Već postoji u produkciji (ne čeka ove stavke):** monitoring i alerti (`admin-panel.md`, `alerts:system-health`), recovery (`failed_jobs`, MEGA retry, fiskal retry), scheduler i queue, payment/fiskal tok, **`late_success`** staff workflow. Ovdje su samo **operativno fino podešavanje** i **production hardening** po iskustvu.
+**Baseline hardening već u produkciji (2026-06 — 2026-07, v. `project-done.md`):** scheduler/queue **watchdog** heartbeat + **Sistem status**; `alerts:system-health` i operativni alert tipovi; Bankart callback **200 OK** + duplicate processed ACK; **checkout pending** reuse (`payment_redirect_url`); payment init failure → `canceled`; email pipeline audit/resend (`mail:audit-reservation-documents`, `mail:resend-reservation-document`); post-fiskalizacija retry + info alert **`post_fiscalization_started`**; recovery (`failed_jobs`, MEGA retry, fiskal retry); payment/fiskal tok; **`late_success`** staff workflow.
 
-- [ ] Politika retencije `temp_data` i povezanih operativnih podataka (cleanup / audit granice).
-- [ ] Dodatno fino podešavanje alerting politike (`admin_alerts`, severity, kanali, pragovi) po realnom produkcijskom iskustvu.
-- [ ] Verifikacija lifecycle-a `temp_data` / `retry_token` u rubnim slučajevima.
+**Ovdje ostaje:**
+
+- [ ] Politika retencije `temp_data` i povezanih operativnih podataka (cleanup / audit granice; fizičko brisanje starih ne-pending redova vs trajni audit trail).
+- [ ] Dodatno fino podešavanje alerting politike (`admin_alerts`, severity, kanali, pragovi) po realnom produkcijskom iskustvu — iznad postojećeg baseline-a (watchdog, queue stale confirmation, dnevni rollup).
+- [ ] Preostali audit lifecycle-a `temp_data` / `retry_token` u rubnim slučajevima (npr. `late_success`, dugoročna retencija, usklađivanje `RESERVATIONS_PENDING_EXPIRE_MINUTES` sa produkcijskom praksom 15–30 min). Osnovni rubni slučajevi su adresirani (init failure, duplicate callback, pending redirect reuse, `expire-pending`).
 - [ ] Gde trajno čuvati fiskalnu klasifikaciju za audit (bez nepotrebnog dupliranja podataka).
 
 ---
 
-## 2. Fiskalni račun posle retry-a (ne žuriti implementaciju)
-
-- [ ] Posle uspešne **naknadne fiskalizacije:** generisati **kompletan fiskalizovani PDF**, poslati korisniku; jasno razdvojiti od ranije poslatog **nefiskalnog** fallbacka; ne blokirati fiskal ako je nefiskal već poslat.
-
----
-
-## 3. Tehničke optimizacije (opciono)
+## 2. Tehničke optimizacije (opciono)
 
 - [ ] Migracija **`createSession`** sa sync web zahtjeva na async init preko queue-a.
 
 ---
 
-## 4. Future mobile platform readiness (plan / bez izmjena koda sada)
+## 3. Future mobile platform readiness (plan / bez izmjena koda sada)
 
 - [ ] **Android (agencije):** planirati Android aplikaciju za agency tokove (ulogovani `/panel`).
 - [ ] **Android (admin + control):** planirati Android aplikaciju za admin panel i control funkcionalnosti.
