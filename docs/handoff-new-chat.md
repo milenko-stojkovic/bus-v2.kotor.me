@@ -6,7 +6,7 @@
 
 ---
 
-## Trenutno stanje projekta (2026-06-19)
+## Trenutno stanje projekta (2026-06-30)
 
 | Okruženje | URL | Folder / baza |
 |-----------|-----|---------------|
@@ -19,12 +19,14 @@
 - **Dokumentacija = izvor istine:** produkcijski audit docs↔kod završen **2026-06-19** (`project-done.md`); canonical payment: `payment-state-machine.md`.
 - **Otvoreno:** `docs/project-todo.md` — **post-production hardening** (operativno fino podešavanje), fiskalni PDF poslije retry-a, mobile plan… (nije produkcijska blokada).
 
-### Nedavno u `main` (2026-06-19, detalji u `project-done.md` § Admin / UX)
+### Nedavno u `main` (2026-06-30, detalji u `project-done.md`)
 
-- **Admin Uvid → Avansna uplata** — `/admin/uvid/avans` (`agency_advance_topups` + payments log); tab pored Uvida za rezervacije.
-- **PDF uputstvo za agencije** — `public/docs/cgbuskotor.pdf` (CG), `engbuskotor.pdf` (EN); v. **`docs/agency-user-guide.md`**; link na landing-u i u panelu (`config/user-guides.php`).
-- **`temp_data` pending** — istek nakon **5 min** (`RESERVATIONS_PENDING_EXPIRE_MINUTES`, cron svakih 5 min).
-- Admin dashboard: kartice **dnevne naknade** danas/sutra; Control lista: **Ukupno vozila**; heuristička pretraga **agencija**; uppercase **tablica** u admin pretrazi rezervacija.
+- **Admin Agencije — statistika rezervacija** na detalju agencije: službena **V2** (tekuća godina) + procijenjena **V1 istorija** (heuristika, read-only); config **`agency_statistics.php`**. V. **`admin-panel.md`** §9.2.
+- **Admin pretraga rezervacija — filter agencije:** `user_id` je autoritativan; auto-popunjeno ime/email/država ne sužava rezultate (`narrow_by_contact` za ručno sužavanje). V. **`admin-panel.md`** §1.2, **`project-conventions.md`** §1.1.
+- **Queue worker watchdog** — ispravljen lažni stale kad je `last_run_at` svjež a `last_ok_at` null. V. **`cron-commands.md`**, **`admin-panel.md`** (Sistem status).
+- **Bankart callback** — validni postback-i vraćaju **200 OK**; ponovljeni SUCCESS na već `processed` `temp_data` bez duplog job-a.
+- **Checkout pending** — reuse `payment_redirect_url` (bez duplog Bankart session-a / 3004).
+- **Država platne kartice** — puna ISO lista, `BankartBillingCountry`, prioritetni redosled u dropdown-u.
 
 ### Queue / scheduler (produkcija)
 

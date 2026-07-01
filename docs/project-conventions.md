@@ -1,6 +1,6 @@
 ﻿# Konvencije projekta (bus.kotor.me)
 
-**Poslednje ažuriranje:** 2026-06-25  
+**Poslednje ažuriranje:** 2026-06-30  
 
 Za AI i ljude: držati se ovoga pri novim izmenama da ostane konzistentno.
 
@@ -70,6 +70,7 @@ Svako polje za **registarsku tablicu** (booking, panel, admin pretraga, Control,
 
 - **Nova polja u Blade-u:** preferirati **`<x-license-plate-input>`** umjesto kopiranja `oninput` po fajlovima. Stariji ekrani (guest reserve, agency vozila, FZBR, admin Insight) još mogu imati inline JS — pri izmjeni prebaciti na komponentu.
 - **Admin pretraga rezervacija:** `AdminReservationSearchRequest::applyInputNormalization()` (poziv u `ReservationController::index` **prije** provjere kriterijuma i validacije) + `<x-license-plate-input>` u formi. V. **`docs/admin-panel.md`** § Rezervacije.
+- **Admin pretraga rezervacija — filter agencije:** izbor agencije u dropdown-u filtrira **isključivo** po `reservations.user_id` (`AdminReservationSearchService::buildFiltersFromValidated()`). Auto-popunjeno ime, email i država **ne** ulaze u SQL osim ako korisnik ručno mijenja ta polja nakon izbora agencije (tada se postavlja `narrow_by_contact=1`). Razlog: `reservations.user_name` često se razlikuje od `users.name`. V. **`admin-panel.md`** §1.2.
 - **Guest plaćena rezervacija — kategorija vozila:** guest checkout (bez naloga) **ne smije** platiti **nižu** kategoriju od najnovije starije **guest** **`paid`** rezervacije iste tablice; blokada u **`CheckoutController`** prije plaćanja. Agencije (`user_id` not null) i upravljanje vozilima/kategorijama — kroz agency panel; ovo pravilo se na njih ne primjenjuje. V. **`auth-and-guests.md`**, **`admin-panel.md`**.
 
 ### 1.2 Država platne kartice (Bankart `billingCountry`)

@@ -1,6 +1,6 @@
 ﻿# Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-06-25  
+**Poslednje ažuriranje:** 2026-06-30  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
