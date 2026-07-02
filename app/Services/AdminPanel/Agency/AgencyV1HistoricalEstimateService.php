@@ -88,6 +88,7 @@ final class AgencyV1HistoricalEstimateService
      * @return array{
      *     agency_email: string,
      *     agency_domain: ?string,
+     *     agency_country: string,
      *     agency_name: string,
      *     active_plates: array<string, true>,
      *     repeated_v2_plates: array<string, true>,
@@ -97,7 +98,8 @@ final class AgencyV1HistoricalEstimateService
     private function buildAgencyContext(User $agency): array
     {
         $agencyEmail = strtolower(trim((string) $agency->email));
-        $agencyDomain = $this->emailDomain($agencyEmail);
+        $rawDomain = $this->emailDomain($agencyEmail);
+        $agencyDomain = ($rawDomain !== null && ! $this->isPublicEmailDomain($rawDomain)) ? $rawDomain : null;
 
         $activePlates = [];
         $plateLookup = [];
@@ -142,6 +144,7 @@ final class AgencyV1HistoricalEstimateService
         return [
             'agency_email' => $agencyEmail,
             'agency_domain' => $agencyDomain,
+            'agency_country' => trim((string) ($agency->country ?? '')),
             'agency_name' => trim((string) $agency->name),
             'active_plates' => $activePlates,
             'repeated_v2_plates' => $repeatedV2Plates,
@@ -181,6 +184,7 @@ final class AgencyV1HistoricalEstimateService
                 $q->whereRaw('LOWER(email) = ?', [$agencyEmail]);
             }
 
+            // Domain prefilter only for non-public business domains (avoid massive false positives like gmail.com).
             if (is_string($agencyDomain) && $agencyDomain !== '') {
                 $q->orWhereRaw('LOWER(email) LIKE ?', ['%@'.$agencyDomain]);
             }
@@ -233,7 +237,9 @@ final class AgencyV1HistoricalEstimateService
             return null;
         }
 
-        [$confidence, $matchingReason] = $this->resolveConfidence($reasons);
+        $agencyCountry = (string) ($context['agency_country'] ?? '');
+        $reservationCountry = trim((string) ($reservation->country ?? ''));
+        [$confidence, $matchingReason] = $this->resolveConfidence($reasons, $agencyCountry, $reservationCountry);
 
         return [
             'id' => (int) $reservation->id,
@@ -254,11 +260,26 @@ final class AgencyV1HistoricalEstimateService
 
     /**
      * @param  list<array{level: string, reason: string}>  $reasons
+     * @param  string  $agencyCountry
+     * @param  string  $reservationCountry
      * @return array{0: string, 1: string}
      */
-    private function resolveConfidence(array $reasons): array
+    private function resolveConfidence(array $reasons, string $agencyCountry, string $reservationCountry): array
     {
         if (count($reasons) >= 2) {
+            // Country sanity check: for medium/low-only multi-signal matches, do not upgrade
+            // confidence when agency country exists and differs. Exact email / exact plate remain HIGH.
+            $hasHigh = collect($reasons)->contains(fn (array $r) => $r['level'] === AgencyHeuristicConfidence::HIGH);
+            $countryMismatch = $agencyCountry !== '' && $reservationCountry !== '' && $agencyCountry !== $reservationCountry;
+
+            if (! $hasHigh && $countryMismatch) {
+                $max = collect($reasons)->contains(fn (array $r) => $r['level'] === AgencyHeuristicConfidence::MEDIUM)
+                    ? AgencyHeuristicConfidence::MEDIUM
+                    : AgencyHeuristicConfidence::LOW;
+
+                return [$max, 'Multiple signals'];
+            }
+
             return [AgencyHeuristicConfidence::HIGH, 'Multiple signals'];
         }
 
@@ -284,6 +305,20 @@ final class AgencyV1HistoricalEstimateService
         $domain = strtolower(substr(strrchr($email, '@'), 1));
 
         return $domain !== '' ? $domain : null;
+    }
+
+    private function isPublicEmailDomain(string $domain): bool
+    {
+        $domain = strtolower(trim($domain));
+        if ($domain === '') {
+            return false;
+        }
+
+        /** @var array<int, string> $public */
+        $public = (array) config('agency_statistics.public_email_domains', []);
+        $public = array_map(static fn ($d) => strtolower(trim((string) $d)), $public);
+
+        return in_array($domain, $public, true);
     }
 
     /**

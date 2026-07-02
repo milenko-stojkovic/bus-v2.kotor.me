@@ -15,6 +15,7 @@ use App\Support\ReservationKind;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -215,6 +216,43 @@ final class AdminAgencyReservationStatisticsTest extends TestCase
         $this->assertSame('Email match', $row['matching_reason']);
     }
 
+    public function test_gmail_exact_match_is_high_confidence(): void
+    {
+        $agency = User::factory()->create(['email' => 'dubrovniksmiley@gmail.com', 'name' => 'DUBROVNIK SMILE']);
+
+        $matched = $this->createReservation([
+            'user_id' => null,
+            'email' => 'dubrovniksmiley@gmail.com',
+            'license_plate' => 'KOGL01',
+            'country' => 'HR',
+        ]);
+
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+
+        $this->assertSame(1, $v1['linked_total']);
+        $this->assertContains($matched->id, array_column($v1['linked_reservations'], 'id'));
+        $row = $v1['linked_reservations'][0] ?? null;
+        $this->assertNotNull($row);
+        $this->assertSame(AgencyHeuristicConfidence::HIGH, $row['confidence']);
+        $this->assertSame('Email match', $row['matching_reason']);
+    }
+
+    public function test_gmail_domain_match_is_ignored_and_excluded(): void
+    {
+        $agency = User::factory()->create(['email' => 'dubrovniksmiley@gmail.com', 'name' => 'DUBROVNIK SMILE']);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'somethingelse@gmail.com',
+            'license_plate' => 'KONOMATCH',
+            'country' => 'ME',
+        ]);
+
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+
+        $this->assertSame(0, $v1['linked_total']);
+    }
+
     public function test_d_domain_match_gives_medium_confidence(): void
     {
         $agency = User::factory()->create(['email' => 'info@montetravel.me']);
@@ -231,6 +269,96 @@ final class AdminAgencyReservationStatisticsTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame(AgencyHeuristicConfidence::MEDIUM, $row['confidence']);
         $this->assertSame('Email domain', $row['matching_reason']);
+    }
+
+    public function test_public_domain_is_not_used_in_sql_candidate_prefilter(): void
+    {
+        $agency = User::factory()->create(['email' => 'dubrovniksmiley@gmail.com', 'name' => 'DUBROVNIK SMILE']);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+
+        $queries = DB::getQueryLog();
+        $sql = implode("\n", array_map(static fn (array $q) => (string) ($q['query'] ?? ''), $queries));
+
+        $this->assertStringNotContainsString('%@gmail.com', strtolower($sql));
+        $this->assertStringNotContainsString('%@googlemail.com', strtolower($sql));
+    }
+
+    public function test_multiple_signals_does_not_count_public_domain_match(): void
+    {
+        $agency = User::factory()->create(['email' => 'dubrovniksmiley@gmail.com', 'name' => 'DUBROVNIK SMILE']);
+        $slot = $this->seedSlot();
+        $vt = VehicleType::query()->create(['price' => 15]);
+
+        // Seed repeated plate in V2 for this agency (medium signal).
+        Reservation::query()->create([
+            'user_id' => $agency->id,
+            'vehicle_type_id' => $vt->id,
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => now()->toDateString(),
+            'user_name' => $agency->name,
+            'country' => 'ME',
+            'license_plate' => 'KOREP01',
+            'email' => $agency->email,
+            'status' => 'paid',
+            'invoice_amount' => '15.00',
+            'reservation_kind' => ReservationKind::TIME_SLOTS,
+            'email_sent' => 0,
+            'created_by_admin' => false,
+        ]);
+        Reservation::query()->create([
+            'user_id' => $agency->id,
+            'vehicle_type_id' => $vt->id,
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => now()->toDateString(),
+            'user_name' => $agency->name,
+            'country' => 'ME',
+            'license_plate' => 'KOREP01',
+            'email' => $agency->email,
+            'status' => 'paid',
+            'invoice_amount' => '15.00',
+            'reservation_kind' => ReservationKind::TIME_SLOTS,
+            'email_sent' => 0,
+            'created_by_admin' => false,
+        ]);
+
+        // Candidate with same plate but unrelated gmail address must not get boosted by domain.
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'unrelated@gmail.com',
+            'license_plate' => 'KOREP01',
+            'country' => 'ME',
+        ]);
+
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+        $row = $v1['linked_reservations'][0] ?? null;
+
+        $this->assertNotNull($row);
+        $this->assertSame(AgencyHeuristicConfidence::MEDIUM, $row['confidence']);
+        $this->assertSame('Repeated plate in V2', $row['matching_reason']);
+    }
+
+    public function test_dubrovnik_smile_like_case_does_not_return_unrelated_gmail_reservations(): void
+    {
+        $agency = User::factory()->create(['email' => 'dubrovniksmiley@gmail.com', 'name' => 'DUBROVNIK SMILE']);
+
+        // Many unrelated gmail reservations (different plates / countries).
+        foreach (range(1, 20) as $i) {
+            $this->createReservation([
+                'user_id' => null,
+                'email' => 'random'.$i.'@gmail.com',
+                'license_plate' => 'KOX'.$i.'AA',
+                'country' => $i % 2 === 0 ? 'ME' : 'HR',
+            ]);
+        }
+
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+        $this->assertSame(0, $v1['linked_total']);
     }
 
     public function test_e_license_plate_match_on_active_vehicle_gives_high_confidence(): void
@@ -257,6 +385,44 @@ final class AdminAgencyReservationStatisticsTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame(AgencyHeuristicConfidence::HIGH, $row['confidence']);
         $this->assertSame('Known vehicle', $row['matching_reason']);
+    }
+
+    public function test_exact_email_still_matches_even_if_country_differs(): void
+    {
+        $agency = User::factory()->create(['email' => 'info@montetravel.me', 'country' => 'ME', 'name' => 'Monte Travel']);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'info@montetravel.me',
+            'license_plate' => 'KOCNTRY1',
+            'country' => 'HR',
+        ]);
+
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+        $row = $v1['linked_reservations'][0] ?? null;
+        $this->assertNotNull($row);
+        $this->assertSame(AgencyHeuristicConfidence::HIGH, $row['confidence']);
+        $this->assertSame('Email match', $row['matching_reason']);
+    }
+
+    public function test_domain_match_with_country_mismatch_does_not_upgrade_to_high(): void
+    {
+        $agency = User::factory()->create(['email' => 'info@montetravel.me', 'country' => 'ME', 'name' => 'Monte Travel DOO']);
+
+        $this->createReservation([
+            'user_id' => null,
+            'email' => 'booking@montetravel.me', // domain match (medium)
+            'user_name' => 'Monte Travel doo',   // name similarity (low)
+            'license_plate' => 'KOCNTRY2',
+            'country' => 'HR',
+        ]);
+
+        $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);
+        $row = $v1['linked_reservations'][0] ?? null;
+
+        $this->assertNotNull($row);
+        $this->assertSame(AgencyHeuristicConfidence::MEDIUM, $row['confidence']);
+        $this->assertSame('Multiple signals', $row['matching_reason']);
     }
 
     public function test_f_no_persisted_agency_assignment_on_page_load(): void

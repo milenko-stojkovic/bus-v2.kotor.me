@@ -29,4 +29,41 @@ return [
     */
     'name_similarity_threshold' => 80,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public/free email domains (ignore for domain heuristic matching)
+    |--------------------------------------------------------------------------
+    |
+    | Domain match is a medium-confidence heuristic intended only for business
+    | domains (e.g. booking@montetravel.me vs info@montetravel.me).
+    | Public/free email providers must NOT be used for domain matching nor SQL
+    | prefiltering (e.g. gmail.com would create massive false positives).
+    |
+    */
+    'public_email_domains' => [
+        'gmail.com',
+        'googlemail.com',
+        'yahoo.com',
+        'hotmail.com',
+        'outlook.com',
+        'live.com',
+        'icloud.com',
+        'me.com',
+        'aol.com',
+        'proton.me',
+        'protonmail.com',
+        'tutanota.com',
+        'mail.com',
+        'gmx.com',
+        'gmx.de',
+        't-com.me',
+        't-com.hr',
+        't-com.rs',
+        'mts.rs',
+        'yandex.com',
+        'yandex.ru',
+        'mail.ru',
+        'bk.ru',
+    ],
+
 ];
