@@ -137,7 +137,7 @@
                                 <div class="font-medium">{{ $e['label'] ?? 'payment' }}</div>
                                 <div class="text-xs text-gray-500 font-mono">{{ $e['ts'] ?? '' }}</div>
                             </div>
-                            <div class="mt-1 text-xs text-gray-600 font-mono break-all">{{ $e['raw'] ?? '' }}</div>
+                            <div class="mt-1 text-xs text-gray-600 font-mono break-all whitespace-pre-wrap">{{ $e['raw'] ?? '' }}</div>
                         </div>
                     @endforeach
                 </div>

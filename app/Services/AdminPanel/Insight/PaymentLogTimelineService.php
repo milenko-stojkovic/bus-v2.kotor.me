@@ -8,8 +8,9 @@ final class PaymentLogTimelineService
 {
     /**
      * Very conservative parser:
-     * - only lines that explicitly contain the MTID substring are included
      * - primary source: payments-YYYY-MM-DD.log
+     * - multiline log records are merged before filtering (Laravel context JSON may span lines)
+     * - only complete records that contain the MTID substring are included
      *
      * @return array{available:bool,events:list<array{ts:string,label:string,raw:string,timestamp_unparsed?:bool}>,note:string}
      */
@@ -34,8 +35,8 @@ final class PaymentLogTimelineService
                 continue;
             }
 
-            foreach ($this->readLinesContaining($path, $mtid) as $line) {
-                $events[] = $this->classifyLine($line, $sourceIndex);
+            foreach ($this->readLogEntriesContaining($path, $mtid) as $entry) {
+                $events[] = $this->classifyLine($entry, $sourceIndex);
                 $sourceIndex++;
             }
         }
@@ -67,9 +68,11 @@ final class PaymentLogTimelineService
     }
 
     /**
+     * Read physical lines and merge continuation fragments into one logical log record.
+     *
      * @return iterable<string>
      */
-    private function readLinesContaining(string $path, string $needle): iterable
+    private function readLogEntriesContaining(string $path, string $needle): iterable
     {
         $fh = @fopen($path, 'rb');
         if (! is_resource($fh)) {
@@ -77,18 +80,42 @@ final class PaymentLogTimelineService
         }
 
         try {
+            $buffer = '';
+
             while (! feof($fh)) {
                 $line = fgets($fh);
                 if (! is_string($line)) {
                     break;
                 }
-                if (strpos($line, $needle) !== false) {
-                    yield trim($line);
+
+                if ($buffer !== '' && $this->isLogEntryStart($line)) {
+                    $merged = trim($buffer);
+                    if ($merged !== '' && str_contains($merged, $needle)) {
+                        yield $merged;
+                    }
+                    $buffer = $line;
+                } elseif ($buffer === '') {
+                    $buffer = $line;
+                } else {
+                    $buffer .= $line;
+                }
+            }
+
+            if ($buffer !== '') {
+                $merged = trim($buffer);
+                if ($merged !== '' && str_contains($merged, $needle)) {
+                    yield $merged;
                 }
             }
         } finally {
             fclose($fh);
         }
+    }
+
+    private function isLogEntryStart(string $line): bool
+    {
+        return preg_match('/^\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\]/', $line) === 1
+            || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $line) === 1;
     }
 
     /**

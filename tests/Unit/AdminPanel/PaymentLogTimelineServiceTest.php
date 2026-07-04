@@ -115,6 +115,53 @@ class PaymentLogTimelineServiceTest extends TestCase
         $this->assertStringContainsString($mtid, $result['events'][1]['raw']);
     }
 
+    public function test_multiline_fiscal_log_entry_is_merged_and_not_duplicated_at_end(): void
+    {
+        Carbon::setTestNow('2026-07-04 12:00:00');
+
+        $mtid = '22d818bf-3a97-4d39-a104-f43c16050b72';
+        $this->writePaymentLog('2026-07-04', implode("\n", [
+            '[2026-07-04 07:12:31] production.INFO: Real fiscalization request start {"merchant_transaction_id":"'.$mtid.'"}',
+            '[2026-07-04 07:12:32] production.WARNING: Real fiscal deposit failed response {"reservation_id":23700,"merchant_transaction_id":"'.$mtid.'","status":200,"error_code":"999","error":"',
+            'Detalji greške: The underlying connection was closed: The connection was closed unexpectedly. ","body":"{\"UIDRequest\":\"'.$mtid.'\",\"IsSucccess\":false,\"Error\":{\"ErrorCode\":\"999\"}}"}',
+            '[2026-07-04 07:30:05] production.INFO: Real fiscalization request success {"merchant_transaction_id":"'.$mtid.'"}',
+        ])."\n");
+
+        $result = $this->service->timelineForMtid($mtid);
+
+        $this->assertTrue($result['available']);
+        $this->assertCount(3, $result['events']);
+        $this->assertSame(
+            ['2026-07-04 07:12:31', '2026-07-04 07:12:32', '2026-07-04 07:30:05'],
+            array_column($result['events'], 'ts'),
+        );
+        $this->assertSame('fiscal', $result['events'][1]['label']);
+        $this->assertStringContainsString('Real fiscal deposit failed response', $result['events'][1]['raw']);
+        $this->assertStringContainsString('connection was closed unexpectedly', $result['events'][1]['raw']);
+        $this->assertStringContainsString($mtid, $result['events'][1]['raw']);
+        $this->assertFalse($result['events'][1]['timestamp_unparsed'] ?? false);
+    }
+
+    public function test_multiline_continuation_without_mtid_on_fragment_is_not_separate_event(): void
+    {
+        Carbon::setTestNow('2026-07-04 12:00:00');
+
+        $mtid = 'mt-multiline-no-orphan';
+        $this->writePaymentLog('2026-07-04', implode("\n", [
+            '[2026-07-04 07:12:32] production.WARNING: Real fiscal deposit failed response {"merchant_transaction_id":"'.$mtid.'","error":"',
+            'Detalji greške: connection closed unexpectedly. ","body":"{\"ErrorCode\":\"999\"}"}',
+            '[2026-07-04 07:30:05] production.INFO: Real fiscalization request success {"merchant_transaction_id":"'.$mtid.'"}',
+        ])."\n");
+
+        $result = $this->service->timelineForMtid($mtid);
+
+        $this->assertCount(2, $result['events']);
+        foreach ($result['events'] as $event) {
+            $this->assertFalse($event['timestamp_unparsed'] ?? false);
+            $this->assertNotSame('', $event['ts']);
+        }
+    }
+
     private function writePaymentLog(string $date, string $content, bool $append = false): void
     {
         $logDir = storage_path('logs');

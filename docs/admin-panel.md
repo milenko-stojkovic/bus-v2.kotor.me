@@ -352,7 +352,7 @@ Read-only modul, payment-centric (osnovna jedinica prikaza je `merchant_transact
 | **Plaćanje rezervacije** | `GET /admin/uvid` | `temp_data` |
 | **Avansna uplata** | `GET /admin/uvid/avans` | `agency_advance_topups` (samo ako je `advance_payments` ON) |
 
-Zajedničko: **log timeline** iz `payments-YYYY-MM-DD.log` (linije koje sadrže MTID), retention `config('logging.channels.payments.days')`; povratak sa detalja čuva query (`rq`).
+Zajedničko: **log timeline** iz `payments-YYYY-MM-DD.log` (logički zapisi koji sadrže MTID — multiline nastavci se spajaju u jedan događaj), retention `config('logging.channels.payments.days')`; povratak sa detalja čuva query (`rq`).
 
 ### 8.1 Plaćanje rezervacije (`temp_data`)
 
@@ -369,7 +369,7 @@ Zajedničko: **log timeline** iz `payments-YYYY-MM-DD.log` (linije koje sadrže 
 - **Kontroler:** `App\Http\Controllers\AdminPanel\InsightController`.
 - **Validacija:** `App\Http\Requests\AdminPanel\AdminPanelInsightSearchRequest`.
 - **Servis:** `App\Services\AdminPanel\Insight\AdminInsightService`.
-- **Timeline parser:** `App\Services\AdminPanel\Insight\PaymentLogTimelineService` — događaji iz `payments-YYYY-MM-DD.log` (retention `config/logging.channels.payments.days`); **sortirano kronološki** po parsiranom timestampu rastuće preko više dana/fajlova (labeli: `createSession`, `callback`, `inquiry`, `advance topup`, …). Neparsabilan timestamp → na kraj.
+- **Timeline parser:** `App\Services\AdminPanel\Insight\PaymentLogTimelineService` — događaji iz `payments-YYYY-MM-DD.log` (retention `config/logging.channels.payments.days`); **multiline** Laravel log zapisi (npr. fiscal `error`/`body` sa prelomima reda) spajaju se u jedan događaj prije filtriranja po MTID-u — izbjegava lažne „orphan“ stavke bez timestampa na kraju timeline-a; **sortirano kronološki** po parsiranom timestampu rastuće preko više dana/fajlova (labeli: `createSession`, `callback`, `inquiry`, `fiscal`, `advance topup`, …). Samostalan red bez parsabilnog timestampa (nije nastavak prethodnog zapisa) → na kraj. UI: `whitespace-pre-wrap` na raw tekstu.
 
 **Testovi:** `tests/Feature/AdminPanel/AdminPanelInsightTest.php`.
 
