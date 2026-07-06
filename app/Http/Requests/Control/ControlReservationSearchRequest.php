@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Control;
 
+use App\Support\MontenegroLicensePlate;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ControlReservationSearchRequest extends FormRequest
@@ -9,6 +10,15 @@ class ControlReservationSearchRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('license_plate')) {
+            $this->merge([
+                'license_plate' => MontenegroLicensePlate::normalizeAscii((string) $this->input('license_plate')),
+            ]);
+        }
     }
 
     /**
@@ -22,7 +32,7 @@ class ControlReservationSearchRequest extends FormRequest
             'name' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'max:255'],
             'vehicle_type_id' => ['nullable', 'integer', 'exists:vehicle_types,id'],
-            'license_plate' => ['nullable', 'string', 'max:64'],
+            'license_plate' => ['nullable', 'string', 'max:50', 'regex:/^[A-Z0-9]*$/'],
             'status' => ['nullable', 'string', 'in:paid,free'],
         ];
     }

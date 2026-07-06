@@ -90,6 +90,48 @@ class ControlPanelTest extends TestCase
             ->assertSee('iOS Date Search', false);
     }
 
+    public function test_reservation_search_uses_license_plate_input_component(): void
+    {
+        $this->createControlAdmin();
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $html = $this->get(route('control.dashboard', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('id="c_plate"', $html);
+        $this->assertStringContainsString('pattern="[A-Z0-9]+"', $html);
+        $this->assertStringContainsString('toUpperCase().replace(/[^A-Z0-9]+/g,', $html);
+    }
+
+    public function test_reservation_search_normalizes_plate_with_spaces_and_symbols(): void
+    {
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+        $date = now()->addDays(3)->format('Y-m-d');
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => $date,
+            'user_name' => 'Plate Search',
+            'country' => 'ME',
+            'license_plate' => 'PG AA 123',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'plate-search@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $this->get('/control?search=1&license_plate=pg+aa-123')
+            ->assertOk()
+            ->assertSee('PG AA 123', false)
+            ->assertSee('Plate Search', false);
+    }
+
     public function test_admin_without_control_access_cannot_login_via_control(): void
     {
         Admin::query()->create([

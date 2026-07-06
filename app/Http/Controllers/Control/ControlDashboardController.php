@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\VehicleType;
 use App\Services\Control\ControlArrivalSlots;
 use App\Services\Operations\DailyCapacityChartService;
+use App\Support\MontenegroLicensePlate;
 use App\Support\ReservationKind;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -82,8 +83,10 @@ class ControlDashboardController extends Controller
         }
 
         if ($request->filled('license_plate')) {
-            $raw = (string) $request->input('license_plate');
-            $q->whereRaw('LOWER(license_plate) like ?', ['%'.strtolower(str_replace(['%', '_'], ['\\%', '\\_'], $raw)).'%']);
+            $plate = MontenegroLicensePlate::normalizeAscii((string) $request->input('license_plate'));
+            if ($plate !== '') {
+                $q->whereRaw("REPLACE(UPPER(license_plate), ' ', '') LIKE ?", ['%'.$plate.'%']);
+            }
         }
 
         if ($request->filled('status')) {

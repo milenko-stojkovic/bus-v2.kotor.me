@@ -101,7 +101,7 @@
             </div>
             <div>
                 <x-input-label for="c_plate" value="Registarske oznake" />
-                <x-text-input id="c_plate" class="block mt-1 w-full" type="text" name="license_plate" :value="old('license_plate', $searchInput['license_plate'] ?? '')" />
+                <x-license-plate-input id="c_plate" class="block mt-1 w-full" name="license_plate" :value="old('license_plate', $searchInput['license_plate'] ?? '')" />
             </div>
             <div>
                 <x-input-label for="c_status" value="Status" />

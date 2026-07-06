@@ -33,6 +33,7 @@ Tekstovi u view-ima su **hardcoded CG stringovi** (nema `UiText` grupe za contro
 
 - **Rute:** `control.daily_fee.index`, `control.daily_fee.check` — isti guard **`auth:control`** (`admins.control_access = true`).
 - **Servis:** `App\Services\Control\DailyFeeControlService` — normalizacija tablice (`DuplicateReservationAttemptService::normalizeLicensePlate`), ručna provjera za **današnji** `reservation_date` (`Europe/Podgorica`): **plaćena dnevna naknada** (`daily_ticket` + `paid`) **ili** **rezervacija/potvrda termina** (`time_slots` + `paid`/`free`, uklj. legacy `reservation_kind` NULL).
+- **Unos tablice:** `<x-license-plate-input>` + `DailyFeeControlCheckRequest` (server regex `^[A-Z0-9]+$`).
 - **Samo čitanje:** nema plaćanja, fiskalizacije, emaila, OCR-a, GPS-a, QR-a, izmjena rezervacija.
 - **Rezultat:** „Plaćena dnevna naknada: DA“ i/ili „Rezervacija termina za danas: DA“ (ili „Važeća rezervacija za danas: NE“) + detalji po pogotku (vrsta, agencija, datum važenja, tip vozila, email, vrijeme kreiranja). Više pogodaka istog dana/tablice — lista.
 - **Lista za danas (dno stranice):** tabela svih **plaćenih** dnevnih naknada za **današnji** `reservation_date` (`Europe/Podgorica`) čiji je `vehicle_type_id` u kategorijama **putničko/limo 4+1–7+1** ili **minibus 8+1** (`ReservationVehicleEligibilityService::controlDailyFeeListVehicleTypeIds()` — ID-jevi iz `vehicle_type_translations`, ne hardkodirani). Kolone: tablica, agencija/korisnik, tip vozila, vrijeme kupovine, datum važenja (**bez** kolone email — štednja prostora na terenu). Naslov sekcije prikazuje **Ukupno vozila** (broj redova na listi). Sort: `license_plate` ASC. Prazno stanje: *Nema vozila sa plaćenom dnevnom naknadom za danas.* **Lista se ne mijenja** kada ručna provjera tablice uključuje i Termine — to su dva odvojena prikaza.
@@ -69,8 +70,9 @@ Kontrolor za **Termine** koristi glavni dashboard. **Dnevna naknada** ima poseba
 
 ### Pretraga rezervacija
 
-- **Kontroler:** `ControlDashboardController::searchReservations()`; validacija `ControlReservationSearchRequest`.
+- **Kontroler:** `ControlDashboardController::searchReservations()`; validacija `ControlReservationSearchRequest` (tablica: `MontenegroLicensePlate::normalizeAscii`, regex `^[A-Z0-9]*$`).
 - **Obavezno:** bar jedan kriterijum (datum, ime, email, tip vozila, tablica, status).
+- **Tablica u pretrazi:** `<x-license-plate-input>` u formi; SQL upit normalizuje i upoređuje bez razmaka (`REPLACE(UPPER(license_plate), ' ', '') LIKE …`), kao admin pretraga rezervacija.
 - **Samo Termini:** u kodu je fiksiran filter `reservation_kind = time_slots` (ili `NULL` za stare redove). **Dnevna naknada** se ne prikazuje — za nju je `/control/dnevna-naknada`.
 - **Datum:** samo `reservation_date >= danas` (kalendarski dan). Polje u formi: native **`input type="date"`** (`name="date"`, submit **`Y-m-d`**) — namjerno **ne** `iso-date-input` zbog pouzdanosti na iPhone/Safari (v. **`project-conventions.md`** §1).
 - **Status (opciono u formi):** `paid` / `free` / bilo koji (bez UI za `daily_ticket`).

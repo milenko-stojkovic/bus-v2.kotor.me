@@ -25,14 +25,11 @@
             @csrf
             <div>
                 <label for="license_plate" class="block text-sm font-medium text-gray-700">Registarska tablica</label>
-                <input
-                    type="text"
+                <x-license-plate-input
+                    class="mt-1 block w-full"
                     name="license_plate"
                     id="license_plate"
-                    value="{{ old('license_plate', $submittedPlate ?? '') }}"
-                    autocomplete="off"
-                    autocapitalize="characters"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 uppercase"
+                    :value="old('license_plate', $submittedPlate ?? '')"
                     placeholder="npr. PG123AB"
                     required
                 />

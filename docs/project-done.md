@@ -1,9 +1,10 @@
 ﻿# Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-07-04  
+**Poslednje ažuriranje:** 2026-07-06  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
+- **2026-07-06** — **Control — konvencija registarske tablice:** `<x-license-plate-input>` na **Kontrola** (pretraga Termini) i **Kontrola dnevne naknade**; server normalizacija u `ControlReservationSearchRequest` + SQL bez razmaka (kao admin pretraga). Testovi: **`ControlPanelTest`**, **`DailyFeeControlTest`**. Docs: **`control-panel.md`**, **`project-conventions.md`** §1.1.
 - **2026-07-04** — **Admin Uvid — timeline multiline log:** `PaymentLogTimelineService` spaja fizičke linije u jedan logički zapis (fiscal greške sa prelomima u `error`/`body` više ne prikazuju fragment na dnu timeline-a bez vremena); UI `whitespace-pre-wrap` na detalju (rezervacije + avans). Testovi: **`PaymentLogTimelineServiceTest`**. Docs: **`admin-panel.md`** §8.
 - **2026-07-02** — **Agencije — V1 heuristika (email domeni):** public/free email domeni (npr. `gmail.com`) više se **ne koriste** za domain match ni SQL prefilter; exact email match ostaje High. Dodat “country sanity” za medium/low multi-signal match-eve (ne upgrade na High kad `users.country` ≠ `reservations.country`; exact email/plate i dalje pobjeđuju). Config: `agency_statistics.public_email_domains`. Testovi: **`AdminAgencyReservationStatisticsTest`**. Docs: **`admin-panel.md`** §9.2.
 - **2026-07-01** — **Review `project-todo.md` (post-hardening):** potvrđeno da je bivša §2 (**fiskalni PDF poslije naknadne fiskalizacije**) već implementirana — **`post-fiscalization:retry`**, **`applyFiscalDataAndDelete`**, fiskalni **`SendInvoiceEmailJob`**; uklonjeno iz TODO. §1 sužen: baseline hardening završen (watchdog, Sistem status, Bankart ACK, duplicate callback, checkout pending reuse, email audit/resend, post-fiskal alerti); preostaje operativna politika retencije/alerta i audit granice. Docs: **`project-todo.md`**.

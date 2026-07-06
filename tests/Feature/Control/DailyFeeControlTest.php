@@ -62,6 +62,20 @@ final class DailyFeeControlTest extends TestCase
             ->assertSee('id="btn-refresh-now"', false);
     }
 
+    public function test_daily_fee_form_uses_license_plate_input_component(): void
+    {
+        $admin = $this->createControlAdmin();
+        $this->actingAs($admin, 'control');
+
+        $html = $this->get(route('control.daily_fee.index', [], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('id="license_plate"', $html);
+        $this->assertStringContainsString('pattern="[A-Z0-9]+"', $html);
+        $this->assertStringContainsString('toUpperCase().replace(/[^A-Z0-9]+/g,', $html);
+    }
+
     public function test_plate_input_is_normalized_to_uppercase(): void
     {
         $admin = $this->createControlAdmin();
