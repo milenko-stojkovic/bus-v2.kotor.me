@@ -622,6 +622,151 @@ class ControlPanelTest extends TestCase
             ->assertSee('PG EXPAST', false);
     }
 
+    public function test_filtered_search_page_shows_reset_filter_button(): void
+    {
+        $this->createControlAdmin();
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $this->get('/control?search=1&status=paid')
+            ->assertOk()
+            ->assertSee('Reset filter', false);
+    }
+
+    public function test_reset_filter_link_points_to_clean_route_without_query_string(): void
+    {
+        $this->createControlAdmin();
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $html = $this->get('/control?search=1&email=reset-link@example.test')
+            ->assertOk()
+            ->assertSee('Reset filter', false)
+            ->getContent();
+
+        $cleanPath = parse_url(route('control.dashboard', [], false), PHP_URL_PATH) ?: '/control';
+        $this->assertMatchesRegularExpression(
+            '/href="'.preg_quote($cleanPath, '/').'"[^>]*>\s*Reset filter/s',
+            $html,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/href="[^"]*\?[^"]*"[^>]*>\s*Reset filter/s',
+            $html,
+        );
+    }
+
+    public function test_clean_control_page_does_not_show_reset_filter_button(): void
+    {
+        $this->createControlAdmin();
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $this->get(route('control.dashboard', [], false))
+            ->assertOk()
+            ->assertDontSee('Reset filter', false);
+    }
+
+    public function test_clean_control_page_shows_no_search_results_section(): void
+    {
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => now()->addDay()->format('Y-m-d'),
+            'user_name' => 'Should Not Appear Clean',
+            'country' => 'ME',
+            'license_plate' => 'PG CLEAN1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'clean-page@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $this->get(route('control.dashboard', [], false))
+            ->assertOk()
+            ->assertDontSee('Should Not Appear Clean', false)
+            ->assertDontSee('Nema rezultata.', false);
+    }
+
+    public function test_reset_filter_clears_search_fields_and_results(): void
+    {
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+        $date = now()->addDays(2)->format('Y-m-d');
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => $date,
+            'user_name' => 'Reset Clears User',
+            'country' => 'ME',
+            'license_plate' => 'PG RESET1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'reset-clears@example.test',
+            'status' => 'paid',
+        ]);
+
+        $admin = Admin::where('email', 'field@example.test')->first();
+        $this->actingAs($admin, 'control');
+
+        $this->get('/control?search=1&license_plate=PGRESET1&email=reset-clears@example.test&date='.$date)
+            ->assertOk()
+            ->assertSee('Reset Clears User', false)
+            ->assertSee('Reset filter', false);
+
+        $html = $this->get(route('control.dashboard', [], false))
+            ->assertOk()
+            ->assertDontSee('Reset filter', false)
+            ->assertDontSee('Reset Clears User', false)
+            ->assertDontSee('Nema rezultata.', false)
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/id="c_date"[^>]*value=""/', $html);
+        $this->assertMatchesRegularExpression('/id="c_name"[^>]*value=""/', $html);
+        $this->assertMatchesRegularExpression('/id="c_email"[^>]*value=""/', $html);
+        $this->assertMatchesRegularExpression('/id="c_plate"[^>]*value=""/', $html);
+        $this->assertStringNotContainsString('value="'.$date.'"', $html);
+        $this->assertStringNotContainsString('value="PGRESET1"', $html);
+        $this->assertStringNotContainsString('value="reset-clears@example.test"', $html);
+    }
+
+    public function test_reset_filter_does_not_affect_arrivals_section(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-10 12:00:00', 'Europe/Belgrade'));
+
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '13:00 - 13:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '20:00 - 20:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-06-10',
+            'user_name' => 'Arrival Remains',
+            'country' => 'ME',
+            'license_plate' => 'PG ARRIVE',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'arrival-remains@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        // Clean dashboard (post-reset) still shows operational arrivals; search results are absent.
+        $this->get(route('control.dashboard', [], false))
+            ->assertOk()
+            ->assertSee('Dolasci po terminima', false)
+            ->assertSee('13:00 - 13:20', false)
+            ->assertSee('PG ARRIVE', false)
+            ->assertDontSee('Reset filter', false)
+            ->assertDontSee('Nema rezultata.', false);
+    }
+
     private function createControlAdmin(): Admin
     {
         return Admin::query()->create([

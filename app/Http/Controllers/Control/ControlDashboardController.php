@@ -47,6 +47,7 @@ class ControlDashboardController extends Controller
             'searchResults' => $searchResults,
             'vehicleTypes' => $vehicleTypes,
             'searchInput' => $request->only(['date', 'name', 'email', 'vehicle_type_id', 'license_plate', 'status']),
+            'searchFiltersActive' => $request->hasSearchCriteria(),
             'capacityCharts' => $capacityCharts->todayAndTomorrow(),
         ]);
     }

@@ -4,6 +4,7 @@
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
+- **2026-07-15** — **Control Pretraga — Reset filter:** dugme pored **Pretraži**, vidljivo kad postoji kriterijum; link na čist `/control` (bez query) — briše polja/rezultate. Testovi: **`ControlPanelTest`**. Docs: **`control-panel.md`**.
 - **2026-07-15** — **Control Pretraga — prošli datumi bez filtera datuma:** uklonjen implicitni cut-off `reservation_date >= danas`; bez datuma pretražuje **sve** datume (sort `reservation_date` DESC, `id` DESC); sa datumom i dalje striktan filter. Testovi: **`ControlPanelTest`**. Docs: **`control-panel.md`**.
 - **2026-07-06** — **Control — konvencija registarske tablice:** `<x-license-plate-input>` na **Kontrola** (pretraga Termini) i **Kontrola dnevne naknade**; server normalizacija u `ControlReservationSearchRequest` + SQL bez razmaka (kao admin pretraga). Testovi: **`ControlPanelTest`**, **`DailyFeeControlTest`**. Docs: **`control-panel.md`**, **`project-conventions.md`** §1.1.
 - **2026-07-04** — **Admin Uvid — timeline multiline log:** `PaymentLogTimelineService` spaja fizičke linije u jedan logički zapis (fiscal greške sa prelomima u `error`/`body` više ne prikazuju fragment na dnu timeline-a bez vremena); UI `whitespace-pre-wrap` na detalju (rezervacije + avans). Testovi: **`PaymentLogTimelineServiceTest`**. Docs: **`admin-panel.md`** §8.

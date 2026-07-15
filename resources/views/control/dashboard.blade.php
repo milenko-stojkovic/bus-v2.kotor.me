@@ -111,10 +111,16 @@
                     <option value="free" @selected((string) old('status', $searchInput['status'] ?? '') === 'free')>Besplatna</option>
                 </select>
             </div>
-            <div class="flex items-end">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap">
                 <x-primary-button type="submit" name="search" value="1" class="w-full sm:w-auto justify-center">
                     Pretraži
                 </x-primary-button>
+                @if (! empty($searchFiltersActive))
+                    <a href="{{ route('control.dashboard', [], false) }}"
+                       class="inline-flex w-full sm:w-auto items-center justify-center px-4 py-2 border border-red-300 rounded-md font-semibold text-xs text-red-800 uppercase tracking-widest hover:bg-red-50">
+                        Reset filter
+                    </a>
+                @endif
             </div>
         </form>
 

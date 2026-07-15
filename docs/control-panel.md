@@ -72,6 +72,7 @@ Kontrolor za **Termine** koristi glavni dashboard. **Dnevna naknada** ima poseba
 
 - **Kontroler:** `ControlDashboardController::searchReservations()`; validacija `ControlReservationSearchRequest` (tablica: `MontenegroLicensePlate::normalizeAscii`, regex `^[A-Z0-9]*$`).
 - **Obavezno:** bar jedan kriterijum (datum, ime, email, tip vozila, tablica, status).
+- **Reset filter:** dugme pored **Pretraži**, vidljivo samo kad je barem jedan kriterijum u query stringu; vodi na čist `GET /control` (bez query parametara) — briše polja i rezultate pretrage. Ne dira **Dolasci po terminima**.
 - **Tablica u pretrazi:** `<x-license-plate-input>` u formi; SQL upit normalizuje i upoređuje bez razmaka (`REPLACE(UPPER(license_plate), ' ', '') LIKE …`), kao admin pretraga rezervacija.
 - **Samo Termini:** u kodu je fiksiran filter `reservation_kind = time_slots` (ili `NULL` za stare redove). **Dnevna naknada** se ne prikazuje — za nju je `/control/dnevna-naknada`.
 - **Datum:** ako je unesen — filter **striktno** po tom `reservation_date`. Ako **nije** unesen — pretraga ide **preko svih datuma** (prošlost, danas, budućnost); **nema** implicitnog cut-offa `>= danas`. Sort bez datuma: `reservation_date` DESC, zatim `id` DESC. Polje u formi: native **`input type="date"`** (`name="date"`, submit **`Y-m-d`**) — namjerno **ne** `iso-date-input` zbog pouzdanosti na iPhone/Safari (v. **`project-conventions.md`** §1).
