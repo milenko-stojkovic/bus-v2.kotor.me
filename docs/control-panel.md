@@ -74,7 +74,7 @@ Kontrolor za **Termine** koristi glavni dashboard. **Dnevna naknada** ima poseba
 - **Obavezno:** bar jedan kriterijum (datum, ime, email, tip vozila, tablica, status).
 - **Tablica u pretrazi:** `<x-license-plate-input>` u formi; SQL upit normalizuje i upoređuje bez razmaka (`REPLACE(UPPER(license_plate), ' ', '') LIKE …`), kao admin pretraga rezervacija.
 - **Samo Termini:** u kodu je fiksiran filter `reservation_kind = time_slots` (ili `NULL` za stare redove). **Dnevna naknada** se ne prikazuje — za nju je `/control/dnevna-naknada`.
-- **Datum:** samo `reservation_date >= danas` (kalendarski dan). Polje u formi: native **`input type="date"`** (`name="date"`, submit **`Y-m-d`**) — namjerno **ne** `iso-date-input` zbog pouzdanosti na iPhone/Safari (v. **`project-conventions.md`** §1).
+- **Datum:** ako je unesen — filter **striktno** po tom `reservation_date`. Ako **nije** unesen — pretraga ide **preko svih datuma** (prošlost, danas, budućnost); **nema** implicitnog cut-offa `>= danas`. Sort bez datuma: `reservation_date` DESC, zatim `id` DESC. Polje u formi: native **`input type="date"`** (`name="date"`, submit **`Y-m-d`**) — namjerno **ne** `iso-date-input` zbog pouzdanosti na iPhone/Safari (v. **`project-conventions.md`** §1).
 - **Status (opciono u formi):** `paid` / `free` / bilo koji (bez UI za `daily_ticket`).
 - **Tip vozila u rezultatima:** `VehicleType::formatControlLabel('cg')` — bez cijene i bez duplog naziva kada je opis već puni label (v. `VehicleType` u kodu).
 

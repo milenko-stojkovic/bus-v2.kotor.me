@@ -58,15 +58,16 @@ class ControlDashboardController extends Controller
     {
         $q = Reservation::query()
             ->with(['pickUpTimeSlot', 'dropOffTimeSlot', 'vehicleType.translations'])
-            ->whereDate('reservation_date', '>=', now()->startOfDay())
             ->where(function ($query): void {
                 $query->where('reservation_kind', ReservationKind::TIME_SLOTS)
                     ->orWhereNull('reservation_kind');
             });
 
         if ($request->filled('date')) {
+            // Explicit date: strict match only (past/present/future as selected).
             $q->whereDate('reservation_date', $request->date('date'));
         }
+        // No date: search all reservation dates (no implicit today/future cutoff).
 
         if ($request->filled('name')) {
             $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $request->input('name')).'%';
@@ -93,9 +94,16 @@ class ControlDashboardController extends Controller
             $q->where('status', (string) $request->input('status'));
         }
 
+        if ($request->filled('date')) {
+            return $q
+                ->orderBy('reservation_date')
+                ->orderBy('id')
+                ->get();
+        }
+
         return $q
-            ->orderBy('reservation_date')
-            ->orderBy('id')
+            ->orderByDesc('reservation_date')
+            ->orderByDesc('id')
             ->get();
     }
 }

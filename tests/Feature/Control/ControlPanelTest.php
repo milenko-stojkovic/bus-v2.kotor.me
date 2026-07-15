@@ -381,6 +381,247 @@ class ControlPanelTest extends TestCase
             ->assertSessionDoesntHaveErrors('search');
     }
 
+    public function test_search_by_plate_without_date_returns_past_reservation(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-15 12:00:00', 'Europe/Podgorica'));
+
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-01',
+            'user_name' => 'Past Plate User',
+            'country' => 'ME',
+            'license_plate' => 'PG PAST1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'past-plate@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $this->get('/control?search=1&license_plate=PGPAST1')
+            ->assertOk()
+            ->assertSee('PG PAST1', false)
+            ->assertSee('Past Plate User', false);
+    }
+
+    public function test_search_by_plate_without_date_returns_current_and_future_too(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-15 12:00:00', 'Europe/Podgorica'));
+
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-01',
+            'user_name' => 'All Dates Past',
+            'country' => 'ME',
+            'license_plate' => 'PG ALL1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'all-dates@example.test',
+            'status' => 'paid',
+        ]);
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-15',
+            'user_name' => 'All Dates Today',
+            'country' => 'ME',
+            'license_plate' => 'PG ALL1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'all-dates@example.test',
+            'status' => 'paid',
+        ]);
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-20',
+            'user_name' => 'All Dates Future',
+            'country' => 'ME',
+            'license_plate' => 'PG ALL1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'all-dates@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $this->get('/control?search=1&license_plate=PGALL1')
+            ->assertOk()
+            ->assertSee('All Dates Past', false)
+            ->assertSee('All Dates Today', false)
+            ->assertSee('All Dates Future', false);
+    }
+
+    public function test_search_with_date_returns_only_that_date(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-15 12:00:00', 'Europe/Podgorica'));
+
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-10',
+            'user_name' => 'DateFilter Past',
+            'country' => 'ME',
+            'license_plate' => 'PG DATE1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'date-filter@example.test',
+            'status' => 'paid',
+        ]);
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-15',
+            'user_name' => 'DateFilter Today',
+            'country' => 'ME',
+            'license_plate' => 'PG DATE1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'date-filter@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $this->get('/control?search=1&license_plate=PGDATE1&date=2026-07-15')
+            ->assertOk()
+            ->assertSee('DateFilter Today', false)
+            ->assertDontSee('DateFilter Past', false);
+    }
+
+    public function test_search_without_date_does_not_silently_default_to_today(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-15 12:00:00', 'Europe/Podgorica'));
+
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-01',
+            'user_name' => 'NoDefault PastOnly',
+            'country' => 'ME',
+            'license_plate' => 'PG NODEFLT',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'no-default@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        // Past-only match must still appear when date is omitted (not silently restricted to today).
+        $this->get('/control?search=1&license_plate=PGNODEFLT')
+            ->assertOk()
+            ->assertSee('NoDefault PastOnly', false)
+            ->assertSee('PG NODEFLT', false);
+    }
+
+    public function test_search_without_date_orders_newest_reservation_date_first(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-15 12:00:00', 'Europe/Podgorica'));
+
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-01',
+            'user_name' => 'Order Oldest',
+            'country' => 'ME',
+            'license_plate' => 'PG ORDER1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'order@example.test',
+            'status' => 'paid',
+        ]);
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-20',
+            'user_name' => 'Order Newest',
+            'country' => 'ME',
+            'license_plate' => 'PG ORDER1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'order@example.test',
+            'status' => 'paid',
+        ]);
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-07-10',
+            'user_name' => 'Order Middle',
+            'country' => 'ME',
+            'license_plate' => 'PG ORDER1',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'order@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        $html = $this->get('/control?search=1&license_plate=PGORDER1')
+            ->assertOk()
+            ->getContent();
+
+        $posNewest = strpos($html, 'Order Newest');
+        $posMiddle = strpos($html, 'Order Middle');
+        $posOldest = strpos($html, 'Order Oldest');
+
+        $this->assertNotFalse($posNewest);
+        $this->assertNotFalse($posMiddle);
+        $this->assertNotFalse($posOldest);
+        $this->assertLessThan($posMiddle, $posNewest);
+        $this->assertLessThan($posOldest, $posMiddle);
+    }
+
+    public function test_search_with_explicit_past_date_still_works(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-15 12:00:00', 'Europe/Podgorica'));
+
+        $drop = ListOfTimeSlot::query()->create(['time_slot' => '09:00 - 09:20']);
+        $pick = ListOfTimeSlot::query()->create(['time_slot' => '17:00 - 17:20']);
+        $vehicleType = $this->createVehicleType('Car');
+        $this->createControlAdmin();
+
+        Reservation::query()->create([
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => '2026-06-01',
+            'user_name' => 'Explicit Past Date',
+            'country' => 'ME',
+            'license_plate' => 'PG EXPAST',
+            'vehicle_type_id' => $vehicleType->id,
+            'email' => 'explicit-past@example.test',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs(Admin::where('email', 'field@example.test')->first(), 'control');
+
+        // F: existing date search remains usable for past dates (Termini search-by-date).
+        $this->get('/control?search=1&date=2026-06-01')
+            ->assertOk()
+            ->assertSee('Explicit Past Date', false)
+            ->assertSee('PG EXPAST', false);
+    }
+
     private function createControlAdmin(): Admin
     {
         return Admin::query()->create([
