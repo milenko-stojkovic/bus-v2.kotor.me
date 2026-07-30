@@ -198,7 +198,7 @@ php artisan event:cache
 | Mejl ne stiže | `QUEUE_CONNECTION`, da li worker radi; `invoice_sent_at` / `email_sent`; `mail:audit-reservation-documents`; log `paid_invoice_email_*` / `free_reservation_email_*` |
 | Fiskal ne prolazi odmah | `post_fiscalization_data`, komanda `post-fiscalization:retry`, `payments.log`, info alert `post_fiscalization_started` na dashboardu; **>24 h** → email `FISCAL ALERT`. Odgođena fiskalizacija u produkciji do sada se **automatski** završavala retry-em (v. **`success-payment-pipeline.md`**) |
 | Callback ne radi | URL banke → `POST /api/payment/callback`, potpis, `APP_URL` |
-| Guest plaćanje uspjelo ali nema rezervacije (`late_success`) | **Očekivano** poslije expire-a. **Ne** raditi SQL. Otvori **`/staff/late-success/{id}`** → Force (ako su termini OK) ili Reject. Alert tip **`guest_late_success`**. Agencije: avans konverzija, ne Force. V. **`payment-states.md`**. |
+| Guest plaćanje uspjelo ali nema rezervacije (`late_success`) | **Očekivano** poslije expire-a. **Ne** raditi SQL. Otvori **`/staff/late-success/{id}`** → Force (ako su termini OK) ili Reject. Alert tip **`guest_late_success`** (automatski se zatvara nakon Force/Reject). Agencije: avans konverzija, ne Force. V. **`payment-states.md`**. |
 
 ---
 

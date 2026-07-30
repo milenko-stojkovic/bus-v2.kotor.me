@@ -102,7 +102,7 @@ Nakon **`applyLateSuccess`**, **`temp_data` ostaje `late_success`** — callback
 | Aspekt | Ponašanje |
 |--------|-----------|
 | **`reservations:assign-late-success`** | **Namjerno no-op stub**. |
-| **Guest** | Alert **`guest_late_success`** + email. Staff **`/staff/late-success`**: **Force** / **Reject** direktno na **`late_success`** (nema SQL u `late_manual_review`). Force → rezervacija + `reserved++` + **`ProcessReservationAfterPaymentJob`** → `processed` / `admin_forced`. |
+| **Guest** | Alert **`guest_late_success`** + email. Staff **`/staff/late-success`**: **Force** / **Reject** direktno na **`late_success`** (nema SQL u `late_manual_review`). Force → rezervacija + `reserved++` + **`ProcessReservationAfterPaymentJob`** → `processed` / `admin_forced`. Poslije Force/Reject alert se **automatski zatvara** (`done`). |
 | **Agencija + avans** | **`late_success` → avans** (feature `advance_payments`) — bez Force UI; v. tabela §4. |
 | **Zašto nema automatske dodjele** | Posle **`expired`** slot/kapacitet može biti promijenjen. |
 

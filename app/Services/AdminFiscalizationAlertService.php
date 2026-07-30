@@ -173,6 +173,12 @@ class AdminFiscalizationAlertService
             'reservation_id' => null,
         ]);
 
+        Log::channel('payments')->info('guest_late_success_detected', [
+            'temp_data_id' => $temp->id,
+            'merchant_transaction_id' => $temp->merchant_transaction_id,
+            'alert_type' => 'guest_late_success',
+        ]);
+
         $this->notify($subject, $body, [
             'alert_type' => 'guest_late_success',
             'merchant_transaction_id' => $temp->merchant_transaction_id,

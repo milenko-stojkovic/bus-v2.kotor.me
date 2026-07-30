@@ -347,4 +347,163 @@ final class GuestLateSuccessManualResolutionTest extends TestCase
             ->assertSee('These slots are no longer available', false)
             ->assertSee('Prisilno kreiraj rezervaciju', false);
     }
+
+    public function test_force_resolves_guest_late_success_alert_and_records_admin_identity(): void
+    {
+        Bus::fake([ProcessReservationAfterPaymentJob::class]);
+        Mail::fake();
+
+        [$drop, $pick] = $this->seedSlots();
+        $vt = $this->seedType();
+        $date = Carbon::now()->addDays(3)->toDateString();
+        $this->seedParking($date, $drop->id, $pick->id);
+
+        $temp = TempData::query()->create([
+            'merchant_transaction_id' => 'mt-guest-late-force-alert',
+            'retry_token' => 'rt-force-alert',
+            'user_id' => null,
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => $date,
+            'user_name' => 'Guest Force Alert',
+            'country' => 'GR',
+            'license_plate' => 'FALRT1',
+            'vehicle_type_id' => $vt->id,
+            'email' => 'force-alert@example.test',
+            'preferred_locale' => 'en',
+            'status' => TempData::STATUS_LATE_SUCCESS,
+            'invoice_amount_snapshot' => '50.00',
+        ]);
+
+        $alert = AdminAlert::query()->create([
+            'type' => 'guest_late_success',
+            'status' => AdminAlert::STATUS_UNREAD,
+            'title' => 'Guest Late SUCCESS after expiration — review required',
+            'message' => 'Historical message must remain after resolve.',
+            'payload_json' => [
+                'staff_url' => '/staff/late-success/'.$temp->id,
+                'email_full_body' => 'full body archive',
+            ],
+            'merchant_transaction_id' => $temp->merchant_transaction_id,
+            'temp_data_id' => $temp->id,
+            'reservation_id' => null,
+        ]);
+        $createdAt = $alert->created_at?->toDateTimeString();
+
+        $staff = $this->actingStaffUser();
+        $this->actingAs($staff)
+            ->post(route('staff.late-success.force', ['id' => $temp->id], false))
+            ->assertRedirect();
+
+        $alert->refresh();
+        $reservation = Reservation::query()->where('merchant_transaction_id', 'mt-guest-late-force-alert')->firstOrFail();
+
+        $this->assertSame(AdminAlert::STATUS_DONE, (string) $alert->status);
+        $this->assertNotNull($alert->resolved_at);
+        $this->assertSame($createdAt, $alert->created_at?->toDateTimeString());
+        $this->assertSame('Guest Late SUCCESS after expiration — review required', (string) $alert->title);
+        $this->assertSame('Historical message must remain after resolve.', (string) $alert->message);
+        $this->assertSame('full body archive', $alert->payload_json['email_full_body'] ?? null);
+        $this->assertSame('force', $alert->payload_json['resolution_action'] ?? null);
+        $this->assertSame((int) $staff->id, (int) ($alert->payload_json['resolved_by_admin_user_id'] ?? 0));
+        $this->assertSame('late-staff@example.test', (string) ($alert->payload_json['resolved_by_admin_email'] ?? ''));
+        $this->assertSame((int) $reservation->id, (int) $alert->reservation_id);
+        $this->assertNull($alert->removed_at);
+        $this->assertSame(1, AdminAlert::query()->where('type', 'guest_late_success')->count());
+    }
+
+    public function test_reject_resolves_guest_late_success_alert_and_records_admin_identity(): void
+    {
+        Mail::fake();
+
+        [$drop, $pick] = $this->seedSlots();
+        $vt = $this->seedType();
+        $date = Carbon::now()->addDays(3)->toDateString();
+
+        $temp = TempData::query()->create([
+            'merchant_transaction_id' => 'mt-guest-late-reject-alert',
+            'retry_token' => 'rt-reject-alert',
+            'user_id' => null,
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => $date,
+            'user_name' => 'Guest Reject Alert',
+            'country' => 'GR',
+            'license_plate' => 'RALRT1',
+            'vehicle_type_id' => $vt->id,
+            'email' => 'reject-alert@example.test',
+            'preferred_locale' => 'en',
+            'status' => TempData::STATUS_LATE_SUCCESS,
+        ]);
+
+        $alert = AdminAlert::query()->create([
+            'type' => 'guest_late_success',
+            'status' => AdminAlert::STATUS_IN_PROGRESS,
+            'title' => 'Guest Late SUCCESS after expiration — review required',
+            'message' => 'Reject keeps history.',
+            'payload_json' => ['staff_url' => '/staff/late-success/'.$temp->id],
+            'merchant_transaction_id' => $temp->merchant_transaction_id,
+            'temp_data_id' => $temp->id,
+        ]);
+        $createdAt = $alert->created_at?->toDateTimeString();
+
+        $staff = $this->actingStaffUser();
+        $this->actingAs($staff)
+            ->post(route('staff.late-success.reject', ['id' => $temp->id], false))
+            ->assertRedirect();
+
+        $alert->refresh();
+        $this->assertSame(TempData::STATUS_LATE_REJECTED, (string) $temp->fresh()->status);
+        $this->assertSame(AdminAlert::STATUS_DONE, (string) $alert->status);
+        $this->assertNotNull($alert->resolved_at);
+        $this->assertSame($createdAt, $alert->created_at?->toDateTimeString());
+        $this->assertSame('Reject keeps history.', (string) $alert->message);
+        $this->assertSame('reject', $alert->payload_json['resolution_action'] ?? null);
+        $this->assertSame((int) $staff->id, (int) ($alert->payload_json['resolved_by_admin_user_id'] ?? 0));
+        $this->assertSame('late-staff@example.test', (string) ($alert->payload_json['resolved_by_admin_email'] ?? ''));
+        $this->assertNull($alert->removed_at);
+        $this->assertSame(0, Reservation::query()->count());
+    }
+
+    public function test_agency_force_is_rejected_server_side_without_resolving_guest_alert_path(): void
+    {
+        Mail::fake();
+        config()->set('features.advance_payments', true);
+
+        [$drop, $pick] = $this->seedSlots();
+        $vt = $this->seedType();
+        $date = Carbon::now()->addDays(3)->toDateString();
+        $agency = User::factory()->create(['email' => 'agency-force-block@example.test']);
+
+        $temp = TempData::query()->create([
+            'merchant_transaction_id' => 'mt-agency-force-block',
+            'retry_token' => 'rt-agency-force',
+            'user_id' => $agency->id,
+            'drop_off_time_slot_id' => $drop->id,
+            'pick_up_time_slot_id' => $pick->id,
+            'reservation_date' => $date,
+            'user_name' => 'Agency Block',
+            'country' => 'ME',
+            'license_plate' => 'AGFORCE1',
+            'vehicle_type_id' => $vt->id,
+            'email' => 'agency-force-block@example.test',
+            'preferred_locale' => 'cg',
+            'status' => TempData::STATUS_LATE_SUCCESS,
+            'invoice_amount_snapshot' => '50.00',
+        ]);
+
+        $this->assertFalse(app(LateSuccessManualResolutionService::class)->exposesManualActions($temp));
+        $this->assertNotNull($temp->user_id);
+
+        $staff = $this->actingStaffUser();
+        $result = app(LateSuccessManualResolutionService::class)->forceCreate($temp->id);
+        $this->assertFalse($result['ok']);
+
+        $this->actingAs($staff)
+            ->post(route('staff.late-success.force', ['id' => $temp->id], false))
+            ->assertRedirect();
+
+        $this->assertSame(TempData::STATUS_LATE_SUCCESS, (string) $temp->fresh()->status);
+        $this->assertSame(0, Reservation::query()->count());
+    }
 }

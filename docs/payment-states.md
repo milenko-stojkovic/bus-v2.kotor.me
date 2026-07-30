@@ -57,6 +57,7 @@ Automatsko kreiranje rezervacije iz **`late_success`** **nije** u upotrebi (slot
 - Staff **`/staff/late-success/{id}`** odmah prikazuje **Force** / **Reject** na statusu **`late_success`** — **nije** potrebna SQL promjena u `late_manual_review`.
 - **Force** (`LateSuccessManualResolutionService`): kreira `paid` rezervaciju, **`reserved++`** na `daily_parking_data` (pending je već skinut pri expire-u), `temp_data` → **`processed`** + `resolution_reason=admin_forced`, dispatch **`ProcessReservationAfterPaymentJob`** (fiskal / PDF / email). Idempotentno po MTID.
 - **Reject**: `late_rejected` + `admin_rejected`; rezervacija se ne kreira.
+- Poslije uspješnog **Force** ili **Reject**, alert **`guest_late_success`** se **automatski zatvara** (`status=done`, `resolved_at`); red se ne briše (istorija + admin identity u `payload_json` / payments log).
 - Kapacitet: informativni banner (dostupno / prekoračenje) — **ne blokira** Force.
 
 **Agencija:** bez Force/Reject UI; ostaje **avans konverzija** (ispod).

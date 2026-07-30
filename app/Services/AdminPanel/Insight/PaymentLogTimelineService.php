@@ -201,6 +201,25 @@ final class PaymentLogTimelineService
     private function extractLabel(string $line): string
     {
         $l = mb_strtolower($line);
+        if (str_contains($l, 'guest_late_success_alert_resolved')) {
+            return 'Guest Late Success resolved';
+        }
+        if (str_contains($l, 'guest_late_success_detected') || str_contains($l, 'guest_late_success')) {
+            return 'Guest Late Success detected';
+        }
+        if (
+            str_contains($l, 'late_success_admin_forced')
+            || str_contains($l, 'admin_forced_late_success')
+            || str_contains($l, 'administrator forced reservation')
+        ) {
+            return 'Administrator forced reservation';
+        }
+        if (
+            str_contains($l, 'late_success_admin_rejected')
+            || str_contains($l, 'administrator rejected late_success')
+        ) {
+            return 'Administrator rejected payment';
+        }
         if (str_contains($l, 'advance_topup')) {
             return 'advance topup';
         }

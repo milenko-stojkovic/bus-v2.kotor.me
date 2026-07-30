@@ -3,10 +3,13 @@
 namespace App\Services\Payment;
 
 use App\Jobs\ProcessReservationAfterPaymentJob;
+use App\Models\AdminAlert;
 use App\Models\Reservation;
 use App\Models\TempData;
+use App\Models\User;
 use App\Services\AdminPanel\Blocking\BlockZoneWorklistService;
 use App\Services\Reservation\GuestPaidLowerCategoryAlertService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -48,7 +51,9 @@ final class LateSuccessManualResolutionService
      */
     public function forceCreate(int $tempDataId): array
     {
-        $result = DB::transaction(function () use ($tempDataId): array {
+        $admin = $this->actingAdminContext();
+
+        $result = DB::transaction(function () use ($tempDataId, $admin): array {
             /** @var TempData|null $temp */
             $temp = TempData::query()->whereKey($tempDataId)->lockForUpdate()->first();
             if (! $temp) {
@@ -77,6 +82,8 @@ final class LateSuccessManualResolutionService
                     );
                 }
 
+                $this->resolveGuestLateSuccessAlerts($temp, 'force', $admin, (int) $existing->id);
+
                 return [
                     'ok' => true,
                     'message' => 'Rezervacija već postoji; nije izvršena akcija.',
@@ -97,6 +104,8 @@ final class LateSuccessManualResolutionService
                 'user_id' => $reservation->user_id,
                 'status' => $reservation->status,
                 'source' => 'admin_forced_late_success',
+                'admin_user_id' => $admin['admin_user_id'],
+                'admin_email' => $admin['admin_email'],
             ]);
 
             app(BlockZoneWorklistService::class)->onReservationCreated($reservation, $temp);
@@ -110,12 +119,14 @@ final class LateSuccessManualResolutionService
                 $temp->merchant_transaction_id,
                 $from,
                 TempData::STATUS_PROCESSED,
-                'Admin forced reservation from late_success'
+                'Administrator forced reservation from late_success'
             );
 
             // Soft-lock pending was already released at expire / late_manual_review —
             // only increment reserved (same end state as normal SUCCESS parking).
             $this->paymentSuccessHandler->incrementReservedForForcedCreate($temp);
+
+            $this->resolveGuestLateSuccessAlerts($temp, 'force', $admin, (int) $reservation->id);
 
             return [
                 'ok' => true,
@@ -136,6 +147,8 @@ final class LateSuccessManualResolutionService
             Log::channel('payments')->info('late_success_admin_forced_pipeline_dispatched', [
                 'reservation_id' => $result['reservation_id'],
                 'temp_data_id' => $tempDataId,
+                'admin_user_id' => $admin['admin_user_id'],
+                'admin_email' => $admin['admin_email'],
             ]);
         }
 
@@ -147,7 +160,9 @@ final class LateSuccessManualResolutionService
      */
     public function reject(int $tempDataId): array
     {
-        return DB::transaction(function () use ($tempDataId): array {
+        $admin = $this->actingAdminContext();
+
+        return DB::transaction(function () use ($tempDataId, $admin): array {
             /** @var TempData|null $temp */
             $temp = TempData::query()->whereKey($tempDataId)->lockForUpdate()->first();
             if (! $temp) {
@@ -171,15 +186,90 @@ final class LateSuccessManualResolutionService
                 $temp->merchant_transaction_id,
                 $from,
                 TempData::STATUS_LATE_REJECTED,
-                'Admin rejected late_success payment'
+                'Administrator rejected late_success payment'
             );
 
             Log::channel('payments')->info('late_success_admin_rejected', [
                 'temp_data_id' => $temp->id,
                 'merchant_transaction_id' => $temp->merchant_transaction_id,
+                'admin_user_id' => $admin['admin_user_id'],
+                'admin_email' => $admin['admin_email'],
             ]);
+
+            $this->resolveGuestLateSuccessAlerts($temp, 'reject', $admin, null);
 
             return ['ok' => true, 'message' => 'Plaćanje je odbijeno (late_rejected). Rezervacija nije kreirana.'];
         });
+    }
+
+    /**
+     * @return array{admin_user_id: int|null, admin_email: string|null}
+     */
+    private function actingAdminContext(): array
+    {
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            return [
+                'admin_user_id' => null,
+                'admin_email' => null,
+            ];
+        }
+
+        return [
+            'admin_user_id' => (int) $user->id,
+            'admin_email' => is_string($user->email) ? $user->email : null,
+        ];
+    }
+
+    /**
+     * Mark matching open guest_late_success alerts done (do not delete).
+     *
+     * @param  array{admin_user_id: int|null, admin_email: string|null}  $admin
+     */
+    private function resolveGuestLateSuccessAlerts(
+        TempData $temp,
+        string $action,
+        array $admin,
+        ?int $reservationId,
+    ): void {
+        $alerts = AdminAlert::query()
+            ->where('type', 'guest_late_success')
+            ->whereNull('removed_at')
+            ->whereNot('status', AdminAlert::STATUS_DONE)
+            ->where(function ($q) use ($temp): void {
+                $q->where('temp_data_id', $temp->id);
+                if (is_string($temp->merchant_transaction_id) && $temp->merchant_transaction_id !== '') {
+                    $q->orWhere('merchant_transaction_id', $temp->merchant_transaction_id);
+                }
+            })
+            ->get();
+
+        if ($alerts->isEmpty()) {
+            return;
+        }
+
+        foreach ($alerts as $alert) {
+            $payload = is_array($alert->payload_json) ? $alert->payload_json : [];
+            $payload['resolution_action'] = $action;
+            $payload['resolved_by_admin_user_id'] = $admin['admin_user_id'];
+            $payload['resolved_by_admin_email'] = $admin['admin_email'];
+
+            $alert->update([
+                'status' => AdminAlert::STATUS_DONE,
+                'resolved_at' => now(),
+                'reservation_id' => $reservationId ?? $alert->reservation_id,
+                'payload_json' => $payload,
+            ]);
+        }
+
+        Log::channel('payments')->info('guest_late_success_alert_resolved', [
+            'temp_data_id' => $temp->id,
+            'merchant_transaction_id' => $temp->merchant_transaction_id,
+            'action' => $action,
+            'reservation_id' => $reservationId,
+            'rows_updated' => $alerts->count(),
+            'admin_user_id' => $admin['admin_user_id'],
+            'admin_email' => $admin['admin_email'],
+        ]);
     }
 }

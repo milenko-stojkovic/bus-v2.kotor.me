@@ -162,6 +162,34 @@ class PaymentLogTimelineServiceTest extends TestCase
         }
     }
 
+    public function test_late_success_timeline_labels_are_meaningful(): void
+    {
+        Carbon::setTestNow('2026-07-30 12:00:00');
+
+        $mtid = 'mt-timeline-late-success-labels';
+        $this->writePaymentLog('2026-07-30', implode("\n", [
+            '[2026-07-30 10:00:00] local.INFO: guest_late_success_detected {"merchant_transaction_id":"'.$mtid.'"}',
+            '[2026-07-30 10:05:00] local.INFO: payment_reservation_created {"merchant_transaction_id":"'.$mtid.'","source":"admin_forced_late_success"}',
+            '[2026-07-30 10:05:01] local.INFO: late_success_admin_forced_pipeline_dispatched {"merchant_transaction_id":"'.$mtid.'"}',
+            '[2026-07-30 10:05:02] local.INFO: guest_late_success_alert_resolved {"merchant_transaction_id":"'.$mtid.'","action":"force"}',
+            '[2026-07-30 11:00:00] local.INFO: late_success_admin_rejected {"merchant_transaction_id":"'.$mtid.'"}',
+        ])."\n");
+
+        $result = $this->service->timelineForMtid($mtid);
+
+        $this->assertTrue($result['available']);
+        $this->assertSame(
+            [
+                'Guest Late Success detected',
+                'Administrator forced reservation',
+                'Administrator forced reservation',
+                'Guest Late Success resolved',
+                'Administrator rejected payment',
+            ],
+            array_column($result['events'], 'label'),
+        );
+    }
+
     private function writePaymentLog(string $date, string $content, bool $append = false): void
     {
         $logDir = storage_path('logs');
