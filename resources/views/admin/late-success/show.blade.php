@@ -33,6 +33,7 @@
                     <div><dt class="font-semibold text-gray-700">license_plate</dt><dd>{{ $row->license_plate }}</dd></div>
                     <div><dt class="font-semibold text-gray-700">vehicle_type_id</dt><dd>{{ $row->vehicle_type_id }}</dd></div>
                     <div><dt class="font-semibold text-gray-700">price</dt><dd>{{ $row->vehicleType?->price ?? '-' }}</dd></div>
+                    <div><dt class="font-semibold text-gray-700">user_id</dt><dd>{{ $row->user_id ?? 'guest' }}</dd></div>
                     <div><dt class="font-semibold text-gray-700">callback_error_code</dt><dd>{{ $row->callback_error_code ?? '-' }}</dd></div>
                     <div><dt class="font-semibold text-gray-700">callback_error_reason</dt><dd>{{ $row->callback_error_reason ?? '-' }}</dd></div>
                 </dl>
@@ -43,7 +44,27 @@
                 <pre class="text-xs bg-red-50 border border-red-100 rounded p-3 overflow-x-auto">{{ json_encode($row->raw_callback_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}' }}</pre>
             </div>
 
-            @if($row->status === \App\Models\TempData::STATUS_LATE_MANUAL_REVIEW)
+            @if (! empty($canAct))
+                @if (is_array($capacity ?? null))
+                    <div class="rounded-md p-4 text-sm border {{ ($capacity['available'] ?? false) ? 'bg-green-50 border-green-200 text-green-900' : 'bg-amber-50 border-amber-200 text-amber-950' }}">
+                        <p class="font-medium">{{ $capacity['message'] ?? '' }}</p>
+                        @if (! empty($capacity['slots']))
+                            <ul class="mt-2 list-disc list-inside text-xs space-y-1">
+                                @foreach ($capacity['slots'] as $slot)
+                                    <li>
+                                        {{ $slot['label'] ?? '' }}:
+                                        available {{ $slot['available'] ?? 0 }}
+                                        (capacity {{ $slot['capacity'] ?? 0 }},
+                                        reserved {{ $slot['reserved'] ?? 0 }},
+                                        pending {{ $slot['pending'] ?? 0 }})
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        <p class="mt-2 text-xs opacity-80">Force is not blocked automatically — administrator keeps the final decision.</p>
+                    </div>
+                @endif
+
                 <div class="bg-white shadow-sm sm:rounded-lg p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-3">Akcije</h3>
                     <div class="flex flex-wrap gap-2">
@@ -55,14 +76,18 @@
                         </form>
                         <form method="post" action="{{ route('staff.late-success.reject', $row->id) }}">
                             @csrf
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700">
-                                Odbij
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-white border border-red-300 rounded-md font-semibold text-xs text-red-800 uppercase tracking-widest hover:bg-red-50">
+                                Odbij plaćanje
                             </button>
                         </form>
                     </div>
                     <p class="mt-3 text-xs text-gray-500">
-                        Admin override koristi snapshot iz temp_data kao izvor istine i postavlja resolution_reason radi audita.
+                        Force kreira rezervaciju, ažurira kapacitet (reserved), pokreće fiskalizaciju / PDF / email — bez SQL promjene statusa. Reject ostavlja bez rezervacije (`late_rejected`).
                     </p>
+                </div>
+            @elseif ($row->status === \App\Models\TempData::STATUS_LATE_SUCCESS && $row->user_id !== null)
+                <div class="rounded-md bg-red-50 border border-red-100 p-4 text-sm text-red-900">
+                    Agency late_success is handled by advance conversion (not Force/Reject).
                 </div>
             @endif
         </div>

@@ -50,6 +50,10 @@ class AdminAlert extends Model
      */
     public function actionUrl(): ?string
     {
+        if ($this->type === 'guest_late_success' && $this->temp_data_id) {
+            return route('staff.late-success.show', ['id' => $this->temp_data_id], false);
+        }
+
         if ($this->type !== 'vehicle_category_change_request') {
             return null;
         }

@@ -104,6 +104,83 @@ class AdminFiscalizationAlertService
     }
 
     /**
+     * Guest payment SUCCESS after pending expire → late_success (no reservation). Staff must Force or Reject.
+     *
+     * @param  array<string, mixed>  $incomingRawPayload
+     */
+    public function notifyGuestLateSuccess(TempData $temp, array $incomingRawPayload = []): void
+    {
+        if ($temp->user_id !== null) {
+            return;
+        }
+
+        $subject = '[Kotor Bus] Late SUCCESS: guest payment after expiration — review required';
+
+        $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT;
+        $storedPayload = $temp->raw_callback_payload;
+        $storedJson = json_encode(is_array($storedPayload) ? $storedPayload : [], $jsonFlags);
+        $incomingJson = json_encode($incomingRawPayload, $jsonFlags);
+
+        $staffUrl = url('/staff/late-success/'.$temp->id);
+
+        $lines = [
+            'Incident: Bank SUCCESS arrived after this checkout pending had already expired (temp_data → late_success).',
+            'Payment succeeded, but a reservation was NOT created automatically (slot lock was released at expire).',
+            'Administrator review is required: Force reservation or Reject at '.$staffUrl,
+            '',
+            '--- temp_data (investigation) ---',
+            'merchant_transaction_id: '.($temp->merchant_transaction_id ?? '—'),
+            'temp_data.id: '.$temp->id,
+            'status: '.($temp->status ?? '—'),
+            'user_id: — (guest)',
+            'user_name: '.($temp->user_name ?? '—'),
+            'email: '.($temp->email ?? '—'),
+            'country: '.($temp->country ?? '—'),
+            'license_plate: '.($temp->license_plate ?? '—'),
+            'vehicle_type_id: '.($temp->vehicle_type_id !== null ? (string) $temp->vehicle_type_id : '—'),
+            'reservation_date: '.($temp->reservation_date?->format('Y-m-d') ?? '—'),
+            'drop_off_time_slot_id: '.($temp->drop_off_time_slot_id !== null ? (string) $temp->drop_off_time_slot_id : '—'),
+            'pick_up_time_slot_id: '.($temp->pick_up_time_slot_id !== null ? (string) $temp->pick_up_time_slot_id : '—'),
+            'retry_token: '.($temp->retry_token ?? '—'),
+            'created_at: '.($temp->created_at?->toIso8601String() ?? '—'),
+            'updated_at: '.($temp->updated_at?->toIso8601String() ?? '—'),
+            '',
+            'raw_callback_payload (stored on temp_data):',
+            $storedJson !== false ? $storedJson : '{}',
+            '',
+            'incoming callback/inquiry raw payload:',
+            $incomingJson !== false ? $incomingJson : '{}',
+        ];
+        $body = implode("\n", $lines);
+
+        AdminAlert::query()->create([
+            'type' => 'guest_late_success',
+            'status' => AdminAlert::STATUS_UNREAD,
+            'title' => 'Guest Late SUCCESS after expiration — review required',
+            'message' => sprintf(
+                'Guest payment succeeded after expire (temp_data #%d, MTID %s). Reservation was NOT created. Open Staff Late Success to Force or Reject.',
+                $temp->id,
+                $temp->merchant_transaction_id ?? '—'
+            ),
+            'payload_json' => [
+                'email_full_body' => $body,
+                'staff_url' => $staffUrl,
+                'incoming_raw_payload' => $incomingRawPayload,
+                'stored_raw_callback_payload' => is_array($storedPayload) ? $storedPayload : null,
+            ],
+            'merchant_transaction_id' => $temp->merchant_transaction_id,
+            'temp_data_id' => $temp->id,
+            'reservation_id' => null,
+        ]);
+
+        $this->notify($subject, $body, [
+            'alert_type' => 'guest_late_success',
+            'merchant_transaction_id' => $temp->merchant_transaction_id,
+            'temp_data_id' => $temp->id,
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>  $context
      */
     public function notify(string $subject, string $body, array $context = []): void

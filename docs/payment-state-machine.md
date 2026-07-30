@@ -101,10 +101,12 @@ Nakon **`applyLateSuccess`**, **`temp_data` ostaje `late_success`** — callback
 
 | Aspekt | Ponašanje |
 |--------|-----------|
-| **`reservations:assign-late-success`** | **Namjerno no-op stub** (`AssignLateSuccessReservations.php`). Nije otvorena implementacija automatske dodjele; nije u `project-todo.md`. |
-| **Staff workflow** | **`/staff/late-success`** — `LateSuccessController` (middleware `admin` na operativnom `User` nalogu): `GET` lista, `GET /{id}` detalj, `POST /{id}/force` (ručno kreiranje rezervacije), `POST /{id}/reject` → `late_rejected`. |
-| **Zašto nema automatske dodjele** | Posle **`expired`** slot/kapacitet može biti promijenjen; automatsko kreiranje rezervacije iz `late_success` rizikuje pogrešan upis u **`daily_parking_data`** / konflikt termina. |
-| **Agencija + avans** | Iznuzetak unutar callback grane: **`late_success` → avans** (feature `advance_payments`) — v. tabela §4; i dalje **bez** rezervacije. |
+| **`reservations:assign-late-success`** | **Namjerno no-op stub**. |
+| **Guest** | Alert **`guest_late_success`** + email. Staff **`/staff/late-success`**: **Force** / **Reject** direktno na **`late_success`** (nema SQL u `late_manual_review`). Force → rezervacija + `reserved++` + **`ProcessReservationAfterPaymentJob`** → `processed` / `admin_forced`. |
+| **Agencija + avans** | **`late_success` → avans** (feature `advance_payments`) — bez Force UI; v. tabela §4. |
+| **Zašto nema automatske dodjele** | Posle **`expired`** slot/kapacitet može biti promijenjen. |
+
+**Poslednje usklađivanje:** 2026-07-30 (guest late_success first-class staff workflow).
 
 ---
 

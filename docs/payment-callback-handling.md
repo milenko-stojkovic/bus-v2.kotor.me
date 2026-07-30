@@ -10,7 +10,10 @@ Pravila za validaciju callback-a, idempotentnost, CANCEL/ERROR, notifikacije i r
 
 **Isti pipeline:** **`PaymentCallbackJob`** se može dispatchovati i kada **HTTP callback ne stigne** — cron **`payment:check-pending-inquiry`** (Bankart status inquiry) šalje job sa ekvivalentnim **`status`** poljem i `raw` iz odgovora banke (`source: status_inquiry`). Idempotentnost i CANCEL/ERROR pravila u jobu važe i za taj ulaz. V. **`payment-architecture.md`**, **`payment-states.md`**, **`cron-commands.md`**.
 
-**Kasni SUCCESS:** ako je **`temp_data.status === expired`**, job poziva **`late_success`** (bez nove rezervacije). Ako je **`canceled`**, **`late_success` se ne primenjuje** — log **`payment_success_after_canceled_ignored`**, status ostaje **`canceled`**, i šalje se **email administratoru** (**`AdminFiscalizationAlertService::notifyPaymentSuccessAfterCanceled`**) sa snapshot-om `temp_data` i ulaznim payload-om; rešavanje je **van aplikacije**. Primalac: **`payment.operations_alert_email`** (env **`PAYMENT_OPERATIONS_ALERT_EMAIL`**, podrazumevano `bus@kotor.me`).
+**Kasni SUCCESS:** ako je **`temp_data.status === expired`**, job poziva **`late_success`** (bez nove rezervacije).  
+- **Guest:** `admin_alerts` tip **`guest_late_success`** + email; staff rješava na **`/staff/late-success`** (Force/Reject direktno na `late_success` — **bez SQL**).  
+- **Agencija + advance ON:** konverzija u avans (`converted_to_advance`) — bez rezervacije.  
+Ako je **`canceled`**, **`late_success` se ne primenjuje** — log **`payment_success_after_canceled_ignored`**, status ostaje **`canceled`**, i šalje se **email administratoru** (**`AdminFiscalizationAlertService::notifyPaymentSuccessAfterCanceled`**) sa snapshot-om `temp_data` i ulaznim payload-om; rešavanje je **van aplikacije**. Primalac: **`payment.operations_alert_email`** (env **`PAYMENT_OPERATIONS_ALERT_EMAIL`**, podrazumevano `bus@kotor.me`).
 
 ---
 

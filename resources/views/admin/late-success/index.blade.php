@@ -34,7 +34,7 @@
                             <label for="resolution_reason" class="block text-sm font-medium text-gray-700 mb-1">Razlog rezolucije</label>
                             <select id="resolution_reason" name="resolution_reason" class="block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
                                 <option value="">Sve</option>
-                                @foreach(['admin_forced', 'admin_rejected'] as $reason)
+                                @foreach(['admin_forced', 'admin_rejected', 'converted_to_advance', 'duplicate_termini_plate_slot'] as $reason)
                                     <option value="{{ $reason }}" @selected($filters['resolution_reason'] === $reason)>{{ $reason }}</option>
                                 @endforeach
                             </select>

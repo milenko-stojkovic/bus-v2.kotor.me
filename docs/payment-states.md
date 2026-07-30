@@ -50,9 +50,20 @@ Stanja plaćanja i fiskalizacije. Rezervacija se **uvek** kreira na **success**;
 
 ### Ručna obrada (`late_success` → staff)
 
-Automatsko kreiranje rezervacije iz **`late_success`** **nije** u upotrebi. Komanda **`reservations:assign-late-success`** je **namjerno no-op stub** — v. `AssignLateSuccessReservations.php`, `cron-commands.md` §3.
+Automatsko kreiranje rezervacije iz **`late_success`** **nije** u upotrebi (slot može biti zauzet poslije expire-a). Komanda **`reservations:assign-late-success`** je **namjerno no-op stub**.
 
-Operativni tok: **`/staff/late-success`** (`LateSuccessController`) — pregled redova, **`POST …/force`** (ručno kreiranje rezervacije kad staff potvrdi), **`POST …/reject`** → `late_rejected`. Razlog: posle **`expired`** slot/kapacitet može biti zauzet drugom rezervacijom; automatska dodjela rizikuje pogrešan upis. Canonical: **`payment-state-machine.md`** §4b.
+**Guest (`user_id` null):**
+- Pri prelazu u **`late_success`**: **`admin_alerts`** tip **`guest_late_success`** + email (**`AdminFiscalizationAlertService::notifyGuestLateSuccess`**).
+- Staff **`/staff/late-success/{id}`** odmah prikazuje **Force** / **Reject** na statusu **`late_success`** — **nije** potrebna SQL promjena u `late_manual_review`.
+- **Force** (`LateSuccessManualResolutionService`): kreira `paid` rezervaciju, **`reserved++`** na `daily_parking_data` (pending je već skinut pri expire-u), `temp_data` → **`processed`** + `resolution_reason=admin_forced`, dispatch **`ProcessReservationAfterPaymentJob`** (fiskal / PDF / email). Idempotentno po MTID.
+- **Reject**: `late_rejected` + `admin_rejected`; rezervacija se ne kreira.
+- Kapacitet: informativni banner (dostupno / prekoračenje) — **ne blokira** Force.
+
+**Agencija:** bez Force/Reject UI; ostaje **avans konverzija** (ispod).
+
+**`late_manual_review`:** i dalje postoji (npr. duplicate Termini plate/slot na SUCCESS dok je lock još validan); Force/Reject rade i tamo.
+
+Operativni tok: **`/staff/late-success`**. Canonical: **`payment-state-machine.md`** §4b.
 
 ### Agency late_success → avans (feature-flag)
 

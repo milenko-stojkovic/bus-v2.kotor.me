@@ -7,6 +7,7 @@ use App\Jobs\SendFreeReservationConfirmationJob;
 use App\Models\DailyParkingData;
 use App\Models\Reservation;
 use App\Models\TempData;
+use App\Services\AdminFiscalizationAlertService;
 use App\Services\AdminPanel\Blocking\BlockZoneWorklistService;
 use App\Services\Reservation\DuplicateReservationAttemptService;
 use App\Services\Reservation\GuestPaidLowerCategoryAlertService;
@@ -137,7 +138,9 @@ class PaymentSuccessHandler
 
     private function transitionToLateSuccess(TempData $temp, bool $releaseLock, array $rawPayload): void
     {
-        DB::transaction(function () use ($temp, $releaseLock, $rawPayload): void {
+        $transitionedGuest = null;
+
+        DB::transaction(function () use ($temp, $releaseLock, $rawPayload, &$transitionedGuest): void {
             $temp = TempData::where('merchant_transaction_id', $temp->merchant_transaction_id)->lockForUpdate()->first();
             if (! $temp || $temp->status === TempData::STATUS_LATE_SUCCESS) {
                 return;
@@ -151,13 +154,58 @@ class PaymentSuccessHandler
             if ($releaseLock) {
                 $this->doReleaseSoftLock($temp, false);
             }
+
+            // Guest only: agency late_success continues to advance conversion (unchanged).
+            if ($temp->user_id === null) {
+                $transitionedGuest = $temp->fresh();
+            }
         });
+
+        if ($transitionedGuest instanceof TempData) {
+            app(AdminFiscalizationAlertService::class)->notifyGuestLateSuccess($transitionedGuest, $rawPayload);
+        }
     }
 
     /** Javno za PaymentCallbackJob handleCanceled (oslobađanje lock-a bez increment reserved). */
     public function releaseSoftLock(TempData $temp, bool $incrementReserved): void
     {
         $this->doReleaseSoftLock($temp, $incrementReserved);
+    }
+
+    /**
+     * After expire / late_manual_review, pending was already released.
+     * Force create must only increment reserved (same end-state as normal SUCCESS).
+     */
+    public function incrementReservedForForcedCreate(TempData $temp): void
+    {
+        if ($temp->isDailyTicket()) {
+            return;
+        }
+
+        $slotIds = array_values(array_unique(array_filter([
+            $temp->drop_off_time_slot_id,
+            $temp->pick_up_time_slot_id,
+        ], fn ($id) => $id !== null)));
+
+        if ($slotIds === []) {
+            return;
+        }
+
+        $rows = DailyParkingData::query()
+            ->where('date', $temp->reservation_date)
+            ->whereIn('time_slot_id', $slotIds)
+            ->get();
+
+        foreach ($rows as $daily) {
+            $daily->increment('reserved');
+        }
+
+        Log::channel('payments')->info('late_success_force_reserved_incremented', [
+            'merchant_transaction_id' => $temp->merchant_transaction_id,
+            'temp_data_id' => $temp->id,
+            'reservation_date' => $temp->reservation_date?->toDateString(),
+            'time_slot_ids' => $slotIds,
+        ]);
     }
 
     private function doReleaseSoftLock(TempData $temp, bool $incrementReserved): void
@@ -186,6 +234,11 @@ class PaymentSuccessHandler
                 $daily->increment('reserved');
             }
         }
+    }
+
+    public function createReservationFromTempDataPublic(TempData $temp, string $status = 'paid'): Reservation
+    {
+        return $this->createReservationFromTempData($temp, $status);
     }
 
     private function createReservationFromTempData(TempData $temp, string $status = 'paid'): Reservation

@@ -11,7 +11,7 @@ Specifikacija admin funkcionalnosti. Modeli: Reservation, TempData, DailyParking
 
 **Control panel** (šalter / dolasci): guard **`control`**, **`/control`** — v. **[control-panel.md](./control-panel.md)**. **`admin_access`** i **`control_access`** su međusobno isključivi; isti red u `admins` nikad ne drži oba = 1 (v. migracija + `Admin::booted`).
 
-**Tabela `admin_alerts`:** operativna lista upozorenja (ne inbox); incident **SUCCESS posle `canceled`** upisuje se u **`admin_alerts`** preko **`AdminFiscalizationAlertService::notifyPaymentSuccessAfterCanceled`** (uz postojeći email).
+**Tabela `admin_alerts`:** operativna lista upozorenja (ne inbox); incident **SUCCESS posle `canceled`** upisuje se u **`admin_alerts`** preko **`AdminFiscalizationAlertService::notifyPaymentSuccessAfterCanceled`** (uz postojeći email); **guest Late SUCCESS** poslije expire-a → tip **`guest_late_success`** (+ email) sa linkom na **`/staff/late-success/{id}`**.
 
 ### Sistemska arhiva — neuspjeli fajlovi (`GET /admin/sistemska-arhiva/neuspjeli`)
 

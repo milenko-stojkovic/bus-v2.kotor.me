@@ -126,7 +126,12 @@ final class LateSuccessConvertedToAdvanceTest extends TestCase
 
         $this->assertSame(0, AgencyAdvanceTopup::query()->count());
         $this->assertSame(0, AgencyAdvanceTransaction::query()->count());
-        Mail::assertNothingSent();
+        $this->assertNotNull(
+            \App\Models\AdminAlert::query()
+                ->where('type', 'guest_late_success')
+                ->where('merchant_transaction_id', 'mt-late-guest')
+                ->first()
+        );
     }
 
     public function test_c_feature_flag_off_does_not_convert(): void

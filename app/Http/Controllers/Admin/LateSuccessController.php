@@ -3,13 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\ProcessReservationAfterPaymentJob;
-use App\Models\Reservation;
 use App\Models\TempData;
-use App\Support\ReservationInvoiceAmount;
+use App\Services\Payment\LateSuccessCapacityAssessor;
+use App\Services\Payment\LateSuccessManualResolutionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class LateSuccessController extends Controller
@@ -45,101 +43,39 @@ class LateSuccessController extends Controller
         ]);
     }
 
-    public function show(int $id): View
-    {
+    public function show(
+        int $id,
+        LateSuccessManualResolutionService $resolution,
+        LateSuccessCapacityAssessor $capacityAssessor,
+    ): View {
         $row = TempData::query()
             ->with(['vehicleType.translations', 'dropOffTimeSlot', 'pickUpTimeSlot', 'user'])
             ->findOrFail($id);
 
-        return view('admin.late-success.show', ['row' => $row]);
+        $canAct = $resolution->exposesManualActions($row);
+        $capacity = $canAct ? $capacityAssessor->assess($row) : null;
+
+        return view('admin.late-success.show', [
+            'row' => $row,
+            'canAct' => $canAct,
+            'capacity' => $capacity,
+        ]);
     }
 
-    public function forceCreate(int $id): RedirectResponse
+    public function forceCreate(int $id, LateSuccessManualResolutionService $resolution): RedirectResponse
     {
-        $result = DB::transaction(function () use ($id): array {
-            $temp = TempData::query()->whereKey($id)->lockForUpdate()->first();
-            if (! $temp) {
-                return ['ok' => false, 'message' => 'Zapis nije pronađen.'];
-            }
-            if ($temp->status !== TempData::STATUS_LATE_MANUAL_REVIEW) {
-                return ['ok' => false, 'message' => 'Status mora biti late_manual_review.'];
-            }
-
-            $existing = Reservation::where('merchant_transaction_id', $temp->merchant_transaction_id)->first();
-            if ($existing) {
-                return [
-                    'ok' => true,
-                    'message' => 'Rezervacija već postoji; nije izvršena akcija.',
-                    'reservation_id' => $existing->id,
-                    'created_now' => false,
-                ];
-            }
-
-            $reservation = Reservation::create([
-                'user_id' => $temp->user_id,
-                'vehicle_id' => null,
-                'merchant_transaction_id' => $temp->merchant_transaction_id,
-                'drop_off_time_slot_id' => $temp->drop_off_time_slot_id,
-                'pick_up_time_slot_id' => $temp->pick_up_time_slot_id,
-                'reservation_date' => $temp->reservation_date,
-                'user_name' => $temp->user_name,
-                'country' => $temp->country,
-                'license_plate' => $temp->license_plate,
-                'vehicle_type_id' => $temp->vehicle_type_id,
-                'email' => $temp->email,
-                'preferred_locale' => $temp->preferred_locale,
-                'status' => 'paid',
-                'invoice_amount' => ReservationInvoiceAmount::snapshotForNewReservation('paid', $temp->vehicle_type_id),
-                'email_sent' => \App\Models\Reservation::EMAIL_NOT_SENT,
-                'created_by_admin' => false,
-            ]);
-
-            $from = $temp->status;
-            $temp->update([
-                'status' => TempData::STATUS_PROCESSED,
-                'resolution_reason' => 'admin_forced',
-            ]);
-            TempData::logStateTransition($temp->merchant_transaction_id, $from, TempData::STATUS_PROCESSED, 'Admin manual review forced create');
-
-            return [
-                'ok' => true,
-                'message' => 'Rezervacija je kreirana admin override-om.',
-                'reservation_id' => $reservation->id,
-                'created_now' => true,
-            ];
-        });
+        $result = $resolution->forceCreate($id);
 
         if (! $result['ok']) {
             return redirect()->back()->with('error', $result['message']);
         }
 
-        if (($result['created_now'] ?? false) && ! empty($result['reservation_id'])) {
-            ProcessReservationAfterPaymentJob::dispatch((int) $result['reservation_id']);
-        }
-
         return redirect()->back()->with('message', $result['message']);
     }
 
-    public function reject(int $id): RedirectResponse
+    public function reject(int $id, LateSuccessManualResolutionService $resolution): RedirectResponse
     {
-        $result = DB::transaction(function () use ($id): array {
-            $temp = TempData::query()->whereKey($id)->lockForUpdate()->first();
-            if (! $temp) {
-                return ['ok' => false, 'message' => 'Zapis nije pronađen.'];
-            }
-            if ($temp->status !== TempData::STATUS_LATE_MANUAL_REVIEW) {
-                return ['ok' => false, 'message' => 'Status mora biti late_manual_review.'];
-            }
-
-            $from = $temp->status;
-            $temp->update([
-                'status' => TempData::STATUS_LATE_REJECTED,
-                'resolution_reason' => 'admin_rejected',
-            ]);
-            TempData::logStateTransition($temp->merchant_transaction_id, $from, TempData::STATUS_LATE_REJECTED, 'Admin manual review rejected');
-
-            return ['ok' => true, 'message' => 'Late manual review zapis je odbijen.'];
-        });
+        $result = $resolution->reject($id);
 
         if (! $result['ok']) {
             return redirect()->back()->with('error', $result['message']);

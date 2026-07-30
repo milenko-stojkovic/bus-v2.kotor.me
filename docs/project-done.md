@@ -1,9 +1,10 @@
 ﻿# Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-07-15  
+**Poslednje ažuriranje:** 2026-07-30  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
+- **2026-07-30** — **Guest Late Success — first-class staff workflow:** Force/Reject direktno na **`late_success`** (bez SQL u `late_manual_review`); Force = rezervacija + `reserved++` + **`ProcessReservationAfterPaymentJob`**; alert **`guest_late_success`** + email; agencija avans netaknut. Servisi: **`LateSuccessManualResolutionService`**, **`LateSuccessCapacityAssessor`**. Testovi: **`GuestLateSuccessManualResolutionTest`**. Docs: **`payment-states.md`**, **`payment-callback-handling.md`**, **`payment-state-machine.md`**, **`production-runbook.md`**.
 - **2026-07-15** — **Control Pretraga — Reset filter:** dugme pored **Pretraži**, vidljivo kad postoji kriterijum; link na čist `/control` (bez query) — briše polja/rezultate. Testovi: **`ControlPanelTest`**. Docs: **`control-panel.md`**.
 - **2026-07-15** — **Control Pretraga — prošli datumi bez filtera datuma:** uklonjen implicitni cut-off `reservation_date >= danas`; bez datuma pretražuje **sve** datume (sort `reservation_date` DESC, `id` DESC); sa datumom i dalje striktan filter. Testovi: **`ControlPanelTest`**. Docs: **`control-panel.md`**.
 - **2026-07-06** — **Control — konvencija registarske tablice:** `<x-license-plate-input>` na **Kontrola** (pretraga Termini) i **Kontrola dnevne naknade**; server normalizacija u `ControlReservationSearchRequest` + SQL bez razmaka (kao admin pretraga). Testovi: **`ControlPanelTest`**, **`DailyFeeControlTest`**. Docs: **`control-panel.md`**, **`project-conventions.md`** §1.1.
