@@ -1,9 +1,10 @@
 ﻿# Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-07-30  
+**Poslednje ažuriranje:** 2026-09-01  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
+- **2026-09-01** — **Post-fiskal ručni retry (Plesk):** `post-fiscalization:retry` proširen sa **`--force`** + **`--reservation`** / **`--id`** za ciljani retry nakon što je spoljašnji fiskalni problem riješen; zakazani cron bez opcija **nepromijenjen** (`next_retry_at <= now()`). Testovi: **`PostFiscalizationRetryCommandTest`**. Docs: **`cron-commands.md`**, **`production-runbook.md`**.
 - **2026-07-30** — **Guest Late Success ops polish:** Force/Reject automatski zatvaraju alert **`guest_late_success`** (`done` + `resolved_at`, bez brisanja); audit loguje `admin_user_id` / `admin_email`; Insight timeline labele za detected / forced / rejected / resolved. Agencija / payment state machine netaknuti.
 - **2026-07-30** — **Guest Late Success — first-class staff workflow:** Force/Reject direktno na **`late_success`** (bez SQL u `late_manual_review`); Force = rezervacija + `reserved++` + **`ProcessReservationAfterPaymentJob`**; alert **`guest_late_success`** + email; agencija avans netaknut. Servisi: **`LateSuccessManualResolutionService`**, **`LateSuccessCapacityAssessor`**. Testovi: **`GuestLateSuccessManualResolutionTest`**. Docs: **`payment-states.md`**, **`payment-callback-handling.md`**, **`payment-state-machine.md`**, **`production-runbook.md`**.
 - **2026-07-15** — **Control Pretraga — Reset filter:** dugme pored **Pretraži**, vidljivo kad postoji kriterijum; link na čist `/control` (bez query) — briše polja/rezultate. Testovi: **`ControlPanelTest`**. Docs: **`control-panel.md`**.

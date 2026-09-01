@@ -31,6 +31,18 @@ Puna tabela rasporeda: **`docs/scheduled-tasks-overview.md`**.
 
 **Opis:** Retry fiskalizacije za rezervacije iz **post_fiscalization_data** gde je **next_retry_at <= now**. Poziva fiskalni API; pri uspehu ažurira reservation fiscal_*, briše slog iz post_fiscalization_data, **razrješava info admin alert** `post_fiscalization_started` i šalje kupcu **novi fiskalni PDF** i email. Pri neuspehu poveća attempts i postavi next_retry_at.
 
+**Ručni retry (Plesk / Artisan, nakon što je spoljašnji fiskalni problem riješen):**
+
+```bash
+php artisan post-fiscalization:retry --reservation=31765 --force
+php artisan post-fiscalization:retry --id=95 --force
+```
+
+- **`--force`** zaobilazi **`next_retry_at` samo za taj jedan pokret** (ne bulk — obavezno **`--reservation`** ili **`--id`**).
+- Bez **`--force`**, **`--reservation`** / **`--id`** se odbijaju (zakazani cron i dalje koristi samo **`next_retry_at <= now()`**).
+- Nakon neuspjeha: **`retryable=true`** → novi **`next_retry_at`** (backoff); **`retryable=false`** → **`next_retry_at = NULL`** (kao i automatski retry).
+- Log: **`source=manual_artisan_force`** u `payments` kanalu.
+
 **Admin obaveštenja (povezano, ne duplo):**
 - **Ulazak u post-fiskal** (u **`ProcessReservationAfterPaymentJob`**, ne u ovoj komandi): odmah **`admin_alerts`** tip **`post_fiscalization_started`**, severity **info** — dedupe po rezervaciji; v. **`PostFiscalizationAdminAlertService`**, **`admin-panel.md`**.
 - **>24 h nerešeno** (u ovoj komandi): email **`AdminFiscalizationAlertService::notify`** (`FISCAL ALERT: retry failing > 1 day` / `unresolved > 1 day`), **`admin_notified_at`** na slogu — postojeće ponašanje, bez info alerta kao zamjene.
