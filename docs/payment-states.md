@@ -31,6 +31,8 @@ Stanja plaćanja i fiskalizacije. Rezervacija se **uvek** kreira na **success**;
   - upis u **post_fiscalization_data** (reservation_id, error, attempts, next_retry_at);
   - **račun se i dalje generiše** – nefiskalni PDF sa napomenom + email (ne blokira se invoice).
 - Retry fiskalizacije (cron post-fiscalization:retry) pri uspehu ažurira reservation i šalje fiskalni PDF.
+- **Scheduled retry** (`next_retry_at <= now()`): privremene/retryable greške — cron **`post-fiscalization:retry`**.
+- **Recovery retry** (async **`PostFiscalizationRecoveryJob`**): ranije **non-retryable** nerešeni redovi (`next_retry_at = NULL`) — mali batch (default 5) nakon što **nova** fiskalizacija uspije; globalni cooldown 15 min. Ručni **`--force`** i dalje za ciljani retry.
 - **Admin:** pri **prvom** ulasku u post-fiskal — info alert **`post_fiscalization_started`** (`admin_alerts`); email operateru na inicijalni pad samo kad **`notify_admin`**; eskalacija emailom **>24 h** nerešeno. Detalji: **`success-payment-pipeline.md`**, **`admin-panel.md`**.
 
 ---

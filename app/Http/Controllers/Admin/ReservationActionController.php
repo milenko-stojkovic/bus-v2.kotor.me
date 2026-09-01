@@ -7,6 +7,7 @@ use App\Jobs\SendInvoiceEmailJob;
 use App\Models\PostFiscalizationData;
 use App\Models\Reservation;
 use App\Services\FiscalizationService;
+use App\Services\Payment\PostFiscalizationRecoveryDispatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -41,6 +42,7 @@ class ReservationActionController extends Controller
         if (isset($result['fiscal_jir'])) {
             $post->applyFiscalDataAndDelete($result);
             SendInvoiceEmailJob::dispatch($reservation->id, true);
+            app(PostFiscalizationRecoveryDispatcher::class)->signalFiscalChannelHealthy($reservation->id);
 
             return redirect()->back()->with('message', 'Fiskalizacija uspješna, fiskalni račun i email su poslati.');
         }

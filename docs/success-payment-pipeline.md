@@ -90,7 +90,9 @@ Napomena (PDF + email robustnost):
 
 Kad **`ProcessReservationAfterPaymentJob`** ne dobije JIR (timeout, provider down, greška API-ja, ili **`failed()`** marker **`job_failed_before_fiscal_completion`**), upisuje se nerešen slog u **`post_fiscalization_data`**. Kupac odmah dobija **nefiskalni** PDF + email; rezervacija ostaje **`paid`**.
 
-**Automatski retry:** scheduler **`post-fiscalization:retry`** (svakih **10 min**) — **`RetryPostFiscalization`**: redovi sa **`next_retry_at <= now()`**, poziv **`FiscalizationService::tryFiscalize`**. Uspeh → **`applyFiscalDataAndDelete`** (upis **`fiscal_*`**, brisanje sloga, dispatch **fiskalnog** **`SendInvoiceEmailJob`**). Neuspeh → **`attempts++`**, novi **`next_retry_at`** (backoff ~15 min × attempts).
+**Automatski retry:** scheduler **`post-fiscalization:retry`** (svakih **10 min**) — **`RetryPostFiscalization`**: redovi sa **`next_retry_at <= now()`**, poziv **`FiscalizationService::tryFiscalize`**. Uspeh → **`applyFiscalDataAndDelete`** (upis **`fiscal_*`**, brisanje sloga, dispatch **fiskalnog** **`SendInvoiceEmailJob`**). Neuspeh → **`attempts++`**, novi **`next_retry_at`** (backoff ~15 min × attempts) ili **`NULL`** ako **`retryable=false`**.
+
+**Recovery retry (nakon uspješne nove fiskalizacije):** **`PostFiscalizationRecoveryJob`** (queue, ne blokira plaćanje) — bounded sweep najstarijih redova sa **`next_retry_at IS NULL`**, cooldown **15 min**, batch **5**, isti **`PostFiscalizationRetryProcessor`**. Signal: uspjeh u **`ProcessReservationAfterPaymentJob`**, scheduled/manual post-fiskal retry. Log: **`post_fiscalization_recovery_*`**, **`source=post_fiscalization_recovery`**.
 
 **Admin obaveštenja (tri nivoa — ne dupliraju istu ulogu):**
 

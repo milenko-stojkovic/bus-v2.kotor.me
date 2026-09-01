@@ -7,6 +7,7 @@ use App\Models\Reservation;
 use App\Services\AdminFiscalizationAlertService;
 use App\Services\AdminPanel\PostFiscalizationAdminAlertService;
 use App\Services\FiscalizationService;
+use App\Services\Payment\PostFiscalizationRecoveryDispatcher;
 use App\Support\QueueMode;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -95,6 +96,7 @@ class ProcessReservationAfterPaymentJob implements ShouldQueue
                 'reservation_id' => $reservation->id,
                 'merchant_transaction_id' => $reservation->merchant_transaction_id,
             ]);
+            app(PostFiscalizationRecoveryDispatcher::class)->signalFiscalChannelHealthy($reservation->id);
             $this->dispatchInvoiceEmail($reservation->id, true);
 
             return;

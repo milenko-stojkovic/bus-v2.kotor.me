@@ -2,13 +2,10 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SendInvoiceEmailJob;
 use App\Models\PostFiscalizationData;
-use App\Models\Reservation;
 use App\Services\AdminFiscalizationAlertService;
-use App\Services\FiscalizationService;
+use App\Services\Payment\PostFiscalizationRetryProcessor;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Cron: retry fiskalizacije za rezervacije iz post_fiscalization_data (next_retry_at <= now).
@@ -26,8 +23,7 @@ class RetryPostFiscalization extends Command
 
     protected $description = 'Retry fiscalization for post_fiscalization_data rows; on success send fiscal PDF to customer';
 
-    public function handle(FiscalizationService $fiscalization): int
-    {
+    public function handle(PostFiscalizationRetryProcessor $processor): int {
         $force = (bool) $this->option('force');
         $reservationId = $this->option('reservation');
         $postId = $this->option('id');
@@ -56,13 +52,13 @@ class RetryPostFiscalization extends Command
         }
 
         if ($force) {
-            return $this->handleManualForce($fiscalization, $hasReservation ? (int) $reservationId : null, $hasPostId ? (int) $postId : null);
+            return $this->handleManualForce($processor, $hasReservation ? (int) $reservationId : null, $hasPostId ? (int) $postId : null);
         }
 
-        return $this->handleScheduledRetry($fiscalization);
+        return $this->handleScheduledRetry($processor);
     }
 
-    private function handleScheduledRetry(FiscalizationService $fiscalization): int
+    private function handleScheduledRetry(PostFiscalizationRetryProcessor $processor): int
     {
         $rows = PostFiscalizationData::unresolved()
             ->where('next_retry_at', '<=', now())
@@ -70,7 +66,10 @@ class RetryPostFiscalization extends Command
             ->get();
 
         foreach ($rows as $post) {
-            $this->processPostRow($post, $fiscalization, manualForce: false);
+            $outcome = $processor->process($post, PostFiscalizationRetryProcessor::SOURCE_SCHEDULED);
+            if (($outcome['outcome'] ?? '') === 'success') {
+                $this->info('Fiscalized reservation '.$post->reservation_id.', sent fiscal PDF.');
+            }
         }
 
         $this->notifyStaleUnresolvedRows();
@@ -80,7 +79,7 @@ class RetryPostFiscalization extends Command
         return self::SUCCESS;
     }
 
-    private function handleManualForce(FiscalizationService $fiscalization, ?int $reservationId, ?int $postId): int
+    private function handleManualForce(PostFiscalizationRetryProcessor $processor, ?int $reservationId, ?int $postId): int
     {
         $query = PostFiscalizationData::unresolved()->with('reservation');
 
@@ -105,117 +104,11 @@ class RetryPostFiscalization extends Command
         }
 
         foreach ($rows as $post) {
-            $outcome = $this->processPostRow($post, $fiscalization, manualForce: true);
+            $outcome = $processor->process($post, PostFiscalizationRetryProcessor::SOURCE_MANUAL_ARTISAN_FORCE);
             $this->renderManualOutcome($post, $outcome);
         }
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @return array{outcome: string, error?: string, retryable?: bool, next_retry_at?: string|null}
-     */
-    private function processPostRow(PostFiscalizationData $post, FiscalizationService $fiscalization, bool $manualForce): array
-    {
-        $reservation = $post->reservation;
-        if (! $reservation) {
-            $post->delete();
-            if ($manualForce) {
-                Log::channel('payments')->info('post_fiscalization_manual_force_orphan_deleted', [
-                    'source' => 'manual_artisan_force',
-                    'post_fiscalization_data_id' => $post->id,
-                    'result' => 'orphan_deleted',
-                ]);
-            }
-
-            return ['outcome' => 'orphan_deleted'];
-        }
-
-        if ($reservation->fiscal_jir !== null) {
-            $postId = $post->id;
-            $reservationId = $reservation->id;
-            $post->delete();
-            if ($manualForce) {
-                Log::channel('payments')->info('post_fiscalization_manual_force_already_fiscalized', [
-                    'source' => 'manual_artisan_force',
-                    'post_fiscalization_data_id' => $postId,
-                    'reservation_id' => $reservationId,
-                    'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                    'attempts' => $post->attempts,
-                    'result' => 'already_fiscalized',
-                ]);
-            }
-
-            return ['outcome' => 'already_fiscalized'];
-        }
-
-        if ($manualForce) {
-            Log::channel('payments')->info('post_fiscalization_manual_force_started', [
-                'source' => 'manual_artisan_force',
-                'post_fiscalization_data_id' => $post->id,
-                'reservation_id' => $reservation->id,
-                'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                'attempts' => $post->attempts,
-            ]);
-        }
-
-        $result = $fiscalization->tryFiscalize($reservation);
-
-        if (isset($result['fiscal_jir'])) {
-            $postId = $post->id;
-            $reservationId = $reservation->id;
-            $post->applyFiscalDataAndDelete($result);
-            SendInvoiceEmailJob::dispatch($reservationId, true);
-
-            if ($manualForce) {
-                Log::channel('payments')->info('post_fiscalization_manual_force_success', [
-                    'source' => 'manual_artisan_force',
-                    'post_fiscalization_data_id' => $postId,
-                    'reservation_id' => $reservationId,
-                    'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                    'attempts' => $post->attempts,
-                    'result' => 'success',
-                ]);
-            } else {
-                $this->info('Fiscalized reservation '.$reservationId.', sent fiscal PDF.');
-            }
-
-            return ['outcome' => 'success', 'post_fiscalization_data_id' => $postId];
-        }
-
-        $post->increment('attempts');
-        $post->refresh();
-        $retryable = (bool) ($result['retryable'] ?? true);
-        $nextRetryAt = $retryable ? now()->addMinutes(15 * $post->attempts) : null;
-        $error = $result['error'] ?? 'Fiscal service unavailable';
-
-        $post->update([
-            'error' => $error,
-            'next_retry_at' => $nextRetryAt,
-        ]);
-
-        if ($manualForce) {
-            Log::channel('payments')->warning('post_fiscalization_manual_force_failed', [
-                'source' => 'manual_artisan_force',
-                'post_fiscalization_data_id' => $post->id,
-                'reservation_id' => $reservation->id,
-                'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                'attempts' => $post->attempts,
-                'retryable' => $retryable,
-                'next_retry_at' => $nextRetryAt?->toIso8601String(),
-                'error' => $error,
-                'result' => 'failure',
-            ]);
-        } else {
-            $this->notifyRetryFailingOverOneDay($post, $reservation, $result);
-        }
-
-        return [
-            'outcome' => 'failure',
-            'error' => $error,
-            'retryable' => $retryable,
-            'next_retry_at' => $nextRetryAt?->toDateTimeString(),
-        ];
     }
 
     /**
@@ -250,35 +143,6 @@ class RetryPostFiscalization extends Command
     private function formatNextRetryAtForOutput(?string $nextRetryAt): string
     {
         return $nextRetryAt === null || $nextRetryAt === '' ? 'NULL' : $nextRetryAt;
-    }
-
-    /**
-     * @param  array<string, mixed>  $result
-     */
-    private function notifyRetryFailingOverOneDay(PostFiscalizationData $post, Reservation $reservation, array $result): void
-    {
-        $isOlderThanDay = $post->created_at !== null && $post->created_at->lte(now()->subDay());
-        $shouldNotifyNow = $isOlderThanDay && ($post->admin_notified_at === null || $post->admin_notified_at->lte(now()->subDay()));
-        if (! $shouldNotifyNow) {
-            return;
-        }
-
-        $reason = $result['resolution_reason'] ?? ($result['category'] ?? 'error');
-        $alerts = app(AdminFiscalizationAlertService::class);
-        $alerts->notify(
-            'FISCAL ALERT: retry failing > 1 day ('.$reason.')',
-            "Fiscalization retry has been failing for more than 1 day.\n\n"
-            .'reason: '.$reason."\n"
-            .'error: '.($result['error'] ?? 'Fiscal service unavailable')."\n\n"
-            .$alerts->buildReservationContext($reservation)."\n\n"
-            .$alerts->buildPostRowContext($post)."\n",
-            [
-                'reservation_id' => $reservation->id,
-                'merchant_transaction_id' => $reservation->merchant_transaction_id,
-                'post_fiscalization_data_id' => $post->id,
-            ]
-        );
-        $post->update(['admin_notified_at' => now()]);
     }
 
     private function notifyStaleUnresolvedRows(): void

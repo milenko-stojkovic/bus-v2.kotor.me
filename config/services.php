@@ -56,6 +56,11 @@ return [
         'driver' => env('FISCALIZATION_DRIVER', 'fake'), // fake | real
         // Optional helper for local QA: scenario passed to fake fiscal endpoints (e.g. deposit_missing, provider_down, tax_server_error).
         'fake_scenario' => env('FISCAL_FAKE_SCENARIO'),
+        'post_fiscalization_recovery' => [
+            'enabled' => filter_var(env('POST_FISCALIZATION_RECOVERY_ENABLED', true), FILTER_VALIDATE_BOOL),
+            'batch_size' => (int) env('POST_FISCALIZATION_RECOVERY_BATCH_SIZE', 5),
+            'cooldown_minutes' => (int) env('POST_FISCALIZATION_RECOVERY_COOLDOWN_MINUTES', 15),
+        ],
     ],
 
     'fiscal' => [

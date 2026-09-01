@@ -43,6 +43,17 @@ php artisan post-fiscalization:retry --id=95 --force
 - Nakon neuspjeha: **`retryable=true`** → novi **`next_retry_at`** (backoff); **`retryable=false`** → **`next_retry_at = NULL`** (kao i automatski retry).
 - Log: **`source=manual_artisan_force`** u `payments` kanalu.
 
+**Recovery sweep (automatski, nakon uspješne fiskalizacije):**
+
+Kad nova rezervacija uspješno prođe fiskalizaciju (`ProcessReservationAfterPaymentJob`, scheduled/manual retry), dispatch-uje se **`PostFiscalizationRecoveryJob`** (async, ne blokira plaćanje). Job pokušava **mali batch** (default **5**) najstarijih nerešenih redova sa:
+
+- `resolved_at IS NULL`
+- `next_retry_at IS NULL`
+- `reservation.fiscal_jir IS NULL`
+- `updated_at` stariji od cooldown-a (default **15 min**)
+
+Globalni **cooldown 15 min** + cache lock sprječavaju ponavljane sweep-ove. Recovery **ne** mijenja ErrorClassifier; koristi isti **`PostFiscalizationRetryProcessor`** kao cron/manual force. Config: `POST_FISCALIZATION_RECOVERY_*` u **`config/services.php`**.
+
 **Admin obaveštenja (povezano, ne duplo):**
 - **Ulazak u post-fiskal** (u **`ProcessReservationAfterPaymentJob`**, ne u ovoj komandi): odmah **`admin_alerts`** tip **`post_fiscalization_started`**, severity **info** — dedupe po rezervaciji; v. **`PostFiscalizationAdminAlertService`**, **`admin-panel.md`**.
 - **>24 h nerešeno** (u ovoj komandi): email **`AdminFiscalizationAlertService::notify`** (`FISCAL ALERT: retry failing > 1 day` / `unresolved > 1 day`), **`admin_notified_at`** na slogu — postojeće ponašanje, bez info alerta kao zamjene.
