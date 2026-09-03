@@ -65,10 +65,11 @@ Callback logovi: `Payment callback received` na ulazu; na **novom** validnom cal
 | Scenario | Šta postoji | Napomena |
 |----------|-------------|----------|
 | `temp_data` dugo **pending** | `payment:check-pending-inquiry` → **`payment_pending_too_long`** + opciono **Bankart inquiry** | Upozorenje **ne menja** status. Inquiry SUCCESS/ERROR → **`PaymentCallbackJob`**. **Transaction not found** → **`payment_init_failed`** (release lock). Throttle po `merchant_transaction_id`. |
-| Plaćena rezervacija bez **fiscal_jir** | `post_fiscalization_data` + `post-fiscalization:retry` + admin | Nefiskalni email iz `ProcessReservationAfterPaymentJob`. Info **`admin_alerts`** `post_fiscalization_started` odmah pri ulasku; email eskalacija **`FISCAL ALERT`** tek **>24 h**. **Produkcija (2026-06):** svi odgođeni slučajevi uspješno fiskalizovani naknadno — pipeline potvrđen u praksi. |
-| Email nije poslat | `invoice_sent_at`, `email_sent`, `paid_invoice_email_*` / `free_reservation_email_*` | Worker + retry; **`failed()`** vraća **`email_sent`** na **`EMAIL_NOT_SENT`**. Zaglavljeno **`EMAIL_SENDING`** (>15 min) → **`reservation_email_sending_lock_stale_reclaimed`**. Dijagnostika: **`php artisan mail:audit-reservation-documents --date=Y-m-d --missing-only`**. Resend: **`mail:resend-reservation-document --id=`** ili admin **Resend invoice**. Fallback cron: **`reservations:send-emails`** (samo **dispatch** jobova, ne lažno `email_sent=1`). |
+| Plaćena rezervacija bez **fiscal_jir** | `post_fiscalization_data` + `post-fiscalization:retry` + staff/admin | Nefiskalni email iz `ProcessReservationAfterPaymentJob`. Info **`admin_alerts`** `post_fiscalization_started` odmah pri ulasku; email eskalacija **`FISCAL ALERT`** tek **>24 h**. **Produkcija (2026-06):** svi odgođeni slučajevi uspješno fiskalizovani naknadno — pipeline potvrđen u praksi. |
+| Nerešeno sa **`next_retry_at = NULL`** (non-retryable) | Ciljani ručni retry **ili** recovery sweep | Cron bez `--force` **namjerno** ne dira. Nakon što je spoljašnji uzrok riješen: `php artisan post-fiscalization:retry --reservation=ID --force` (ili `--id=POST_ROW_ID --force`). Kad nova fiskalizacija uspije, async **`PostFiscalizationRecoveryJob`** (batch 5, cooldown 15 min) pokušava najstarije takve redove — v. **`cron-commands.md`** §1b. |
+| Email nije poslat | `invoice_sent_at`, `email_sent`, `paid_invoice_email_*` / `free_reservation_email_*` | Worker + retry; **`failed()`** vraća **`email_sent`** na **`EMAIL_NOT_SENT`**. Zaglavljeno **`EMAIL_SENDING`** (>15 min) → **`reservation_email_sending_lock_stale_reclaimed`**. Dijagnostika: **`php artisan mail:audit-reservation-documents --date=Y-m-d --missing-only`**. Resend: **`mail:resend-reservation-document --id=`** ili staff **Pošalji račun ponovo** (`/staff/reservations`). Fallback cron: **`reservations:send-emails`** (samo **dispatch** jobova, ne lažno `email_sent=1`). |
 | FZBR **fulfilled**, agencija nema potvrdu | `free_reservation_request_multi_email_*`, `reservations.email_sent` | `php artisan free-reservation-requests:repair-fulfilled --id=`; ako su rezervacije već `email_sent=1` a mejl nije stigao — **`--resend-email`**. Fulfill **ne** vraća zahtjev u `submitted`. |
-| Gomilanje **post_fiscalization_data** | Retry komanda + admin | `next_retry_at`, brisanje sloga poslije uspjeha; info alert **`done`**; >24 h email. Ako redovi ostaju — provjeri fiskal API, worker i scheduler. |
+| Gomilanje **post_fiscalization_data** | Scheduled retry + recovery + staff/admin | `next_retry_at <= now()` → cron; `next_retry_at IS NULL` → `--force` ili recovery sweep; staff UI: **Retry fiskalizaciju** / **Označi rešeno**; brisanje sloga poslije uspjeha; info alert **`done`**; >24 h email. Ako redovi ostaju — provjeri fiskal API, worker i scheduler. |
 | Job pao posle delimične obrade | Idempotentni koraci | Retry; `failed()` za ručnu proveru. |
 
 ---
@@ -78,6 +79,7 @@ Callback logovi: `Payment callback received` na ulazu; na **novom** validnom cal
 - U **production**, fake bank/fiscal → **`production_fake_driver_active`** (keš ~12h).
 - **`APP_DEBUG=false`**, **`APP_URL`** HTTPS.
 - **`QUEUE_CONNECTION`:** ne `sync` u produkciji.
+- **Post-fiskal recovery** (`config/services.php` → `fiscalization.post_fiscalization_recovery`): **`POST_FISCALIZATION_RECOVERY_ENABLED`** (default `true`), **`POST_FISCALIZATION_RECOVERY_BATCH_SIZE`** (default `5`), **`POST_FISCALIZATION_RECOVERY_COOLDOWN_MINUTES`** (default `15`).
 
 ---
 

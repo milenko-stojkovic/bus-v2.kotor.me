@@ -291,6 +291,15 @@ Napomena: za QA obavezno evidentirati da li u trenutnoj grani koda postoji autom
 - Proveri `FISCALIZATION_DRIVER`.
 - Za real: proveri `FISCAL_API_URL`, `FISCAL_API_TOKEN`, mrežnu dostupnost.
 - Za fake: proveri da li je simuliran fail (`forceFail`, `X-Fake-Fail`).
+- Proveri `post_fiscalization_data` (`next_retry_at`, `attempts`, `resolved_at`, `error`).
+- **Scheduled retry:** `php artisan post-fiscalization:retry` (samo redovi sa `next_retry_at <= now()`).
+- **Ciljani ručni retry** nakon što je spoljašnji problem riješen (npr. `next_retry_at IS NULL`):
+  - `php artisan post-fiscalization:retry --reservation=<reservation_id> --force`
+  - ili `--id=<post_fiscalization_data.id> --force`
+  - **Ne** bulk `--force` bez cilja.
+- **Staff UI:** `/staff/reservations` → **Retry fiskalizaciju** / **Označi rešeno** / **Pošalji račun ponovo**.
+- **Recovery sweep:** nakon uspješne nove fiskalizacije, async `PostFiscalizationRecoveryJob` pokušava batch nerešenih sa `next_retry_at IS NULL` (cooldown 15 min). Log: `post_fiscalization_recovery_*` u `payments`. Env: `POST_FISCALIZATION_RECOVERY_*`.
+- Detalji: **`docs/cron-commands.md`** §1b, **`docs/production-runbook.md`**, **`docs/success-payment-pipeline.md`**.
 
 ## 4.4 PDF nije generisan
 
@@ -303,7 +312,7 @@ Napomena: za QA obavezno evidentirati da li u trenutnoj grani koda postoji autom
 - Proveri da **`queue:work`** radi (`QUEUE_CONNECTION` ≠ `sync`).
 - `php artisan mail:audit-reservation-documents --date=YYYY-MM-DD --missing-only`
 - U **`storage/logs/payments.log`**: `paid_invoice_email_started` / `_sent` / `_failed` (ili `free_reservation_email_*`) po `merchant_transaction_id` / `reservation_id`.
-- Resend: `php artisan mail:resend-reservation-document --id=<reservation_id>` ili admin **Ponovo pošalji račun**.
+- Resend: `php artisan mail:resend-reservation-document --id=<reservation_id>` ili staff **Pošalji račun ponovo** (`/staff/reservations`).
 - Proveri `MAIL_MAILER`, `MAIL_FROM_ADDRESS`; `reservations.invoice_sent_at`, `email_sent`.
 - Napomena: jobovi **ne šalju** mail bez uspešnog PDF-a; **`renderBinary`** baca ili job fail-uje → **queue retry**; **`invoice_sent_at`** samo poslije uspješnog `Mail::send`.
 
@@ -344,3 +353,4 @@ order by id desc;
 - Nema duplih rezervacija za isti `merchant_transaction_id`.
 - Guest retry i admin late manual review potvrđeni.
 - Fiskal fail fallback potvrđen (`post_fiscalization_data` + non-fiscal invoice).
+- Ručni `--force` retry i/ili recovery sweep ponašanje poznato operativnom timu (v. §4.3).

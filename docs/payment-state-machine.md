@@ -16,7 +16,7 @@ Ovaj dokument ima prednost nad ostalim tematskim dokumentima u slučaju razlike 
 |--------|---------------------|
 | **`temp_data`** | Stanje plaćanja / lock-a pre i posle banke: `status`, `merchant_transaction_id` (unique), snapshot checkout polja, `raw_callback_payload`, greške banke, `resolution_reason`, `retry_token`. Red se **ne briše** na uspehu (audit). |
 | **`reservations`** | Potvrđena rezervacija posle uspešnog plaćanja: `merchant_transaction_id` (jedinstven poslovno), `status` (`paid` / `free` / …), **`invoice_amount`**, fiskalna polja (`fiscal_jir`, …), email stanja. |
-| **`post_fiscalization_data`** | Red za **retry fiskalizacije** kada prvi pokušaj posle plaćanja ne uspe; veže se za `reservation_id`, ne za „poništi“ rezervaciju. |
+| **`post_fiscalization_data`** | Red za **retry fiskalizacije** kada prvi pokušaj posle plaćanja ne uspe; veže se za `reservation_id`, ne za „poništi“ rezervaciju. Polja: `error`, `attempts`, `next_retry_at` (NULL = non-retryable za cron), `resolved_at`, `admin_notified_at`. |
 
 ---
 
@@ -121,6 +121,22 @@ Nakon **`applyLateSuccess`**, **`temp_data` ostaje `late_success`** — callback
 
 ---
 
+## 5b. Post-fiskalizacija — grane retry-a (važeće)
+
+Nakon uspješnog plaćanja, rezervacija postoji. Fiskal može uspjeti odmah ili ući u **`post_fiscalization_data`**.
+
+| Grana | Okidač | Šta pokušava | Napomena |
+|-------|--------|--------------|----------|
+| **Scheduled retry** | Cron **`post-fiscalization:retry`** (svakih 10 min) | Redovi sa **`next_retry_at <= now()`** i **`resolved_at IS NULL`** | Automatski; backoff pri retryable grešci; **`next_retry_at = NULL`** kad **`retryable=false`**. |
+| **Manual force** | Artisan **`--force`** + **`--reservation=`** ili **`--id=`** | Jedan ciljani red, zaobilazi `next_retry_at` | **Ne bulk.** Zakazani cron bez `--force` ne dira NULL redove. Log: `source=manual_artisan_force`. |
+| **Staff UI retry** | **`POST /staff/reservations/{id}/retry-fiscalization`** | Isti `tryFiscalize` za nerešen slog | Pri uspjehu → fiskalni email + recovery signal. |
+| **Recovery sweep** | Async **`PostFiscalizationRecoveryJob`** nakon dokaza da fiskalni kanal radi | Batch (default 5) najstarijih nerešenih sa **`next_retry_at IS NULL`**, bez JIR, starijih od cooldown-a | Signal: uspjeh u **`ProcessReservationAfterPaymentJob`**, scheduled/manual retry, staff retry. Cooldown 15 min + cache lock. Config: **`POST_FISCALIZATION_RECOVERY_*`**. |
+| **Mark resolved** | Staff **Označi rešeno** | Postavlja **`resolved_at`** | Cron/recovery prestaju; rezervacija ostaje validna. |
+
+Zajednički processor: **`PostFiscalizationRetryProcessor`**. Detalji: **`success-payment-pipeline.md`**, **`cron-commands.md`** §1b, **`admin-panel.md`** (staff override).
+
+---
+
 ## 6. Zabranjene pretpostavke
 
 - **`processed`** na `temp_data` **ne znači** da je fiskalizacija završena — fiskal može ići asinhrono / retry.
@@ -137,6 +153,7 @@ Nakon **`applyLateSuccess`**, **`temp_data` ostaje `late_success`** — callback
 - [payment-architecture.md](./payment-architecture.md)
 - [payment-callback-handling.md](./payment-callback-handling.md)
 - [success-payment-pipeline.md](./success-payment-pipeline.md) (fiskal / PDF / email)
+- [cron-commands.md](./cron-commands.md) §1b (`post-fiscalization:retry`, `--force`, recovery)
 - `app/Models/TempData.php`
 - `app/Jobs/PaymentCallbackJob.php`
 - `app/Services/Payment/PaymentSuccessHandler.php`
@@ -146,5 +163,8 @@ Nakon **`applyLateSuccess`**, **`temp_data` ostaje `late_success`** — callback
 - `app/Console/Commands/CheckPendingPaymentStatus.php` (inquiry SUCCESS/ERROR → job; **not found** → init failure)
 - `app/Console/Commands/AssignLateSuccessReservations.php` (no-op stub; nema automatske dodjele)
 - `app/Http/Controllers/Admin/LateSuccessController.php` (`/staff/late-success`)
+- `app/Http/Controllers/Admin/ReservationActionController.php` (staff retry fiskal / resend / mark resolved)
+- `app/Services/Payment/PostFiscalizationRetryProcessor.php`
+- `app/Jobs/PostFiscalizationRecoveryJob.php`
 
-**Poslednje usklađivanje sa kodom:** dokument uveden kao canonical guardrail; pri promeni pravila u kodu **ažuriraj ovaj fajl** ili ispravi kod.
+**Poslednje usklađivanje sa kodom:** 2026-09-03 (post-fiskal `--force` + recovery sweep §5b).

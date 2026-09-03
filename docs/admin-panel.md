@@ -7,7 +7,7 @@ Specifikacija admin funkcionalnosti. Modeli: Reservation, TempData, DailyParking
 | Šta | URL prefiks | Auth | Namena |
 |-----|-------------|------|--------|
 | **Glavni admin panel** | `/admin` | Guard **`panel_admin`**, tabela **`admins`**, kolona **`admin_access=1`** (i **`control_access=0`**) | Dashboard **Upozorenja / Informacije** (`admin_alerts`, pregled nedostupnosti i blokada), navigacija (**Sistem status**, Blokiranje, Besplatne rezervacije, …). Login: **`GET /admin/login`**. |
-| **Staff operativa** (rezervacije, late-success) | `/staff` | **`User`** + **`AdminMiddleware`** (uloga admin ili email u `admins`) | `ReservationListController`, `LateSuccessController` — v. `routes/web.php` imena **`staff.*`**. |
+| **Staff operativa** (rezervacije, late-success, fiskal/email override) | `/staff` | **`User`** + **`AdminMiddleware`** (uloga admin ili email u `admins`) | `ReservationListController`, `ReservationActionController`, `LateSuccessController` — v. `routes/web.php` imena **`staff.*`**. |
 
 **Control panel** (šalter / dolasci): guard **`control`**, **`/control`** — v. **[control-panel.md](./control-panel.md)**. **`admin_access`** i **`control_access`** su međusobno isključivi; isti red u `admins` nikad ne drži oba = 1 (v. migracija + `Admin::booted`).
 
@@ -94,6 +94,18 @@ Kontroler: **`WarningsController::index`**. Stranica ima tri bloka: **Upozorenja
 ---
 
 **Implementirano (van opšte specifikacije ispod):** pregled i akcije za **`late_manual_review`** / povezane statuse — `App\Http\Controllers\Admin\LateSuccessController` (lista, detalj, **force create** rezervacije, **reject**). Rute su pod prefiksom **`/staff`**, middleware **`admin`** (v. `routes/web.php`).
+
+### Staff `/staff/reservations` — fiskal i račun (override)
+
+Operativna lista rezervacija (naredna 3 sata + pretraga). Kontroler akcija: **`ReservationActionController`**.
+
+| Akcija (UI) | Ruta | Ponašanje |
+|-------------|------|-----------|
+| **Retry fiskalizaciju** | `POST /staff/reservations/{id}/retry-fiscalization` (`staff.reservations.retry-fiscalization`) | Samo ako postoji nerešen **`post_fiscalization_data`**. Poziva **`FiscalizationService::tryFiscalize`**. Uspeh → **`applyFiscalDataAndDelete`**, fiskalni **`SendInvoiceEmailJob`**, signal **`PostFiscalizationRecoveryDispatcher`** (recovery sweep). Neuspeh → `attempts++`, novi **`next_retry_at`**. |
+| **Označi rešeno** | `POST /staff/reservations/{id}/mark-resolved` (`staff.reservations.mark-resolved`) | Postavlja **`resolved_at`** na nerešenom slogu — cron/recovery više **ne** retry-uju taj red. Rezervacija ostaje validna (može ostati bez JIR). |
+| **Pošalji račun ponovo** | `POST /staff/reservations/{id}/resend-invoice` (`staff.reservations.resend-invoice`) | Reset **`invoice_sent_at`** / **`email_sent`**, dispatch **`SendInvoiceEmailJob`** (fiskalni ako ima JIR, inače nefiskalni). Ne dira payment/fiscal podatke. |
+
+**Napomena:** Ove akcije su na **`/staff`**, ne na glavnom **`/admin`** panelu. Za ciljani serverski retry (npr. `next_retry_at = NULL` nakon što je fiskalni servis popravljen): `php artisan post-fiscalization:retry --reservation=ID --force` — v. **`cron-commands.md`** §1b, **`production-runbook.md`**.
 
 ---
 

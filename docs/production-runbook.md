@@ -172,7 +172,7 @@ php artisan event:cache
 1. `php artisan mail:audit-reservation-documents --date=YYYY-MM-DD --missing-only`
 2. U `payments.log` tražiti `paid_invoice_email_started` / `_sent` / `_failed` (ili `free_reservation_email_*`) po **`merchant_transaction_id`** / **`reservation_id`**
 3. Proveriti da **`queue:work`** radi (v. gore)
-4. Resend: `php artisan mail:resend-reservation-document --id=<reservation_id>` ili admin panel **Ponovo pošalji račun**
+4. Resend: `php artisan mail:resend-reservation-document --id=<reservation_id>` ili staff **Pošalji račun ponovo** (`/staff/reservations`)
 
 ### Kako proveriti da worker radi
 

@@ -42,7 +42,7 @@ Ovi taskovi su **namerno zakazani samo u produkciji** (da se lokalno izbegnu rea
 |---|---|---|---|
 | `reservations:process-pending` | every 5 minutes | `app/Console/Commands/ProcessPendingReservations.php` | **No-op (stub):** samo broji pending `temp_data`, **ne** mijenja DB / fiskal / rezervacije (v. **`docs/cron-commands.md`** §1). Zakazano samo u produkciji (`bootstrap/app.php`). |
 | `payment:check-pending-inquiry` | every 1 minute | `app/Console/Commands/CheckPendingPaymentStatus.php` | Bank inquiry (Bankart) → `PaymentCallbackJob` |
-| `post-fiscalization:retry` | every 10 minutes | `app/Console/Commands/RetryPostFiscalization.php` | Retry stvarne fiskalizacije |
+| `post-fiscalization:retry` | every 10 minutes | `app/Console/Commands/RetryPostFiscalization.php` | Retry stvarne fiskalizacije (`next_retry_at <= now()`). Ručni **`--force`** + **`--reservation`/`--id`** van schedule-a. Recovery sweep (**`PostFiscalizationRecoveryJob`**) **nije** scheduler task — async queue job nakon uspješne fiskalizacije; v. **`cron-commands.md`** §1b. |
 
 **VAŽNO (pre produkcije):** ove komande moraju biti operativno proverene i kompletno konfigurisanih env/kredencijala. Vidi `docs/cron-commands.md` → **“Production readiness (bank/fiscal)”**.
 
@@ -55,6 +55,8 @@ Možeš ih pokrenuti pojedinačno. Na **Windowsu** u Cursor terminalu često **`
 - `php artisan reservations:process-pending`
 - `php artisan payment:check-pending-inquiry`
 - `php artisan post-fiscalization:retry`
+- `php artisan post-fiscalization:retry --reservation=<id> --force` — ciljani retry (zaobilazi `next_retry_at`; **ne** bulk)
+- `php artisan post-fiscalization:retry --id=<post_fiscalization_data.id> --force`
 - `php artisan reservations:expire-pending`
 - `php artisan reservations:assign-late-success`
 - `php artisan parking:sync-days`
