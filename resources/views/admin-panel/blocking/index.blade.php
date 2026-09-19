@@ -47,6 +47,10 @@
             <h2 class="text-lg font-semibold text-gray-900 mb-2">Blokiraj</h2>
             <p class="text-sm text-gray-600 mb-4 max-w-3xl">
                 Označite <strong>samo termine koji još nisu blokirani</strong>. Već blokirani termini su prikazani samo kao informacija i ne mogu se ponovo birati ovde — za njih koristite <strong>Deblokiraj</strong>.
+                <span class="block mt-2">
+                    <strong>Primeni</strong> odmah blokira izabrane termine za <em>nove</em> rezervacije.
+                    Postojeće rezervacije (ili plaćanja u toku) ostaju važeće i pojavljuju se u listi <strong>Rezervacije u blok zoni</strong> radi kasnijeg prilagođavanja.
+                </span>
             </p>
 
             <form method="GET" action="{{ route('panel_admin.blocking', [], false) }}" class="flex flex-wrap items-end gap-3 mb-4">
@@ -95,7 +99,7 @@
                                 <span class="text-xs text-gray-500 ms-auto">
                                     r:{{ $reserved }} p:{{ $pending }}
                                     @if ($hasProblem)
-                                        <span class="text-red-700 font-medium">— zahvaćeno</span>
+                                        <span class="text-red-700 font-medium">— ima postojeće (ostaće na worklisti)</span>
                                     @endif
                                 </span>
                             </label>
@@ -110,6 +114,10 @@
 
             <div class="mt-8">
                 <h3 class="text-base font-semibold text-gray-900 mb-3">Rezervacije u blok zoni</h3>
+                <p class="text-sm text-gray-600 mb-3 max-w-3xl">
+                    Postojeće rezervacije / plaćanja koja koriste već blokirane termine. Termin je blokiran za nove rezervacije;
+                    ove stavke treba ručno prilagoditi (premjestiti).
+                </p>
                 @if ($worklist->isEmpty())
                     <p class="text-sm text-gray-600">Nema otvorenih stavki.</p>
                 @else

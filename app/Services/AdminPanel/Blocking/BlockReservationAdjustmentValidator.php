@@ -28,10 +28,13 @@ final class BlockReservationAdjustmentValidator
 
         foreach ($uNew as $slotId) {
             $row = $this->row($dailyByKey, $newDate, $slotId);
-            if ($row->is_blocked) {
+            // Retaining the reservation's current slot is allowed even if that slot was blocked later.
+            // Entering a *different* blocked slot is forbidden.
+            $isNewlyEntered = $oldDate !== $newDate || ! in_array($slotId, $uOld, true);
+            if ($isNewlyEntered && $row->is_blocked) {
                 throw new \RuntimeException('Novi termin je blokiran.');
             }
-            if ((int) $row->pending !== 0) {
+            if ($isNewlyEntered && (int) $row->pending !== 0) {
                 throw new \RuntimeException('Novi termin ima pending — pokušajte ponovo posle osvežavanja.');
             }
         }
@@ -56,10 +59,11 @@ final class BlockReservationAdjustmentValidator
         $ids = array_values(array_unique(array_merge($uOld, $uNew)));
         foreach ($ids as $slotId) {
             $row = $this->row($dailyByKey, $oldDate, $slotId);
-            if (in_array($slotId, $uNew, true) && $row->is_blocked) {
+            $isNewlyEntered = in_array($slotId, $uNew, true) && ! in_array($slotId, $uOld, true);
+            if ($isNewlyEntered && $row->is_blocked) {
                 throw new \RuntimeException('Novi termin je blokiran.');
             }
-            if (in_array($slotId, $uNew, true) && (int) $row->pending !== 0) {
+            if ($isNewlyEntered && (int) $row->pending !== 0) {
                 throw new \RuntimeException('Novi termin ima pending — pokušajte ponovo posle osvežavanja.');
             }
 

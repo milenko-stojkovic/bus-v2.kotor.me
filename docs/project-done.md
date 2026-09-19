@@ -1,9 +1,10 @@
 ﻿# Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-09-03  
+**Poslednje ažuriranje:** 2026-09-19  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
+- **2026-09-19** — **Blokiranje — immediate `is_blocked`:** `BlockingService::applyBlock` odmah postavlja `is_blocked=1` i za zauzete termine; postojeće rezervacije/pending idu u worklist; pending soft-lock je grandfathered (bez re-check u `PaymentSuccessHandler`). Admin edit: trenutni blokirani slot ostaje selektabilan; validator zabranjuje samo ulazak u *drugi* blokirani termin. Testovi: **`ImmediateBlockingSemanticsTest`**. Docs: **`admin-panel.md`** §2 / dashboard Blokirani.
 - **2026-09-03** — **Docs: post-fiskal `--force` + recovery sweep:** dopunjeni **`production-hardening.md`**, **`admin-panel.md`** (staff retry/resend/mark resolved), **`payment-state-machine.md`** §5b, **`scheduled-tasks-overview.md`**, **`payment-manual-qa-checklist.md`**, **`.env.example`** (`POST_FISCALIZATION_RECOVERY_*`). Operativni opis već bio u **`cron-commands.md`** / **`production-runbook.md`** / **`success-payment-pipeline.md`**.
 - **2026-09-01** — **Post-fiskal recovery sweep:** nakon uspješne nove fiskalizacije, async **`PostFiscalizationRecoveryJob`** pokušava batch (5) najstarijih nerešenih redova sa `next_retry_at=NULL` (cooldown 15 min, cache lock); zajednički **`PostFiscalizationRetryProcessor`** za cron/manual/recovery. Testovi: **`PostFiscalizationRecoveryTest`**. Docs: **`cron-commands.md`**, **`production-runbook.md`**, **`payment-states.md`**, **`success-payment-pipeline.md`**.
 - **2026-09-01** — **Post-fiskal ručni retry (Plesk):** `post-fiscalization:retry` proširen sa **`--force`** + **`--reservation`** / **`--id`** za ciljani retry nakon što je spoljašnji fiskalni problem riješen; zakazani cron bez opcija **nepromijenjen** (`next_retry_at <= now()`). Testovi: **`PostFiscalizationRetryCommandTest`**. Docs: **`cron-commands.md`**, **`production-runbook.md`**.

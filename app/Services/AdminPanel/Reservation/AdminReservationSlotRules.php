@@ -19,19 +19,20 @@ final class AdminReservationSlotRules
         int $slotId,
         DailyParkingData $daily,
     ): bool {
+        $isCurrentDate = $reservation->reservation_date->toDateString() === $dateStr;
+        $isCurrentSlot = $isCurrentDate
+            && ($slotId === (int) $reservation->drop_off_time_slot_id || $slotId === (int) $reservation->pick_up_time_slot_id);
+
+        // Current occupancy may sit on a slot that was blocked later — still representable in edit form.
+        if ($isCurrentSlot) {
+            return true;
+        }
+
         if ($daily->is_blocked) {
             return false;
         }
         if ((int) $daily->pending !== 0) {
             return false;
-        }
-
-        $isCurrentDate = $reservation->reservation_date->toDateString() === $dateStr;
-        $isCurrentSlot = $isCurrentDate
-            && ($slotId === (int) $reservation->drop_off_time_slot_id || $slotId === (int) $reservation->pick_up_time_slot_id);
-
-        if ($isCurrentSlot) {
-            return true;
         }
 
         return $daily->availableCapacity() >= 1;

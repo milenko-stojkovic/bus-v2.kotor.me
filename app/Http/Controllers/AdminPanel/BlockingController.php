@@ -59,10 +59,17 @@ class BlockingController extends Controller
             $slotIds = $blocking->allSlots()->pluck('id')->map(fn ($v) => (int) $v)->all();
         }
 
-        $blocking->applyBlock($date, $slotIds);
+        $summary = $blocking->applyBlock($date, $slotIds);
+        $blocked = (int) ($summary['blocked_slots'] ?? 0);
+        $worklist = (int) ($summary['worklist_touched'] ?? 0);
+
+        $status = 'Blokiranje je primijenjeno. Blokirano termina: '.$blocked.'.';
+        if ($worklist > 0) {
+            $status .= ' Stavki za prilagođavanje (postojeće rezervacije / plaćanja u toku): '.$worklist.'.';
+        }
 
         return $this->redirectFresh('panel_admin.blocking', ['date' => $date])
-            ->with('status', 'Primena blokiranja je završena.');
+            ->with('status', $status);
     }
 
     public function day(string $date, BlockingService $blocking): View

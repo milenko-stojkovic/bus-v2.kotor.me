@@ -23,17 +23,26 @@ class BlockingService
     }
 
     /**
+     * Block selected slots immediately for NEW reservations (`is_blocked = 1`).
+     * Existing reserved/pending occupants stay; they are listed on the block-zone worklist.
+     * Already-pending soft-locks are grandfathered (PaymentSuccessHandler is unchanged).
+     *
      * @param  list<int>  $slotIds
+     * @return array{blocked_slots: int, worklist_touched: int}
      */
-    public function applyBlock(string $date, array $slotIds): void
+    public function applyBlock(string $date, array $slotIds): array
     {
         $slotIds = array_values(array_unique(array_map('intval', $slotIds)));
         $slotIds = array_values(array_filter($slotIds, fn (int $id) => $id > 0));
         if ($slotIds === []) {
-            return;
+            return ['blocked_slots' => 0, 'worklist_touched' => 0];
         }
 
-        DB::transaction(function () use ($date, $slotIds): void {
+        $blockedSlots = 0;
+        /** @var array<string, true> $worklistMtids */
+        $worklistMtids = [];
+
+        DB::transaction(function () use ($date, $slotIds, &$blockedSlots, &$worklistMtids): void {
             $daily = DailyParkingData::query()
                 ->whereDate('date', $date)
                 ->whereIn('time_slot_id', $slotIds)
@@ -44,44 +53,52 @@ class BlockingService
             foreach ($slotIds as $slotId) {
                 /** @var DailyParkingData|null $row */
                 $row = $daily->get($slotId);
-                if (! $row || $row->is_blocked) {
+                if (! $row) {
                     continue;
                 }
 
-                // Ako postoji pending > 0: worklist (po temp_data) i ne blokiraj odmah.
-                if ($row->pending > 0) {
+                // Immediate hard gate for NEW reservations (may coexist with reserved/pending).
+                if (! $row->is_blocked) {
+                    $row->is_blocked = true;
+                    $row->save();
+                }
+                $blockedSlots++;
+
+                // Existing pending soft-locks → worklist (grandfathered; do not release pending).
+                if ((int) $row->pending > 0) {
                     $temps = TempData::query()
                         ->where('status', TempData::STATUS_PENDING)
-                        ->where('reservation_date', $date)
+                        ->whereDate('reservation_date', $date)
                         ->where(function ($q) use ($slotId) {
                             $q->where('drop_off_time_slot_id', $slotId)->orWhere('pick_up_time_slot_id', $slotId);
                         })
                         ->get();
                     foreach ($temps as $temp) {
                         $this->upsertWorklistForTemp($temp, $slotId);
+                        $worklistMtids[(string) $temp->merchant_transaction_id] = true;
                     }
-                    continue;
                 }
 
-                // Ako postoji reserved > 0: worklist (po reservation) i ne blokiraj odmah.
-                if ($row->reserved > 0) {
+                // Existing confirmed reservations → worklist (remain valid until adjusted).
+                if ((int) $row->reserved > 0) {
                     $reservations = Reservation::query()
-                        ->where('reservation_date', $date)
+                        ->whereDate('reservation_date', $date)
                         ->where(function ($q) use ($slotId) {
                             $q->where('drop_off_time_slot_id', $slotId)->orWhere('pick_up_time_slot_id', $slotId);
                         })
                         ->get();
                     foreach ($reservations as $r) {
                         $this->upsertWorklistForReservation($r, $slotId);
+                        $worklistMtids[(string) $r->merchant_transaction_id] = true;
                     }
-                    continue;
                 }
-
-                // Slobodno: blokiraj odmah.
-                $row->is_blocked = true;
-                $row->save();
             }
         });
+
+        return [
+            'blocked_slots' => $blockedSlots,
+            'worklist_touched' => count($worklistMtids),
+        ];
     }
 
     /**
