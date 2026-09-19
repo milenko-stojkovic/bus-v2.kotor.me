@@ -7,6 +7,7 @@ use App\Models\ListOfTimeSlot;
 use App\Models\Reservation;
 use App\Models\VehicleType;
 use App\Services\AdminPanel\Blocking\BlockReservationAdjustmentValidator;
+use App\Services\AdminPanel\Blocking\BlockZoneWorklistService;
 use App\Services\Reservation\DuplicateReservationAttemptService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ final class AdminReservationUpdateService
         private BlockReservationAdjustmentValidator $finalValidator,
         private AdminReservationSlotRules $slotRules,
         private DuplicateReservationAttemptService $duplicateReservationAttemptService,
+        private BlockZoneWorklistService $blockZoneWorklistService,
     ) {}
 
     /**
@@ -168,6 +170,8 @@ final class AdminReservationUpdateService
                 'invoice_sent_at' => null,
                 'email_sent' => Reservation::EMAIL_NOT_SENT,
             ]);
+
+            $this->blockZoneWorklistService->reconcileForReservation($r->fresh() ?? $r);
 
             Log::channel('payments')->info('admin_panel_reservation_updated', [
                 'reservation_id' => $r->id,

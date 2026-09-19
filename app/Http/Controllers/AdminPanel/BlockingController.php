@@ -9,6 +9,7 @@ use App\Models\BlockZoneWorklist;
 use App\Models\DailyParkingData;
 use App\Models\Reservation;
 use App\Services\AdminPanel\Blocking\BlockReservationAdjustmentValidator;
+use App\Services\AdminPanel\Blocking\BlockZoneWorklistService;
 use App\Services\AdminPanel\Blocking\BlockingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -128,6 +129,7 @@ class BlockingController extends Controller
         BlockZoneWorklist $row,
         BlockingService $blocking,
         BlockReservationAdjustmentValidator $finalValidator,
+        BlockZoneWorklistService $worklistService,
     ): RedirectResponse {
         if ($row->status !== BlockZoneWorklist::STATUS_READY_TO_ADJUST || ! $row->reservation_id) {
             return back()->with('error', 'Ova stavka nije spremna za prilagođavanje (pending payment).');
@@ -161,6 +163,7 @@ class BlockingController extends Controller
             DB::transaction(function () use (
                 $row,
                 $finalValidator,
+                $worklistService,
                 $reservationId,
                 $oldDate,
                 $oldDrop,
@@ -277,7 +280,8 @@ class BlockingController extends Controller
                     $d->save();
                 }
 
-                $lockedRow->delete();
+                // Current membership: keep/refresh if still on a blocked slot; remove if fully clear.
+                $worklistService->reconcileForReservation($r->fresh() ?? $r);
 
                 Log::channel('payments')->info('block_zone_reservation_adjusted', [
                     'reservation_id' => $r->id,
