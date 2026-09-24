@@ -351,6 +351,24 @@ final class ExternalFileArchiveService
             return $row->refresh();
         }
 
+        // Bookkeeping only: older failed attempts for this source are historical after durable upload.
+        try {
+            $this->supersedeFailedSiblingsForSource(
+                $sourceTable,
+                $sourceId,
+                $sourceColumn,
+                (int) $row->id,
+            );
+        } catch (Throwable $e) {
+            Log::channel('payments')->warning('external_archive_supersede_failed', [
+                'external_file_archive_id' => $row->id,
+                'source_table' => $sourceTable,
+                'source_id' => $sourceId,
+                'source_column' => $sourceColumn,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $deleted = $disk->delete($localPath);
         if ($deleted) {
             $row->update(['local_deleted_at' => now()]);
@@ -380,6 +398,108 @@ final class ExternalFileArchiveService
         Log::channel('payments')->info('external_archive_upload_succeeded', $successLog);
 
         return $row->refresh();
+    }
+
+    /**
+     * Mark failed archive rows for the same logical source as superseded (historical only).
+     *
+     * Source identity: source_table + source_id + source_column.
+     * Does not touch uploaded, pending, or the successful uploaded row itself.
+     *
+     * @return int Number of rows updated to superseded
+     */
+    public function supersedeFailedSiblingsForSource(
+        string $sourceTable,
+        int $sourceId,
+        ?string $sourceColumn,
+        ?int $exceptArchiveId = null,
+    ): int {
+        $query = ExternalFileArchive::query()
+            ->where('source_table', $sourceTable)
+            ->where('source_id', $sourceId)
+            ->where('source_column', $sourceColumn)
+            ->where('status', ExternalFileArchive::STATUS_FAILED);
+
+        if ($exceptArchiveId !== null) {
+            $query->where('id', '!=', $exceptArchiveId);
+        }
+
+        $ids = $query->pluck('id')->all();
+        if ($ids === []) {
+            return 0;
+        }
+
+        $updated = ExternalFileArchive::query()
+            ->whereIn('id', $ids)
+            ->where('status', ExternalFileArchive::STATUS_FAILED)
+            ->update(['status' => ExternalFileArchive::STATUS_SUPERSEDED]);
+
+        if ($updated > 0) {
+            Log::channel('payments')->info('external_archive_failed_superseded', [
+                'source_table' => $sourceTable,
+                'source_id' => $sourceId,
+                'source_column' => $sourceColumn,
+                'except_archive_id' => $exceptArchiveId,
+                'superseded_count' => $updated,
+                'superseded_ids' => $ids,
+            ]);
+        }
+
+        return (int) $updated;
+    }
+
+    /**
+     * Reconcile historical failed rows that already have an uploaded sibling (same source identity).
+     * Does not contact MEGA or touch local files.
+     *
+     * @return array{would_supersede: int, superseded: int, identities: int}
+     */
+    public function reconcileFailedWithUploadedSiblings(bool $dryRun = false): array
+    {
+        $uploadedIdentities = ExternalFileArchive::query()
+            ->where('status', ExternalFileArchive::STATUS_UPLOADED)
+            ->select(['source_table', 'source_id', 'source_column'])
+            ->distinct()
+            ->get();
+
+        $wouldSupersede = 0;
+        $superseded = 0;
+        $identitiesTouched = 0;
+
+        foreach ($uploadedIdentities as $identity) {
+            $sourceTable = (string) $identity->source_table;
+            $sourceId = (int) $identity->source_id;
+            $sourceColumn = $identity->source_column;
+
+            $failedCount = ExternalFileArchive::query()
+                ->where('source_table', $sourceTable)
+                ->where('source_id', $sourceId)
+                ->where('source_column', $sourceColumn)
+                ->where('status', ExternalFileArchive::STATUS_FAILED)
+                ->count();
+
+            if ($failedCount < 1) {
+                continue;
+            }
+
+            $identitiesTouched++;
+            $wouldSupersede += $failedCount;
+
+            if (! $dryRun) {
+                $superseded += $this->supersedeFailedSiblingsForSource(
+                    $sourceTable,
+                    $sourceId,
+                    $sourceColumn,
+                    null,
+                );
+            }
+        }
+
+        return [
+            'would_supersede' => $wouldSupersede,
+            'superseded' => $dryRun ? 0 : $superseded,
+            'identities' => $identitiesTouched,
+        ];
     }
 
     /**

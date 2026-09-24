@@ -12,6 +12,9 @@ class ExternalFileArchive extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    /** Historical failed attempt whose logical source later has an uploaded sibling. */
+    public const STATUS_SUPERSEDED = 'superseded';
+
     public const PROVIDER_MEGA = 'mega';
 
     protected $fillable = [

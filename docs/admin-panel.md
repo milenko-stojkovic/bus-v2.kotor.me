@@ -15,7 +15,7 @@ Specifikacija admin funkcionalnosti. Modeli: Reservation, TempData, DailyParking
 
 ### Sistemska arhiva — neuspjeli fajlovi (`GET /admin/sistemska-arhiva/neuspjeli`)
 
-- **Namjena:** ručni pregled i ponovni pokušaj MEGA uploada za redove **`external_file_archives`** u statusu **`failed`** (npr. nakon privremenih grešaka ili operativnog MEGA problema).
+- **Namjena:** ručni pregled i ponovni pokušaj MEGA uploada za redove **`external_file_archives`** u statusu **`failed`** (**aktivni** neuspjeh). Redovi **`superseded`** (stariji fail nakon kasnijeg uspješnog `uploaded` za isti `source_table`+`source_id`+`source_column`) **nisu** na listi — v. **[external-file-archive.md](./external-file-archive.md)**.
 - **Rute:** **`panel_admin.archive.failed`** (lista), **`panel_admin.archive.failed.retry`** (**POST** + CSRF, jedan red po zahtjevu).
 - **Prikaz:** id, izvor (`source_table`, `source_id`, `context_type`), `original_local_path`, `generated_file_name`, skraćena greška, datumi, **da li lokalni fajl još postoji** na privatnom disku.
 - **Ponovni pokušaj:** poziva **`ExternalFileArchiveService::retryFailedArchive`** — ažurira **isti** red (ne pravi novi `uploaded` duplikat za isti izvor); koristi isto **`generated_file_name`**; **ne** briše objekte na MEGA. Za **`archived_derivative`** + **`limo_plate_upload`** ponovo se priprema JPEG derivat iz postojećeg originala. Ako lokalni fajl nedostaje ili već postoji drugi **`uploaded`** red za isti (`source_table`, `source_id`, `source_column`), akcija se odbija (poruka u sesiji). Kredencijali MEGA se ne prikazuju; nema slobodnog unosa putanje.

@@ -15,9 +15,24 @@ Tabela **`external_file_archives`** drži:
 - `mega_node_id` / `mega_path` kada je upload uspio
 - `original_local_path` — relativna putanja na `local` (private) disku prije brisanja (i dalje cilj za preview/restore, čak i kad je na MEGA arhiviran **derivat**)
 - **`archived_derivative`** (bool), **`derivative_source_path`**, **`derivative_options`** (JSON) — samo za **Limo plate upload** arhivu: na MEGA ide optimizovani JPEG, metadata opisuje izrez/resize (vidi Artisan ispod)
-- `status`: `pending` | `uploaded` | `failed`
+- `status`: `pending` | `uploaded` | `failed` | `superseded`
 - `archived_at`, `local_deleted_at`
 - **`preview_restored_at`**, **`preview_expires_at`** — vremenski ograničen admin **privremeni** re-download sa MEGA (Limo pickup/incident, FZBR prilozi u admin pregledu); vidi ispod.
+
+**Logički izvor (source identity):** `source_table` + `source_id` + `source_column`.
+
+**Status semantika (operativno):**
+
+| Status | Značenje |
+|--------|----------|
+| `pending` | Upload u toku / red tek kreiran |
+| `uploaded` | Trajna kopija na MEGA snimljena; lokalni fajl se briše tek poslije ovoga |
+| `failed` | **Aktivni** neuspjeh — nema usklađenog `uploaded` siblinga za isti izvor |
+| `superseded` | **Istorijski** neuspjeh: isti izvor je kasnije uspješno arhiviran (`uploaded`); red ostaje kao audit (error, `generated_file_name`), nije retry-abilan i **ne** ulazi u health / listu neuspjelih |
+
+Kad red postane `uploaded`, servis označava starije `failed` redove istog izvora kao `superseded` (ne dira `pending` / druge `uploaded`). MEGA upload i brisanje lokalnog fajla ostaju neizmijenjeni.
+
+**Ručna usklađenost postojećih podataka:** `php artisan files:reconcile-external-archives` (`--dry-run` bez upisa) — samo `failed` → `superseded` gdje već postoji `uploaded` sibling; bez MEGA, bez brisanja redova/fajlova. Nije na scheduleru.
 
 ---
 
@@ -146,8 +161,9 @@ Log kanal `payments` (bez binarnog sadržaja): `external_archive_upload_started`
 
 ### Admin — neuspjeli uploadi (glavni panel)
 
-- **`GET /admin/sistemska-arhiva/neuspjeli`** (`panel_admin.archive.failed`) — samo **`status = failed`**; oznaka da li **`original_local_path`** još postoji lokalno.
+- **`GET /admin/sistemska-arhiva/neuspjeli`** (`panel_admin.archive.failed`) — samo **`status = failed`** (**aktivni** neuspjeh; `superseded` se ne prikazuje — to su istorijski pokušaji nakon kasnijeg `uploaded` za isti izvor).
 - **`POST /admin/sistemska-arhiva/neuspjeli/{external_file_archive}/retry`** (`panel_admin.archive.failed.retry`) — **`ExternalFileArchiveService::retryFailedArchive`**: isti red i **`generated_file_name`**, bez brisanja na MEGA; za **`limo_plate_upload`** sa derivatom ponovo se gradi JPEG. Vidi **[admin-panel.md](./admin-panel.md)**.
+- **Usklađenost:** `php artisan files:reconcile-external-archives` (`--dry-run`) — v. status tabelu gore.
 
 ## Artisan
 
@@ -159,6 +175,7 @@ Log kanal `payments` (bez binarnog sadržaja): `external_archive_upload_started`
   - **`limo_incidents`:** još **nije** uključeno (TODO — politika zadržavanja dokaza / email).
 - **Zakazivanje (lokalni SAFE scheduler, `routes/console.php`):** `files:archive-private --source=all --limit=50 --require-mega-health` — **svakih šest sati**, timezone **`Europe/Podgorica`**, **`withoutOverlapping(360)`** (mutex do 360 min). Mala serija po kategoriji; incident fajlovi i dalje nisu obuhvaćeni dok komanda ne proširi izvor.
 - `php artisan files:restore-private {archive_id}` — trajni restore sa MEGA na originalnu privatnu putanju (`local_deleted_at` se briše).
+- `php artisan files:reconcile-external-archives` — `failed` → `superseded` gdje već postoji `uploaded` za isti izvor; **`--dry-run`** bez upisa. Nije na scheduleru.
 - **`php artisan files:mega-diagnose`** — provjera login-a i postojanja baznog foldera na MEGA (Node akcija `diagnose` u `scripts/mega-archive.js`; **ne** kreira bazni folder). Izlaz: maskirani email, **User-Agent** (`MEGA_USER_AGENT` / config), JSON polja (`login_ok`, `folder_found`, `root_children_sample`, …); lozinka se **nikad** ne ispisuje. Korisno kad browser login radi, a megajs vraća npr. `ENOENT (-9)`. **Kada poruka spominje „Wrong password?”:** prvo slijediti sekciju **Operativni runbook: MEGA security lock** iznad — ne zaključivati odmah da je `.env` pogrešan.
 - **`php artisan files:cleanup-preview-cache`** — briše **istekle** privremene preview fajlove (vidi gore); ne dira redove gdje je **`local_deleted_at` null** (lokalno zadržani fajlovi).
 

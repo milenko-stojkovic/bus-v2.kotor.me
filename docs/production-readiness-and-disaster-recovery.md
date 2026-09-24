@@ -87,7 +87,7 @@ Provjera prije/po puštanju u rad (checklist). Prilagoditi hosting (Plesk, syste
 
 - **`failed_jobs`** u zadnjih 24h (broj u Sistem statusu / DB).
 - **Nefiskalizovano / zaglaveljeno:** `post_fiscalization_data` nerešeno duže od operativnog praga (npr. >2h — usklađeno sa rollup logikom u `alerts:system-health`); odmah pri ulasku u post-fiskal postoji info alert **`post_fiscalization_started`** na dashboardu. **Produkcija (2026-06):** svi odgođeni slučajevi završeni uspješnim retry-em — v. **`success-payment-pipeline.md`**.
-- **Neuspjela MEGA arhiva:** redovi `external_file_archives` u `failed`; admin stranica neuspjelih (v. [admin-panel.md](./admin-panel.md)).
+- **Neuspjela MEGA arhiva:** redovi `external_file_archives` u **`failed`** (aktivni); **`superseded`** = istorijski fail nakon kasnijeg `uploaded` za isti izvor (ne ulazi u health). Admin stranica neuspjelih (v. [admin-panel.md](./admin-panel.md)); usklađenost: `files:reconcile-external-archives`.
 - **Queue:** za `database` driver — pending backlog; „stale” poslove prati heartbeat i alert tip `queue_worker_down` (dvostruka potvrda u kodu).
 - **Kritična admin upozorenja:** otvoreni `admin_alerts` sa `severity` kritičnim; dashboard Upozorenja + Sistem status.
 - **Svježina heartbeat-a:** u Sistem statusu — da li su **`system_health:last_*`**, **`mega:last_diagnose_*`**, **`archive_private:last_*`** u očekivanim okvirima nakon noćnog schedulera (npr. nakon 07:30).
