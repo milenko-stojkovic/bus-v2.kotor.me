@@ -204,16 +204,37 @@ final class AgencyController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($vehicle->status !== Vehicle::STATUS_REMOVED) {
-                throw ValidationException::withMessages(['vehicle' => ['Vozilo nije u statusu removed.']]);
-            }
-
             if ((string) $vehicle->license_plate !== (string) $locked->license_plate) {
                 throw ValidationException::withMessages(['vehicle' => ['Tablica ne odgovara zahtjevu.']]);
             }
 
+            $oldTypeId = (int) $locked->old_vehicle_type_id;
+            $requestedTypeId = (int) $locked->requested_vehicle_type_id;
+            $currentTypeId = (int) $vehicle->vehicle_type_id;
+            $vehicleStatus = (string) $vehicle->status;
+
+            // Fail closed: vehicle must still be on the recorded OLD category.
+            if ($currentTypeId === $requestedTypeId) {
+                throw ValidationException::withMessages([
+                    'vehicle' => ['Vozilo je već na traženoj kategoriji; zahtjev se ne može odobriti iz ovog stanja.'],
+                ]);
+            }
+
+            if ($currentTypeId !== $oldTypeId) {
+                throw ValidationException::withMessages([
+                    'vehicle' => ['Trenutna kategorija vozila ne odgovara staroj kategoriji zahtjeva.'],
+                ]);
+            }
+
+            // Supported starting states: removed+old (normal) or active+old (reactivated under old category).
+            if ($vehicleStatus !== Vehicle::STATUS_REMOVED && $vehicleStatus !== Vehicle::STATUS_ACTIVE) {
+                throw ValidationException::withMessages([
+                    'vehicle' => ['Vozilo nije u podržanom statusu za odobrenje (removed ili active).'],
+                ]);
+            }
+
             $vehicle->update([
-                'vehicle_type_id' => (int) $locked->requested_vehicle_type_id,
+                'vehicle_type_id' => $requestedTypeId,
                 'status' => Vehicle::STATUS_ACTIVE,
             ]);
 

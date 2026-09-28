@@ -344,5 +344,356 @@ final class VehicleCategoryChangeApprovalWorkflowTest extends TestCase
             ->firstOrFail();
         $this->assertNotNull($alert2->removed_at);
     }
+
+    /** @return array{0: VehicleType, 1: VehicleType, 2: VehicleType} */
+    private function seedThreeTypes(): array
+    {
+        $a = VehicleType::query()->create(['price' => 10]);
+        $b = VehicleType::query()->create(['price' => 20]);
+        $c = VehicleType::query()->create(['price' => 30]);
+
+        foreach ([$a, $b, $c] as $t) {
+            VehicleTypeTranslation::query()->create(['vehicle_type_id' => $t->id, 'locale' => 'en', 'name' => 'T'.$t->id, 'description' => null]);
+            VehicleTypeTranslation::query()->create(['vehicle_type_id' => $t->id, 'locale' => 'cg', 'name' => 'T'.$t->id, 'description' => null]);
+        }
+
+        return [$a, $b, $c];
+    }
+
+    /**
+     * @param  array{user: User, old: Vehicle, a: VehicleType, b: VehicleType}  $fixtures
+     */
+    private function createPendingCategoryChangeRequest(array $fixtures): VehicleCategoryChangeRequest
+    {
+        return VehicleCategoryChangeRequest::query()->create([
+            'user_id' => $fixtures['user']->id,
+            'old_vehicle_id' => $fixtures['old']->id,
+            'license_plate' => (string) $fixtures['old']->license_plate,
+            'old_vehicle_type_id' => $fixtures['a']->id,
+            'requested_vehicle_type_id' => $fixtures['b']->id,
+            'status' => VehicleCategoryChangeRequest::STATUS_PENDING,
+            'document_original_name' => 'doc.pdf',
+            'document_path' => 'vehicle-category-change-requests/test/document',
+            'document_mime_type' => 'application/pdf',
+            'document_size_bytes' => 100,
+            'locale' => 'cg',
+        ]);
+    }
+
+    public function test_approve_from_removed_old_category_sets_active_requested_category(): void
+    {
+        [$a, $b] = $this->seedTypes();
+        $user = User::factory()->create();
+        $old = Vehicle::query()->create([
+            'user_id' => $user->id,
+            'license_plate' => 'KO222',
+            'vehicle_type_id' => $a->id,
+            'status' => Vehicle::STATUS_REMOVED,
+        ]);
+        $req = $this->createPendingCategoryChangeRequest([
+            'user' => $user,
+            'old' => $old,
+            'a' => $a,
+            'b' => $b,
+        ]);
+        $admin = $this->seedAdmin();
+
+        $this->actingAs($admin, 'panel_admin')
+            ->post(route('panel_admin.agencies.vehicle_category_change_requests.approve', [
+                'user' => $user->id,
+                'request' => $req->id,
+            ], false))
+            ->assertRedirect(route('panel_admin.agencies.show', $user, false));
+
+        $req->refresh();
+        $old->refresh();
+        $this->assertSame(VehicleCategoryChangeRequest::STATUS_APPROVED, (string) $req->status);
+        $this->assertNotNull($req->reviewed_at);
+        $this->assertSame((int) $admin->id, (int) $req->reviewed_by_admin_id);
+        $this->assertSame(Vehicle::STATUS_ACTIVE, (string) $old->status);
+        $this->assertSame((int) $b->id, (int) $old->vehicle_type_id);
+    }
+
+    public function test_approve_from_active_old_category_sets_requested_category(): void
+    {
+        [$a, $b] = $this->seedTypes();
+        $user = User::factory()->create();
+        $old = Vehicle::query()->create([
+            'user_id' => $user->id,
+            'license_plate' => 'KO333',
+            'vehicle_type_id' => $a->id,
+            'status' => Vehicle::STATUS_ACTIVE,
+        ]);
+        $req = $this->createPendingCategoryChangeRequest([
+            'user' => $user,
+            'old' => $old,
+            'a' => $a,
+            'b' => $b,
+        ]);
+
+        AdminAlert::query()->create([
+            'type' => 'vehicle_category_change_request',
+            'status' => AdminAlert::STATUS_UNREAD,
+            'title' => 't',
+            'message' => 'm',
+            'payload_json' => [
+                'vehicle_category_change_request_id' => (int) $req->id,
+                'user_id' => (int) $user->id,
+                'license_plate' => 'KO333',
+            ],
+        ]);
+
+        $admin = $this->seedAdmin();
+
+        \Illuminate\Support\Facades\Queue::fake();
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $this->actingAs($admin, 'panel_admin')
+            ->post(route('panel_admin.agencies.vehicle_category_change_requests.approve', [
+                'user' => $user->id,
+                'request' => $req->id,
+            ], false))
+            ->assertRedirect(route('panel_admin.agencies.show', $user, false));
+
+        $req->refresh();
+        $old->refresh();
+        $this->assertSame(VehicleCategoryChangeRequest::STATUS_APPROVED, (string) $req->status);
+        $this->assertNotNull($req->reviewed_at);
+        $this->assertSame((int) $admin->id, (int) $req->reviewed_by_admin_id);
+        $this->assertSame(Vehicle::STATUS_ACTIVE, (string) $old->status);
+        $this->assertSame((int) $b->id, (int) $old->vehicle_type_id);
+
+        $alert = AdminAlert::query()
+            ->where('type', 'vehicle_category_change_request')
+            ->where('payload_json->vehicle_category_change_request_id', (int) $req->id)
+            ->firstOrFail();
+        $this->assertNotNull($alert->removed_at);
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\ArchiveVehicleCategoryChangeRequestAttachmentsJob::class);
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\VehicleCategoryChangeApprovedMail::class);
+    }
+
+    public function test_approve_rejects_active_third_category(): void
+    {
+        [$a, $b, $c] = $this->seedThreeTypes();
+        $user = User::factory()->create();
+        $old = Vehicle::query()->create([
+            'user_id' => $user->id,
+            'license_plate' => 'KO444',
+            'vehicle_type_id' => $c->id,
+            'status' => Vehicle::STATUS_ACTIVE,
+        ]);
+        $req = $this->createPendingCategoryChangeRequest([
+            'user' => $user,
+            'old' => $old,
+            'a' => $a,
+            'b' => $b,
+        ]);
+        $admin = $this->seedAdmin();
+
+        $this->actingAs($admin, 'panel_admin')
+            ->from(route('panel_admin.agencies.vehicle_category_change_requests.show', [
+                'user' => $user->id,
+                'request' => $req->id,
+            ], false))
+            ->post(route('panel_admin.agencies.vehicle_category_change_requests.approve', [
+                'user' => $user->id,
+                'request' => $req->id,
+            ], false))
+            ->assertRedirect(route('panel_admin.agencies.vehicle_category_change_requests.show', [
+                'user' => $user->id,
+                'request' => $req->id,
+            ], false))
+            ->assertSessionHasErrors('vehicle');
+
+        $req->refresh();
+        $old->refresh();
+        $this->assertSame(VehicleCategoryChangeRequest::STATUS_PENDING, (string) $req->status);
+        $this->assertSame(Vehicle::STATUS_ACTIVE, (string) $old->status);
+        $this->assertSame((int) $c->id, (int) $old->vehicle_type_id);
+    }
+
+    public function test_approve_rejects_already_requested_category(): void
+    {
+        [$a, $b] = $this->seedTypes();
+        $user = User::factory()->create();
+        $old = Vehicle::query()->create([
+            'user_id' => $user->id,
+            'license_plate' => 'KO555',
+            'vehicle_type_id' => $b->id,
+            'status' => Vehicle::STATUS_ACTIVE,
+        ]);
+        $req = $this->createPendingCategoryChangeRequest([
+            'user' => $user,
+            'old' => $old,
+            'a' => $a,
+            'b' => $b,
+        ]);
+        $admin = $this->seedAdmin();
+
+        $this->actingAs($admin, 'panel_admin')
+            ->post(route('panel_admin.agencies.vehicle_category_change_requests.approve', [
+                'user' => $user->id,
+                'request' => $req->id,
+            ], false))
+            ->assertSessionHasErrors('vehicle');
+
+        $req->refresh();
+        $old->refresh();
+        $this->assertSame(VehicleCategoryChangeRequest::STATUS_PENDING, (string) $req->status);
+        $this->assertSame((int) $b->id, (int) $old->vehicle_type_id);
+    }
+
+    public function test_approve_rejects_removed_but_category_drifted(): void
+    {
+        [$a, $b, $c] = $this->seedThreeTypes();
+        $user = User::factory()->create();
+        $old = Vehicle::query()->create([
+            'user_id' => $user->id,
+            'license_plate' => 'KO666',
+            'vehicle_type_id' => $c->id,
+            'status' => Vehicle::STATUS_REMOVED,
+        ]);
+        $req = $this->createPendingCategoryChangeRequest([
+            'user' => $user,
+            'old' => $old,
+            'a' => $a,
+            'b' => $b,
+        ]);
+        $admin = $this->seedAdmin();
+
+        $this->actingAs($admin, 'panel_admin')
+            ->post(route('panel_admin.agencies.vehicle_category_change_requests.approve', [
+                'user' => $user->id,
+                'request' => $req->id,
+            ], false))
+            ->assertSessionHasErrors('vehicle');
+
+        $req->refresh();
+        $old->refresh();
+        $this->assertSame(VehicleCategoryChangeRequest::STATUS_PENDING, (string) $req->status);
+        $this->assertSame(Vehicle::STATUS_REMOVED, (string) $old->status);
+        $this->assertSame((int) $c->id, (int) $old->vehicle_type_id);
+    }
+
+    public function test_same_category_reactivation_blocked_while_category_change_pending(): void
+    {
+        [$a, $b] = $this->seedTypes();
+        $user = User::factory()->create(['lang' => 'en']);
+        $this->actingAs($user);
+
+        $old = Vehicle::query()->create([
+            'user_id' => $user->id,
+            'license_plate' => 'KO777',
+            'vehicle_type_id' => $a->id,
+            'status' => Vehicle::STATUS_REMOVED,
+        ]);
+        $this->createPendingCategoryChangeRequest([
+            'user' => $user,
+            'old' => $old,
+            'a' => $a,
+            'b' => $b,
+        ]);
+
+        $this->post(route('panel.vehicles.store', [], false), [
+            'license_plate' => 'KO777',
+            'vehicle_type_id' => $a->id,
+        ])
+            ->assertRedirect(route('panel.vehicles', [], false))
+            ->assertSessionHas('error');
+
+        $old->refresh();
+        $this->assertSame(Vehicle::STATUS_REMOVED, (string) $old->status);
+        $this->assertSame(1, VehicleCategoryChangeRequest::query()->where('status', VehicleCategoryChangeRequest::STATUS_PENDING)->count());
+        $this->assertMatchesRegularExpression('/awaiting admin|category change request/i', (string) session('error'));
+    }
+
+    public function test_failed_approve_validation_errors_visible_on_request_detail_page(): void
+    {
+        [$a, $b, $c] = $this->seedThreeTypes();
+        $user = User::factory()->create();
+        $old = Vehicle::query()->create([
+            'user_id' => $user->id,
+            'license_plate' => 'KO888',
+            'vehicle_type_id' => $c->id,
+            'status' => Vehicle::STATUS_ACTIVE,
+        ]);
+        $req = $this->createPendingCategoryChangeRequest([
+            'user' => $user,
+            'old' => $old,
+            'a' => $a,
+            'b' => $b,
+        ]);
+        $admin = $this->seedAdmin();
+        $detailUrl = route('panel_admin.agencies.vehicle_category_change_requests.show', [
+            'user' => $user->id,
+            'request' => $req->id,
+        ], false);
+
+        $html = $this->actingAs($admin, 'panel_admin')
+            ->from($detailUrl)
+            ->followingRedirects()
+            ->post(route('panel_admin.agencies.vehicle_category_change_requests.approve', [
+                'user' => $user->id,
+                'request' => $req->id,
+            ], false))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Trenutna kategorija vozila ne odgovara staroj kategoriji zahtjeva.', $html);
+    }
+
+    public function test_case_b_approve_does_not_rewrite_existing_reservation_snapshot(): void
+    {
+        [$a, $b] = $this->seedTypes();
+        $user = User::factory()->create();
+        $old = Vehicle::query()->create([
+            'user_id' => $user->id,
+            'license_plate' => 'KO999',
+            'vehicle_type_id' => $a->id,
+            'status' => Vehicle::STATUS_ACTIVE,
+        ]);
+        $slot = ListOfTimeSlot::query()->create(['time_slot' => '11:00 - 11:20']);
+        $reservation = Reservation::query()->create([
+            'user_id' => $user->id,
+            'vehicle_id' => $old->id,
+            'merchant_transaction_id' => 'mt-cat-b-safe',
+            'drop_off_time_slot_id' => $slot->id,
+            'pick_up_time_slot_id' => $slot->id,
+            'reservation_date' => Carbon::now()->addDays(3)->toDateString(),
+            'user_name' => 'u',
+            'country' => 'ME',
+            'license_plate' => $old->license_plate,
+            'vehicle_type_id' => $a->id,
+            'email' => 'u@example.com',
+            'preferred_locale' => 'en',
+            'status' => 'paid',
+            'invoice_amount' => '10.00',
+        ]);
+        $req = $this->createPendingCategoryChangeRequest([
+            'user' => $user,
+            'old' => $old,
+            'a' => $a,
+            'b' => $b,
+        ]);
+        $admin = $this->seedAdmin();
+
+        \Illuminate\Support\Facades\Queue::fake();
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $this->actingAs($admin, 'panel_admin')
+            ->post(route('panel_admin.agencies.vehicle_category_change_requests.approve', [
+                'user' => $user->id,
+                'request' => $req->id,
+            ], false))
+            ->assertRedirect();
+
+        $reservation->refresh();
+        $old->refresh();
+        $this->assertSame((int) $a->id, (int) $reservation->vehicle_type_id);
+        $this->assertSame('10.00', (string) $reservation->invoice_amount);
+        $this->assertSame((int) $b->id, (int) $old->vehicle_type_id);
+        $this->assertSame(Vehicle::STATUS_ACTIVE, (string) $old->status);
+    }
 }
 

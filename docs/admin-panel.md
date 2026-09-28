@@ -528,18 +528,26 @@ Ovaj workflow postoji da bi se sprečila zloupotreba ponovnog unosa iste regista
 **Approve (Prihvati):**
 
 - zahtjev mora biti `pending`
-- reaktivira postojeće `removed` vozilo (ne kreira novo):
+- povezano vozilo (`old_vehicle_id`) mora pripadati istoj agenciji, tablica mora odgovarati, a **trenutna** `vehicles.vehicle_type_id` mora biti jednaka **`old_vehicle_type_id`** na zahtjevu (dokaz da je prelaz i dalje sa snimljene stare kategorije)
+- vozilo **ne smije** već biti na `requested_vehicle_type_id` (fail-closed; bez tihog „popravljanja”)
+- **podržana početna stanja** (oba su first-class, isti konačni ishod):
+  - **A (normalan lifecycle):** `vehicles.status = removed` i tip = stara kategorija zahtjeva
+  - **B (reaktivirano pod starom kategorijom):** `vehicles.status = active` i tip = stara kategorija zahtjeva  
+    (npr. agencija je u međuvremenu ponovo aktivirala istu tablicu/istu staru kategoriju dok je zahtjev još pending — odobrenje i dalje važi bez SQL-a, bez vraćanja na `removed`, bez reject/resubmit)
+- **zajednički konačni ishod** (atomski u transakciji):
   - `vehicle_type_id = requested_vehicle_type_id`
   - `vehicles.status = active`
-- `vehicle_category_change_requests.status = approved`
-- upisuje se `reviewed_by_admin_id` i `reviewed_at`
-- uklanja se warning iz Upozorenja / Informacije
+  - `vehicle_category_change_requests.status = approved`
+  - upisuju se `reviewed_by_admin_id` i `reviewed_at`
+  - uklanja se warning iz Upozorenja / Informacije
+- postojeće rezervacije / `invoice_amount` / snapshot `reservations.vehicle_type_id` se **ne** mijenjaju; odobrenje utiče na buduću upotrebu vozila
+- nekonzistentna stanja (treća kategorija, već tražena kategorija, status nije `removed`/`active`, pogrešna tablica/agencija, zahtjev nije pending) → validaciona greška (vidljiva na pregledu zahtjeva)
 
 **Reject (Odbij):**
 
 - `vehicle_category_change_requests.status = rejected`
 - upisuje se `reviewed_by_admin_id` i `reviewed_at`
-- vozilo ostaje `removed`
+- vozilo se **ne** mijenja (u normalnom toku ostaje `removed`; ako je već `active` pod starom kategorijom, ostaje kako jeste)
 - uklanja se warning iz Upozorenja / Informacije
 
 **Retention:**

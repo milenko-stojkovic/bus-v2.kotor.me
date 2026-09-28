@@ -323,14 +323,17 @@ Ovaj modul sprečava da se ista registarska tablica ponovo unese sa drugom kateg
 Ako agencija ponovo unese **istu registarsku tablicu**:
 
 - Ako je izabrana **ista kategorija** kao ranije uklonjenom vozilu:
-  - vozilo se **reaktivira** (`status = active`).
+  - **ako postoji pending** zahtjev za promjenu kategorije za to vozilo/tablicu → reaktivacija se **blokira**; vozilo ostaje `removed`, zahtjev ostaje `pending`, agencija vidi poruku da čeka odluku administratora
+  - inače se vozilo **reaktivira** (`status = active`)
 - Ako je izabrana **druga kategorija**:
   - direktan unos se **blokira**,
   - prikazuje se objašnjenje i forma za **upload dokumenata** (slika ili PDF),
   - agencija može priložiti **1–5 fajlova** (npr. obje strane saobraćajne dozvole); najmanje **jedan** dokument je obavezan,
   - agencija šalje **zahtjev za promjenu kategorije** koji ide administratoru na odobrenje.
 
-Dok zahtjev ne bude odobren, vozilo se ne može koristiti sa novom kategorijom.
+Dok zahtjev ne bude odobren, vozilo se ne može koristiti sa **novom** kategorijom. Obična reaktivacija pod **starom** kategorijom dok je zahtjev pending takođe je blokirana (sprečava „zaglavljen” pending uz već aktivno vozilo).
+
+**Admin odobrenje** je podržano i kada je povezano vozilo još `removed` na staroj kategoriji, i kada je (npr. zbog ranijeg gap-a) već `active` na **istoj** staroj kategoriji — u oba slučaja Prihvati atomski postavlja traženu kategoriju i `active`. Detalji: **`admin-panel.md`** §9.5.
 
 **Nakon odluke administratora** (odobren ili odbijen), prilozi se **asinhrono** arhiviraju na MEGA i uklanjaju sa produkcijskog diska; agencija i dalje vidi status zahtjeva, ali ne mora ništa raditi — arhiva je interni admin/operativni proces.
 

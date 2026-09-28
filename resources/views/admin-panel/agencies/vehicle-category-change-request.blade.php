@@ -37,6 +37,13 @@
         @if (session('error'))
             <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ session('error') }}</div>
         @endif
+        @if ($errors->any())
+            <div class="rounded-md bg-red-50 p-3 text-sm text-red-800 space-y-1">
+                @foreach ($errors->all() as $err)
+                    <div>{{ $err }}</div>
+                @endforeach
+            </div>
+        @endif
 
         <section class="bg-white shadow rounded-lg p-4 sm:p-6 space-y-4">
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">

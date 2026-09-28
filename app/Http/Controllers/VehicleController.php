@@ -56,6 +56,29 @@ class VehicleController extends Controller
 
         if ($removedSamePlate) {
             if ((int) $removedSamePlate->vehicle_type_id === $requestedTypeId) {
+                $hasPendingCategoryChange = VehicleCategoryChangeRequest::query()
+                    ->where('user_id', $request->user()->id)
+                    ->where('status', VehicleCategoryChangeRequest::STATUS_PENDING)
+                    ->where(function ($q) use ($removedSamePlate, $plate): void {
+                        $q->where('old_vehicle_id', $removedSamePlate->id)
+                            ->orWhere('license_plate', $plate);
+                    })
+                    ->exists();
+
+                if ($hasPendingCategoryChange) {
+                    return redirect()->route('panel.vehicles')->with(
+                        'error',
+                        UiText::t(
+                            'panel',
+                            'vehicle_category_change_pending_blocks_reactivation',
+                            $locale === 'en'
+                                ? 'A category change request for this plate is awaiting admin decision. The vehicle cannot be reactivated until the request is approved or rejected.'
+                                : 'Zahtjev za promjenu kategorije za ovu tablicu čeka odluku administratora. Vozilo se ne može reaktivirati dok zahtjev nije odobren ili odbijen.',
+                            $locale
+                        )
+                    );
+                }
+
                 $removedSamePlate->update([
                     'status' => Vehicle::STATUS_ACTIVE,
                 ]);
