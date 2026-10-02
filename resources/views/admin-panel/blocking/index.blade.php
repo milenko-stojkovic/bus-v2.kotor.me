@@ -115,9 +115,17 @@
             <div class="mt-8">
                 <h3 class="text-base font-semibold text-gray-900 mb-3">Rezervacije u blok zoni</h3>
                 <p class="text-sm text-gray-600 mb-3 max-w-3xl">
-                    Postojeće rezervacije / plaćanja koja koriste već blokirane termine. Termin je blokiran za nove rezervacije;
-                    ove stavke treba ručno prilagoditi (premjestiti).
+                    Postojeće rezervacije / plaćanja koja koriste već blokirane termine. Termin je blokiran za nove rezervacije.
+                    Stavke možete <strong>prilagoditi</strong> (premjestiti) ili, ako je rezervacija ipak uspješno realizovana bez premještanja,
+                    <strong>potvrditi realizaciju</strong> — tada se uklanja sa aktivne liste bez izmjene rezervacije ili blokade.
                 </p>
+                @if ($errors->any())
+                    <div class="rounded-md bg-red-50 p-3 text-sm text-red-800 space-y-1 mb-3">
+                        @foreach ($errors->all() as $err)
+                            <div>{{ $err }}</div>
+                        @endforeach
+                    </div>
+                @endif
                 @if ($worklist->isEmpty())
                     <p class="text-sm text-gray-600">Nema otvorenih stavki.</p>
                 @else
@@ -150,12 +158,25 @@
                                             </div>
                                         @endif
                                     </div>
-                                    <div class="shrink-0">
+                                    <div class="shrink-0 flex flex-col gap-2 items-stretch">
                                         @if ($row->status === \App\Models\BlockZoneWorklist::STATUS_READY_TO_ADJUST)
                                             <a href="{{ route('panel_admin.blocking.worklist.adjust', $row, false) }}"
-                                               class="inline-flex items-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50">
+                                               class="inline-flex items-center justify-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50">
                                                 Prilagodi rezervaciju
                                             </a>
+                                            <form method="POST" action="{{ route('panel_admin.blocking.worklist.acknowledge', $row, false) }}" class="space-y-2">
+                                                @csrf
+                                                <label class="block text-xs text-gray-600" for="ack-note-{{ $row->id }}">Napomena (opciono)</label>
+                                                <textarea id="ack-note-{{ $row->id }}" name="resolution_note" rows="1"
+                                                          maxlength="500"
+                                                          class="block w-full max-w-xs rounded-md border-gray-300 shadow-sm text-xs"
+                                                          placeholder="npr. realizovano bez premještanja">{{ old('resolution_note') }}</textarea>
+                                                <button type="submit"
+                                                        class="w-full inline-flex items-center justify-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50"
+                                                        onclick="return confirm('Potvrditi da je rezervacija uspješno realizovana uprkos blokadi?\n\nRezervacija se NE mijenja (datum, termini, plaćanje, fiskal).\nBlokada termini ostaje.\nStavka se uklanja sa aktivne liste intervencija.');">
+                                                    Potvrdi realizaciju
+                                                </button>
+                                            </form>
                                         @endif
                                     </div>
                                 </div>

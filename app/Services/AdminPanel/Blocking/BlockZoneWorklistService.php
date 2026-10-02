@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\TempData;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class BlockZoneWorklistService
 {
@@ -18,12 +19,25 @@ class BlockZoneWorklistService
      * drop-off / pick-up slots on its current date has daily_parking_data.is_blocked = 1.
      *
      * Does not delete or overwrite an active pending_payment row that has no reservation yet.
+     * Does not reopen acknowledged_no_adjustment while the reservation still matches the
+     * acknowledged date/slot fingerprint.
      */
     public function reconcileForReservation(Reservation $reservation): void
     {
         if ($reservation->isDailyTicket()) {
             $this->deleteConfirmedWorklistIfPresent($reservation);
 
+            return;
+        }
+
+        $existing = BlockZoneWorklist::query()
+            ->where('merchant_transaction_id', $reservation->merchant_transaction_id)
+            ->first();
+
+        if ($existing !== null
+            && $existing->isAcknowledged()
+            && $existing->matchesAcknowledgedFingerprint($reservation)) {
+            // Same booking still acknowledged — do not reopen while slots remain blocked.
             return;
         }
 
@@ -39,10 +53,6 @@ class BlockZoneWorklistService
 
             return;
         }
-
-        $existing = BlockZoneWorklist::query()
-            ->where('merchant_transaction_id', $reservation->merchant_transaction_id)
-            ->first();
 
         if ($existing !== null
             && $existing->status === BlockZoneWorklist::STATUS_PENDING_PAYMENT
@@ -67,6 +77,7 @@ class BlockZoneWorklistService
             'target_block_slots' => $targetSlots,
         ];
 
+        // Reservation moved off the acknowledged fingerprint onto newly blocked slots → new intervention.
         BlockZoneWorklist::query()->updateOrCreate(
             ['merchant_transaction_id' => $reservation->merchant_transaction_id],
             [
@@ -79,8 +90,112 @@ class BlockZoneWorklistService
                 'snapshot_json' => $payload,
                 'reservation_id' => $reservation->id,
                 'temp_data_id' => null,
+                'reviewed_by_admin_id' => null,
+                'reviewed_at' => null,
+                'resolution_note' => null,
             ],
         );
+    }
+
+    /**
+     * Admin confirms the reservation was honored despite the blockade; no slot move required.
+     *
+     * @throws ValidationException
+     */
+    public function acknowledgeRealized(
+        BlockZoneWorklist $row,
+        int $adminId,
+        ?string $note = null,
+    ): void {
+        DB::transaction(function () use ($row, $adminId, $note): void {
+            /** @var BlockZoneWorklist|null $locked */
+            $locked = BlockZoneWorklist::query()
+                ->whereKey($row->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($locked === null) {
+                throw ValidationException::withMessages([
+                    'worklist' => ['Stavka više nije dostupna.'],
+                ]);
+            }
+
+            if ($locked->status === BlockZoneWorklist::STATUS_ACKNOWLEDGED_NO_ADJUSTMENT) {
+                // Idempotent: already acknowledged.
+                return;
+            }
+
+            if ($locked->status !== BlockZoneWorklist::STATUS_READY_TO_ADJUST) {
+                throw ValidationException::withMessages([
+                    'worklist' => ['Samo stavke spremne za prilagođavanje (ready_to_adjust) mogu se potvrditi kao realizovane.'],
+                ]);
+            }
+
+            if ($locked->reservation_id === null) {
+                throw ValidationException::withMessages([
+                    'worklist' => ['Stavka nema povezanu rezervaciju.'],
+                ]);
+            }
+
+            /** @var Reservation|null $reservation */
+            $reservation = Reservation::query()
+                ->whereKey((int) $locked->reservation_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($reservation === null) {
+                throw ValidationException::withMessages([
+                    'worklist' => ['Povezana rezervacija nije pronađena.'],
+                ]);
+            }
+
+            if ((string) $reservation->merchant_transaction_id !== (string) $locked->merchant_transaction_id) {
+                throw ValidationException::withMessages([
+                    'worklist' => ['Rezervacija ne odgovara stavci workliste.'],
+                ]);
+            }
+
+            $resDate = $reservation->reservation_date->toDateString();
+            if ($resDate !== $locked->old_date->toDateString()
+                || (int) $reservation->drop_off_time_slot_id !== (int) $locked->old_drop_off
+                || (int) $reservation->pick_up_time_slot_id !== (int) $locked->old_pick_up) {
+                throw ValidationException::withMessages([
+                    'worklist' => ['Rezervacija je u međuvremenu izmijenjena (datum/termini). Osvježite worklistu ili prilagodite rezervaciju.'],
+                ]);
+            }
+
+            $noteTrimmed = $note !== null ? trim($note) : null;
+            if ($noteTrimmed === '') {
+                $noteTrimmed = null;
+            }
+            if ($noteTrimmed !== null && mb_strlen($noteTrimmed) > 500) {
+                throw ValidationException::withMessages([
+                    'resolution_note' => ['Napomena može imati najviše 500 karaktera.'],
+                ]);
+            }
+
+            $locked->update([
+                'status' => BlockZoneWorklist::STATUS_ACKNOWLEDGED_NO_ADJUSTMENT,
+                'reviewed_by_admin_id' => $adminId,
+                'reviewed_at' => now(),
+                'resolution_note' => $noteTrimmed,
+                // Fingerprint stays as old_* matching current reservation occupancy.
+                'old_date' => $resDate,
+                'old_drop_off' => (int) $reservation->drop_off_time_slot_id,
+                'old_pick_up' => (int) $reservation->pick_up_time_slot_id,
+            ]);
+
+            Log::channel('payments')->info('block_zone_worklist_acknowledged_realized', [
+                'worklist_id' => (int) $locked->id,
+                'reservation_id' => (int) $reservation->id,
+                'merchant_transaction_id' => (string) $locked->merchant_transaction_id,
+                'admin_id' => $adminId,
+                'old_date' => $resDate,
+                'old_drop_off' => (int) $reservation->drop_off_time_slot_id,
+                'old_pick_up' => (int) $reservation->pick_up_time_slot_id,
+                'has_note' => $noteTrimmed !== null,
+            ]);
+        });
     }
 
     private function isSlotBlocked(string $date, int $slotId): bool
@@ -107,6 +222,10 @@ class BlockZoneWorklistService
         if ($row->status === BlockZoneWorklist::STATUS_PENDING_PAYMENT && $row->reservation_id === null) {
             return;
         }
+        // Keep acknowledged rows for audit even if slots are later unblocked.
+        if ($row->isAcknowledged()) {
+            return;
+        }
         $row->delete();
     }
 
@@ -120,6 +239,10 @@ class BlockZoneWorklistService
             ->where('merchant_transaction_id', $reservation->merchant_transaction_id)
             ->first();
         if (! $row) {
+            return;
+        }
+
+        if ($row->isAcknowledged()) {
             return;
         }
 
@@ -148,6 +271,10 @@ class BlockZoneWorklistService
             ->where('merchant_transaction_id', $temp->merchant_transaction_id)
             ->first();
         if (! $row) {
+            return;
+        }
+
+        if ($row->isAcknowledged()) {
             return;
         }
 
@@ -188,4 +315,3 @@ class BlockZoneWorklistService
         ]);
     }
 }
-

@@ -59,6 +59,7 @@ Route::prefix('admin')->name('panel_admin.')->group(function () {
         Route::post('blokiranje/dan/apply', [AdminPanelBlockingController::class, 'applyUnblock'])->name('blocking.unblock.apply');
         Route::get('blokiranje/worklist/{row}/prilagodi', [AdminPanelBlockingController::class, 'adjust'])->name('blocking.worklist.adjust');
         Route::post('blokiranje/worklist/{row}/prilagodi', [AdminPanelBlockingController::class, 'applyAdjust'])->name('blocking.worklist.adjust.apply');
+        Route::post('blokiranje/worklist/{row}/potvrdi-realizaciju', [AdminPanelBlockingController::class, 'acknowledgeRealized'])->name('blocking.worklist.acknowledge');
 
         Route::get('besplatne-rezervacije', [AdminPanelFreeReservationController::class, 'create'])->name('free-reservations');
         Route::post('besplatne-rezervacije', [AdminPanelFreeReservationController::class, 'store'])->name('free-reservations.store');

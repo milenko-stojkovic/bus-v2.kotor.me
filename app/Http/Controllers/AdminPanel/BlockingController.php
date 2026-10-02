@@ -30,6 +30,7 @@ class BlockingController extends Controller
             ->keyBy('time_slot_id');
 
         $worklist = BlockZoneWorklist::query()
+            ->activeIntervention()
             ->orderByDesc('created_at')
             ->get();
 
@@ -122,6 +123,34 @@ class BlockingController extends Controller
             'slots' => $blocking->allSlots(),
             'prefilterDates' => $prefilterDates,
         ]);
+    }
+
+    public function acknowledgeRealized(
+        Request $request,
+        BlockZoneWorklist $row,
+        BlockZoneWorklistService $worklistService,
+    ): RedirectResponse {
+        $data = $request->validate([
+            'resolution_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $adminId = (int) ($request->user('panel_admin')?->id ?? 0);
+        if ($adminId < 1) {
+            abort(403);
+        }
+
+        try {
+            $worklistService->acknowledgeRealized(
+                $row,
+                $adminId,
+                isset($data['resolution_note']) ? (string) $data['resolution_note'] : null,
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return $this->redirectFresh('panel_admin.blocking', [])
+            ->with('status', 'Realizacija je potvrđena. Stavka je uklonjena sa aktivne liste intervencija; rezervacija i blokada nisu izmijenjene.');
     }
 
     public function applyAdjust(

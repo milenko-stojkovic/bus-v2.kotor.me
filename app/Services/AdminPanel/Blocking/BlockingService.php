@@ -133,6 +133,11 @@ class BlockingService
                 ->keyBy('time_slot_id');
 
             foreach ($work as $row) {
+                // Keep acknowledged audit rows; acknowledgment is independent of unblock.
+                if ($row->isAcknowledged()) {
+                    continue;
+                }
+
                 $affectedDrop = (bool) $row->affected_drop_off;
                 $affectedPick = (bool) $row->affected_pick_up;
                 if ($affectedDrop && ! $blockedBySlot->has((int) $row->old_drop_off)) {
@@ -165,13 +170,29 @@ class BlockingService
             ->where('merchant_transaction_id', $r->merchant_transaction_id)
             ->first();
 
+        // Same acknowledged booking still on the same date/slots — do not reopen on re-block.
+        if ($existing !== null && $existing->matchesAcknowledgedFingerprint($r)) {
+            return;
+        }
+
+        // When reopening after acknowledgment (reservation moved), do not inherit old affected flags.
+        $priorAffectedDrop = ($existing !== null && ! $existing->isAcknowledged())
+            ? (bool) $existing->affected_drop_off
+            : false;
+        $priorAffectedPick = ($existing !== null && ! $existing->isAcknowledged())
+            ? (bool) $existing->affected_pick_up
+            : false;
+        $priorTargets = ($existing !== null && ! $existing->isAcknowledged())
+            ? (array) (($existing->snapshot_json['target_block_slots'] ?? []) ?: [])
+            : [];
+
         $payload = [
             'user_name' => $r->user_name,
             'email' => $r->email,
             'reservation_id' => $r->id,
             'reservation_status' => $r->status,
             'target_block_slots' => array_values(array_unique(array_merge(
-                (array) (($existing?->snapshot_json['target_block_slots'] ?? []) ?: []),
+                $priorTargets,
                 [$affectedSlotId]
             ))),
         ];
@@ -183,11 +204,14 @@ class BlockingService
                 'old_date' => $r->reservation_date,
                 'old_drop_off' => $drop,
                 'old_pick_up' => $pick,
-                'affected_drop_off' => $drop === $affectedSlotId ? true : ($existing?->affected_drop_off ?? false),
-                'affected_pick_up' => $pick === $affectedSlotId ? true : ($existing?->affected_pick_up ?? false),
+                'affected_drop_off' => $drop === $affectedSlotId ? true : $priorAffectedDrop,
+                'affected_pick_up' => $pick === $affectedSlotId ? true : $priorAffectedPick,
                 'snapshot_json' => $payload,
                 'reservation_id' => $r->id,
                 'temp_data_id' => null,
+                'reviewed_by_admin_id' => null,
+                'reviewed_at' => null,
+                'resolution_note' => null,
             ],
         );
     }
