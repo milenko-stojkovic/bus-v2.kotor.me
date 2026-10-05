@@ -79,6 +79,8 @@ Servis: **`PendingBankartRedirectService`**. Testovi: **`CheckoutExistingPending
 - Nema provjere konflikta po slotovima (nema slotova).
 - Upis u **temp_data** sa `reservation_kind` = `daily_ticket`, slot FK = **NULL**, ostala polja kao gore.
 - **Bez** incrementa `daily_parking_data.pending`.
+- **Zabrana prodaje (`daily_fee_blocked_dates`):** ovo je **checkout-time** pravilo dostupnosti prodaje. **NOVI** daily-ticket checkout (`CheckoutController::storeDailyTicketBooking`) se **odbija** ako je `reservation_date` u `daily_fee_blocked_dates`. Kanonska poslovna pravila blokiranja: **`docs/admin-panel.md`** §2.
+- **Grandfathering (pending → SUCCESS):** ako je daily-ticket `temp_data` ušao u payment tok **prije** nego što je admin zabranio prodaju dnevne naknade za taj datum, transakcija je **grandfathered**. Kasniji uspješan payment callback **mora** završiti normalno. **`PaymentSuccessHandler` ne smije** ponovo provjeravati `daily_fee_blocked_dates` / `isSaleProhibited()` tokom SUCCESS — to nije propuštena validacija, već namjerno grandfathering (isto porodično pravilo kao Termini soft-lock koji ostaje važeći i ako slot kasnije postane `is_blocked`).
 
 ### 2. Plaćanje uspe
 
@@ -87,7 +89,7 @@ Servis: **`PendingBankartRedirectService`**. Testovi: **`CheckoutExistingPending
 1. Čita slog iz **temp_data** (po `merchant_transaction_id`).
 2. Pravi slog u **reservations** (u transakciji sa zaključavanjem).
 3. Ažurira **temp_data.status** → **`processed`**; red **ostaje** u bazi (audit trail, retry token kontekst).
-4. Za **Termini:** soft-lock → `reserved` na slotovima. Za **daily_ticket:** bez promjene `daily_parking_data`.
+4. Za **Termini:** soft-lock → `reserved` na slotovima. Za **daily_ticket:** bez promjene `daily_parking_data`. **Ne** re-check `daily_fee_blocked_dates` na SUCCESS.
 5. Dispatch **ProcessReservationAfterPaymentJob** (fiskalizacija, PDF, email).
 
 **Rezultat:**

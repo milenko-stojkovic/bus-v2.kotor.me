@@ -1,6 +1,6 @@
 ﻿# Konvencije projekta (bus.kotor.me)
 
-**Poslednje ažuriranje:** 2026-07-01  
+**Poslednje ažuriranje:** 2026-10-06  
 
 Za AI i ljude: držati se ovoga pri novim izmenama da ostane konzistentno.
 
@@ -89,6 +89,7 @@ Svako polje za **registarsku tablicu** (booking, panel, admin pretraga, Control,
 
 ### PDF računi i potvrde (izdavač: Opština Kotor)
 
+- **Izmjena rezervacije (agencija / admin) — obavezan email + PDF:** Svaka izmjena rezervacije koju napravi **agencija** ili **administrator** mora biti praćena emailom sa PDF-om koji odražava **trenutno** (poslije izmjene) stanje rezervacije. Zastarjeli podaci (npr. stari termini nakon pretvaranja u dnevnu naknadu) **ne** smiju ostati u novom dokumentu. Konkretan job zavisi od postojećeg toka (npr. **`SendInvoiceEmailJob`** za plaćenu promjenu tablice; **`SendAdminUpdatedReservationDocumentJob`** za besplatnu promjenu tablice, Admin > Rezervacije uredi, Blokiranje **Prilagodi** / **Pretvori u dnevnu naknadu** preko **`AdminReservationUpdateNotification`**). Ažurirani dokument **nije** sama po sebi nova naplata ni nova fiskalizacija.
 - **Logo u PDF-u:** grb Opštine Kotor — **`public/images/logo_kotor.png`**, učitava **`KotorPdfAssets::logoDataUri()`** (plaćeni račun, besplatna potvrda, admin analitika). **Ne** koristiti frontend rebrand (`buslogofull.svg` / `buslogowhite.svg`); web layout i zvanični PDF su odvojeni.
 - **Iznos na plaćenom računu** u PDF-u dolazi isključivo iz **`reservations.invoice_amount`** (snapshot pri kreiranju rezervacije), ne iz trenutne **`vehicle_types.price`**. PDF se generiše na zahtev (email ili panel); nema trajnog čuvanja u **`storage/app/invoices`**.
 - **Queue jobovi za mejl** (`SendInvoiceEmailJob`, `SendFreeReservationConfirmationJob`, **`SendAdminUpdatedReservationDocumentJob`**): PDF isključivo **`renderBinary`** iz baze; greška → **ne šalji** mejl, **`email_sent`** na **`Reservation::EMAIL_NOT_SENT`**, job **baca izuzetak** (retry preko reda; v. `success-payment-pipeline.md`). **`email_sent`:** `EMAIL_NOT_SENT` (0), `EMAIL_SENT` (1), `EMAIL_SENDING` (2) — konstante u modelu. **`invoice_sent_at` / `email_sent=1` samo poslije uspješnog `Mail::send`**. Logovi na kanalu **`payments`**: `{event}_started|_sent|_failed` sa `reservation_id`, `merchant_transaction_id`, `recipient_email`, `attachment_filename`, `reservation_kind`. Zaglavljeno **`EMAIL_SENDING`** (>15 min) se automatski reclaim-uje. Dijagnostika: **`mail:audit-reservation-documents`**, resend: **`mail:resend-reservation-document --id=`** ili admin resend.

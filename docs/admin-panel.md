@@ -183,7 +183,7 @@ Operativna lista rezervacija (naredna 3 sata + pretraga). Kontroler akcija: **`R
 - **Tablica u pretrazi:** polje `license_plate` koristi zajedničku komponentu `<x-license-plate-input>` (client: uppercase + samo **A–Z0–9**); server: `MontenegroLicensePlate::normalizeAscii()` preko `AdminReservationSearchRequest::applyInputNormalization()`.
 - **Država (pretraga i izmena):** dropdown koristi **`BankartBillingCountry::selectableCountries()`** (isti prioritetni redosled i A–Z ostatak kao guest/agency — v. **`auth-and-guests.md`**); **ne** čitati `config('countries')` direktno za prikaz. Validacija izmene: `AdminReservationUpdateRequest` + `selectableCountryCodes()`.
 - **Povratak sa edit strane:** query parametar **`rq`** čuva enkodiran prethodni query string pretrage; **`Odkaži`** i uspešan **`PUT`** vode na `GET /admin/rezervacije?{rq}`.
-- **Izmena termina po tipu:** `AdminReservationSlotRules` — **paid** i **free + `created_by_admin`** mogu na bilo koje validne termine; **free bez admin kreacije** samo u besplatnom prozoru (`FreeReservationRules::isFreeReservation`, npr. 1/41). **Paid** ostaje paid i pri premještaju u free termine; **`invoice_amount` se ne preračunava**. Status, MTID, `reservation_kind` i fiskalno stanje se **ne** mijenjaju. **Termini duplicate check** pri izmjeni datuma/slotova/tablice (`DuplicateReservationAttemptService`, isključuje trenutnu rezervaciju).
+- **Izmena termina po tipu:** `AdminReservationSlotRules` — **paid** i **free + `created_by_admin`** mogu na bilo koje validne termine; **free bez admin kreacije** samo u besplatnom prozoru (`FreeReservationRules::isFreeReservation`, npr. 1/41). **Paid** ostaje paid i pri premještaju u free termine; **`invoice_amount` se ne preračunava**. Na ovom putu (**Admin > Rezervacije → Uredi**) status, MTID, **`reservation_kind`** i fiskalno stanje se **ne** mijenjaju. Namjerna podržana promjena vrste **timed → `daily_ticket`** postoji **samo** preko **Blokiranje → Pretvori u dnevnu naknadu** (v. §2) — običan edit **ne** mijenja `reservation_kind`. **Termini duplicate check** pri izmjeni datuma/slotova/tablice (`DuplicateReservationAttemptService`, isključuje trenutnu rezervaciju).
 - **Posle prošlog dolaska (isti dan):** `AdminReservationEditPolicy::isPickUpOnlyMode` — dozvoljena je izmjena samo pick-up termina i ostalih polja (ne datuma ni drop-off).
 - **Dnevna naknada:** forma bez termina; `AdminDailyTicketUpdateService` — datum, ime, država, tablica, tip vozila, email; bez konverzije vrste i bez kapaciteta.
 - **Kategorija vozila:** u edit formi samo tipovi sa **`price` ≤** cene trenutnog tipa (`vehicle_types` po postojećem poretku cene).
@@ -219,6 +219,7 @@ Napomena: blokiranje termina je **odvojeno** od kapaciteta **i** od zabrane dnev
 - **Pending** dnevna naknada pokrenuta **prije** zabrane je **grandfathered**: kasniji Bankart SUCCESS prolazi normalno (`PaymentSuccessHandler` ne re-check-uje fee block).
 - Već prodate dnevne naknade za taj dan ostaju važeće (bez otkazivanja, refund-a, worklist-a).
 - Invariant: red u `daily_fee_blocked_dates` smije postojati **samo** dok je dan potpuno slot-blokiran. Djelimični ili potpuni **Deblokiraj** automatski briše fee zabranu. Stanje „termini dostupni + dnevna naknada zabranjena“ nije dozvoljeno kroz normalan UI/API.
+- **Eksplicitnost checkboxa:** ako datum **već** ima fee zabranu, a admin ponovo primijeni **Blokiraj ceo dan** **bez** checkboxa „Blokiraj i prodaju dnevne naknade…“, postojeća zabrana se **briše** (`DailyFeeBlockedDateService::syncAfterSlotMutation`). Zabrana nije implicitna zbog punog slot bloka — mora biti eksplicitno izabrana.
 - Servis: **`DailyFeeBlockedDateService`**. Migracija: `2026_10_06_001000_create_daily_fee_blocked_dates_table.php`.
 
 **Semantika (2026-09 / dopuna 2026-10):**
@@ -254,6 +255,7 @@ Napomena: blokiranje termina je **odvojeno** od kapaciteta **i** od zabrane dnev
 - Destinacioni datum: isti ili budući validan booking datum; **ne** prošlost; **ne** datum iz `daily_fee_blocked_dates`.
 - Cijena je po tipu vozila (ne po vrsti rezervacije) — historijski `invoice_amount` / snapshot / plaćanje / fiskal ostaju netaknuti; nema re-fiskalizacije.
 - Kapacitet: postojeća logika oslobađanja timed `reserved`; dnevna naknada **ne** troši `daily_parking_data`. `is_blocked` ostaje.
+- **Email + PDF:** poslije uspjeha, `AdminReservationUpdateNotification` → `SendAdminUpdatedReservationDocumentJob`. Ažurirani dokument odražava **Dnevna naknada**, izabrani **datum važenja**, i **ne** prikazuje zastarjele termine dolaska/odlaska. To je **ažurirana dokumentacija rezervacije**, ne nova naplata ni nova fiskalizacija (v. opšte pravilo u **`project-conventions.md`**).
 - Ponovljeni POST nakon uspjeha je idempotentan (bez dvostrukog `reserved--`).
 - Ruta: `POST /admin/blokiranje/worklist/{row}/pretvori-u-dnevnu-naknadu` (`panel_admin.blocking.worklist.convert_daily_fee`).
 

@@ -2,7 +2,7 @@
 
 Pregled FK iz baze i preporučene relacije za modele.
 
-**Poslednje ažuriranje:** 2026-06-19 — dopunjeno `reservation_kind`, `daily_ticket`, MEGA arhiva, FZBR, avans.
+**Poslednje ažuriranje:** 2026-10-06 — `DailyFeeBlockedDate`, `BlockZoneWorklist`; ispravka Admin FK napomene.
 
 ---
 
@@ -40,7 +40,12 @@ public function tempData(): HasMany
 
 ## 2. Admin
 
-**Tabela:** `admins` — nema FK. Nema relacija ka drugim tabelama.
+**Tabela:** `admins` (id = bigInteger). Model **`Admin`** trenutno **ne definiše** Eloquent `HasMany` / `BelongsTo` metode.
+
+**Referencira ga (FK u drugim tabelama):**
+- `daily_fee_blocked_dates.created_by_admin_id` (nullable) → `DailyFeeBlockedDate::createdByAdmin()`
+- `block_zone_worklist.reviewed_by_admin_id` (nullable) → `BlockZoneWorklist::reviewedByAdmin()`
+- (ostali admin audit FK-ovi mogu postojati u drugim modulima — dokumentovati samo kada model/migracija imaju eksplicitnu relaciju)
 
 ---
 
@@ -146,8 +151,62 @@ public function timeSlot(): BelongsTo
 }
 ```
 
-**Fillable (sugestija):** `date`, `time_slot_id`, `capacity`, `reserved`, `pending`  
-**Casts:** `date` => `date`, `capacity/reserved/pending` => `integer`
+**Fillable (sugestija):** `date`, `time_slot_id`, `capacity`, `reserved`, `pending`, `is_blocked`  
+**Casts:** `date` => `date`, `capacity/reserved/pending` => `integer`, `is_blocked` => `boolean`
+
+---
+
+## 6b. DailyFeeBlockedDate (daily_fee_blocked_dates)
+
+**Tabela:** `daily_fee_blocked_dates`  
+**Model:** `App\Models\DailyFeeBlockedDate`
+
+**Kolone / FK:**
+- `date` — **UNIQUE** (Y-m-d zabrane **nove** prodaje dnevne naknade)
+- `created_by_admin_id` — nullable → `admins.id` (`nullOnDelete`)
+
+**Relacije u modelu:**
+```php
+public function createdByAdmin(): BelongsTo
+{
+    return $this->belongsTo(Admin::class, 'created_by_admin_id');
+}
+```
+
+**Semantika:** red smije postojati samo dok je dan potpuno slot-blokiran; v. **`docs/admin-panel.md`** §2. Nije dio `daily_parking_data`.
+
+---
+
+## 6c. BlockZoneWorklist (block_zone_worklist)
+
+**Tabela:** `block_zone_worklist`  
+**Model:** `App\Models\BlockZoneWorklist`
+
+**Kolone (izbor):** `merchant_transaction_id` (unique), `status` (`pending_payment` | `ready_to_adjust` | `acknowledged_no_adjustment` | `converted_to_daily_fee`), `old_date`, `old_drop_off`, `old_pick_up`, `affected_*`, `snapshot_json`, `reservation_id` (nullable), `temp_data_id` (nullable), `reviewed_by_admin_id` (nullable), `reviewed_at`, `resolution_note`.
+
+**FK (migracije / model):**
+- `reviewed_by_admin_id` → `admins` (nullable)
+- `reservation_id` / `temp_data_id` — indeksirani helperi; Eloquent `belongsTo` u modelu (DB FK constraint može biti odsustan u starijoj migraciji)
+
+**Relacije u modelu:**
+```php
+public function reservation(): BelongsTo
+{
+    return $this->belongsTo(Reservation::class);
+}
+
+public function tempData(): BelongsTo
+{
+    return $this->belongsTo(TempData::class, 'temp_data_id');
+}
+
+public function reviewedByAdmin(): BelongsTo
+{
+    return $this->belongsTo(Admin::class, 'reviewed_by_admin_id');
+}
+```
+
+**Scope:** `activeIntervention()` — samo `pending_payment` / `ready_to_adjust`. Terminalni: `acknowledged_no_adjustment`, `converted_to_daily_fee`. Poslovna pravila: **`docs/admin-panel.md`** §2.
 
 ---
 
@@ -165,7 +224,7 @@ public function timeSlot(): BelongsTo
 
 **Invariant `reservation_kind`:** `time_slots` (default) → oba slot ID NOT NULL; `daily_ticket` → oba slot ID NULL. Helperi: `Reservation::isTimeSlots()`, `isDailyTicket()`.
 
-**Referencira ga:** `post_fiscalization_data.reservation_id`
+**Referencira ga:** `post_fiscalization_data.reservation_id`; `block_zone_worklist.reservation_id` (nullable helper)
 
 **Relacije:**
 ```php

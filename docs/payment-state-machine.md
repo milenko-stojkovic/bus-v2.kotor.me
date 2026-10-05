@@ -36,6 +36,7 @@ mora biti **isti iznos koji je poslat banci u trenutku checkout-a**.
 - Taj iznos se čuva kao snapshot u `temp_data` (npr. `invoice_amount_snapshot`).
 - Nakon kreiranja `temp_data` taj iznos se **više nikada ne računa ponovo iz cjenovnika**.
 - Promjene cijena **ne utiču** na već započete ili završene payment pokušaje.
+- **`daily_fee_blocked_dates` je NEW-CHECKOUT availability guard, ne payment-SUCCESS guard.** Nova prodaja dnevne naknade se zabranjuje u checkout-u (`storeDailyTicketBooking`). Ako je daily-ticket plaćanje već pokrenuto (`pending`) **prije** zabrane, **`pending` → SUCCESS mora i dalje završiti normalno**. **Ne dodavati** `DailyFeeBlockedDate` / `isSaleProhibited()` re-check u **`PaymentSuccessHandler`** — to je namjerno grandfathering, ne propuštena validacija. Isto porodično načelo kao Termini: plaćanje već u toku se **ne** poništava samo zato što operativni slot kasnije postane `is_blocked`. Poslovni detalji: **`docs/admin-panel.md`** §2.
 
 ### Payment callback / payload
 
@@ -118,6 +119,7 @@ Nakon **`applyLateSuccess`**, **`temp_data` ostaje `late_success`** — callback
 - **`canceled` je terminalan** za kasni uspeh banke — nema prelaza u **`late_success`**; šalje se **operativni email** (isti kanal kao fiskal alerti) za ručnu obradu van aplikacije.
 - **Neuspeh fiskalizacije** posle plaćanja **ne poništava** validnu rezervaciju (nefiskalni PDF + `post_fiscalization_data` / retry).
 - **Webhook i Bankart inquiry** oba ulaze u **`PaymentCallbackJob`** — ista poslovna obrada (nema paralelnog „drugog“ success pipeline-a u komandi).
+- **`PaymentSuccessHandler` ne re-check-uje** `daily_fee_blocked_dates` niti `is_blocked` na SUCCESS za već pokrenuti pending (grandfathering; v. Snapshot napomena iznad i **`admin-panel.md`** §2).
 
 ---
 
