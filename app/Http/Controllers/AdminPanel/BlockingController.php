@@ -11,6 +11,8 @@ use App\Models\Reservation;
 use App\Services\AdminPanel\Blocking\BlockReservationAdjustmentValidator;
 use App\Services\AdminPanel\Blocking\BlockZoneWorklistService;
 use App\Services\AdminPanel\Blocking\BlockingService;
+use App\Services\AdminPanel\Blocking\DailyFeeBlockedDateService;
+use App\Services\AdminPanel\Reservation\AdminReservationUpdateNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -49,25 +51,42 @@ class BlockingController extends Controller
         $data = $request->validate([
             'date' => ['required', 'date'],
             'block_whole_day' => ['sometimes', 'boolean'],
+            'block_daily_fee' => ['sometimes', 'boolean'],
             'slot_ids' => ['sometimes', 'array'],
             'slot_ids.*' => ['integer'],
         ]);
 
         $date = (string) $data['date'];
         $blockWholeDay = (bool) ($data['block_whole_day'] ?? false);
+        $blockDailyFee = (bool) ($data['block_daily_fee'] ?? false);
         $slotIds = array_map('intval', (array) ($data['slot_ids'] ?? []));
+
+        if ($blockDailyFee && ! $blockWholeDay) {
+            return back()
+                ->withInput()
+                ->withErrors(['block_daily_fee' => ['Zabrana dnevne naknade je dostupna samo uz „Blokiraj ceo dan".']]);
+        }
 
         if ($blockWholeDay) {
             $slotIds = $blocking->allSlots()->pluck('id')->map(fn ($v) => (int) $v)->all();
         }
 
-        $summary = $blocking->applyBlock($date, $slotIds);
+        $adminId = (int) ($request->user('panel_admin')?->id ?? 0);
+        $summary = $blocking->applyBlock(
+            $date,
+            $slotIds,
+            $blockDailyFee,
+            $adminId > 0 ? $adminId : null,
+        );
         $blocked = (int) ($summary['blocked_slots'] ?? 0);
         $worklist = (int) ($summary['worklist_touched'] ?? 0);
 
         $status = 'Blokiranje je primijenjeno. Blokirano termina: '.$blocked.'.';
         if ($worklist > 0) {
             $status .= ' Stavki za prilagođavanje (postojeće rezervacije / plaćanja u toku): '.$worklist.'.';
+        }
+        if (! empty($summary['daily_fee_blocked'])) {
+            $status .= ' Prodaja dnevne naknade za ovaj dan je zabranjena.';
         }
 
         return $this->redirectFresh('panel_admin.blocking', ['date' => $date])
@@ -151,6 +170,47 @@ class BlockingController extends Controller
 
         return $this->redirectFresh('panel_admin.blocking', [])
             ->with('status', 'Realizacija je potvrđena. Stavka je uklonjena sa aktivne liste intervencija; rezervacija i blokada nisu izmijenjene.');
+    }
+
+    public function convertToDailyFee(
+        Request $request,
+        BlockZoneWorklist $row,
+        BlockZoneWorklistService $worklistService,
+    ): RedirectResponse {
+        $data = $request->validate([
+            'daily_fee_date' => ['required', 'date'],
+            'resolution_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $adminId = (int) ($request->user('panel_admin')?->id ?? 0);
+        if ($adminId < 1) {
+            abort(403);
+        }
+
+        try {
+            $result = $worklistService->convertToDailyFee(
+                $row,
+                (string) $data['daily_fee_date'],
+                $adminId,
+                isset($data['resolution_note']) ? (string) $data['resolution_note'] : null,
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withInput()->withErrors($e->errors());
+        }
+
+        if (! $result['already_converted'] && $result['reservation_id'] > 0 && $result['changed_fields'] !== []) {
+            $reservation = Reservation::query()->find($result['reservation_id']);
+            if ($reservation !== null) {
+                AdminReservationUpdateNotification::dispatchAfterSuccessfulUpdate(
+                    $reservation,
+                    $adminId,
+                    $result['changed_fields'],
+                );
+            }
+        }
+
+        return $this->redirectFresh('panel_admin.blocking', [])
+            ->with('status', 'Rezervacija je pretvorena u dnevnu naknadu. Termin kapacitet je oslobođen; ažurirani dokument je u redu za slanje.');
     }
 
     public function applyAdjust(

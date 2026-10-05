@@ -669,6 +669,16 @@ class CheckoutController extends Controller
         $snapshot = $this->resolveSnapshotInput($request);
         CheckoutAuditLogger::log('checkout_started', CheckoutAuditLogger::contextFromRequest($request, $snapshot));
 
+        if (app(\App\Services\AdminPanel\Blocking\DailyFeeBlockedDateService::class)->isSaleProhibited((string) $date)) {
+            $message = app()->getLocale() === 'en'
+                ? 'Daily fee sales are not available for the selected date.'
+                : 'Prodaja dnevne naknade nije dostupna za izabrani datum.';
+
+            return $request->expectsJson()
+                ? response()->json(['message' => $message], 422)
+                : back()->withInput()->with('error', $message)->withErrors(['reservation_date' => $message]);
+        }
+
         $panelAuthBooking = $request->isPanelAuthBooking();
         $paymentMethod = $panelAuthBooking ? (string) ($request->validated('payment_method') ?? 'card') : 'card';
 

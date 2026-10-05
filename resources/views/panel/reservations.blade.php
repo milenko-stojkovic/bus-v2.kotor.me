@@ -62,6 +62,13 @@
             @if (session('error'))
                 <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ session('error') }}</div>
             @endif
+            @if (! empty($daily_fee_selected_date_blocked))
+                <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">
+                    {{ $locale === 'cg'
+                        ? 'Prodaja dnevne naknade nije dostupna za izabrani datum. Izaberite drugi datum.'
+                        : 'Daily fee sales are not available for the selected date. Please choose another date.' }}
+                </div>
+            @endif
 
             {{-- New booking --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">

@@ -78,6 +78,13 @@
         @if (session('error') && ! session('guest_lower_category_block'))
             <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ session('error') }}</div>
         @endif
+        @if (! empty($daily_fee_selected_date_blocked))
+            <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">
+                {{ app()->getLocale() === 'en'
+                    ? 'Daily fee sales are not available for the selected date. Please choose another date.'
+                    : 'Prodaja dnevne naknade nije dostupna za izabrani datum. Izaberite drugi datum.' }}
+            </div>
+        @endif
         </div>
 
         <form method="GET" action="{{ route('guest.reserve', [], false) }}" class="space-y-4" id="stepForm"

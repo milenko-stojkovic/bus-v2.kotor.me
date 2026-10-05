@@ -201,28 +201,44 @@ Operativna lista rezervacija (naredna 3 sata + pretraga). Kontroler akcija: **`R
 
 | Funkcionalnost | Opis | Modeli / tabele |
 |----------------|------|------------------|
-| **Blokiranje/deblokiranje dana** | Admin blokira dan/termine **odmah** (`is_blocked=1`) bez menjanja `capacity/reserved/pending`. Blokada sprečava **nove** rezervacije. | `DailyParkingData.is_blocked` + `block_zone_worklist` |
-| **Rezervacije u blok zoni (worklist)** | **Aktivna** operativna lista: `pending_payment` i `ready_to_adjust`. Potvrđena rezervacija je na listi dok zauzima ≥1 blokirani termin **i** nije administrativno potvrđena kao realizovana. Terminalni status `acknowledged_no_adjustment` ostaje u bazi radi audita, ali **nije** na aktivnoj listi. | `block_zone_worklist` |
+| **Blokiranje/deblokiranje dana** | Admin blokira dan/termine **odmah** (`is_blocked=1`) bez menjanja `capacity/reserved/pending`. Blokada sprečava **nove** Termini rezervacije. | `DailyParkingData.is_blocked` + `block_zone_worklist` |
+| **Zabrana prodaje dnevne naknade** | **Odvojeno** od slot bloka. Samo uz **„Blokiraj ceo dan"** + eksplicitni checkbox **„Blokiraj i prodaju dnevne naknade za ovaj dan"**. Djelimični slot blok **nikad** ne zabranjuje dnevnu naknadu. | `daily_fee_blocked_dates` |
+| **Rezervacije u blok zoni (worklist)** | **Aktivna** operativna lista: `pending_payment` i `ready_to_adjust`. Potvrđena rezervacija je na listi dok zauzima ≥1 blokirani termin **i** nije administrativno riješena. Terminalni statusi `acknowledged_no_adjustment` i `converted_to_daily_fee` ostaju u bazi radi audita, ali **nisu** na aktivnoj listi. | `block_zone_worklist` |
 
-Napomena: blokiranje je **odvojeno** od kapaciteta. `availableCapacity()` i `pending/reserved` semantika ostaju iste; UI/checkout dodatno tretira `is_blocked=1` kao nedostupno za **nove** pokušaje. Dozvoljena je koegzistencija `is_blocked=1` sa `reserved>0` i privremeno sa `pending>0`.
+Napomena: blokiranje termina je **odvojeno** od kapaciteta **i** od zabrane dnevne naknade. `availableCapacity()` i `pending/reserved` semantika ostaju iste; UI/checkout dodatno tretira `is_blocked=1` kao nedostupno za **nove** Termini pokušaje. Dozvoljena je koegzistencija `is_blocked=1` sa `reserved>0` i privremeno sa `pending>0`.
 
-**Semantika (2026-09):**
+**Slot blok vs dnevna naknada (2026-10):**
+
+| Stanje | Termini | Nova dnevna naknada |
+|--------|---------|---------------------|
+| Djelimični slot blok | izabrani slotovi blokirani | **dostupna** |
+| Ceo dan bez checkboxa | svi slotovi blokirani | **dostupna** |
+| Ceo dan + checkbox | svi slotovi blokirani | **zabranjena** (red u `daily_fee_blocked_dates`) |
+
+- Zabrana važi **samo za NOVE** checkout pokušaje (`CheckoutController::storeDailyTicketBooking` — kartica i avans). Autoritativna server provera; UI samo sakriva/označava zabranjene datume.
+- **Pending** dnevna naknada pokrenuta **prije** zabrane je **grandfathered**: kasniji Bankart SUCCESS prolazi normalno (`PaymentSuccessHandler` ne re-check-uje fee block).
+- Već prodate dnevne naknade za taj dan ostaju važeće (bez otkazivanja, refund-a, worklist-a).
+- Invariant: red u `daily_fee_blocked_dates` smije postojati **samo** dok je dan potpuno slot-blokiran. Djelimični ili potpuni **Deblokiraj** automatski briše fee zabranu. Stanje „termini dostupni + dnevna naknada zabranjena“ nije dozvoljeno kroz normalan UI/API.
+- Servis: **`DailyFeeBlockedDateService`**. Migracija: `2026_10_06_001000_create_daily_fee_blocked_dates_table.php`.
+
+**Semantika (2026-09 / dopuna 2026-10):**
 - **Primeni** odmah postavlja `is_blocked=1` na svaki izabrani postojeći `daily_parking_data` red.
 - Postojeće **potvrđene** rezervacije ostaju; upisuju se u worklist (`ready_to_adjust`).
 - Već pokrenuta **pending** plaćanja (soft-lock prije bloka) su **grandfathered**: blok ih ne otkazuje i ne release-uje; SUCCESS i dalje kreira rezervaciju (`PaymentSuccessHandler` **ne** re-check-uje `is_blocked`); rezervacija prelazi u worklist za prilagođavanje. Nema posebnog admin alerta za taj SUCCESS.
 - Premještaj **iz** blokiranog termina (worklist Prilagodi **ili** Admin > Rezervacije) je dozvoljen; premještaj **u** drugi blokirani termin nije.
 - Stari slot ostaje `is_blocked=1` nakon premještaja (ne deblokira se automatski).
-- **Deblokiraj** eksplicitno postavlja `is_blocked=0` i čisti povezane **aktivne** worklist stavke (`pending_payment` / `ready_to_adjust`); postojeće rezervacije se ne mijenjaju. Terminalni redovi `acknowledged_no_adjustment` se **ne brišu** (audit).
+- **Deblokiraj** eksplicitno postavlja `is_blocked=0` i čisti povezane **aktivne** worklist stavke (`pending_payment` / `ready_to_adjust`); postojeće rezervacije se ne mijenjaju. Terminalni redovi `acknowledged_no_adjustment` / `converted_to_daily_fee` se **ne brišu** (audit). Ako dan više nije potpuno slot-blokiran, briše se i `daily_fee_blocked_dates` za taj datum.
 - Admin **Uredi rezervaciju**: trenutni slot rezervacije ostaje selektabilan i ako je kasnije blokiran; drugi blokirani slot nije dostupan kao destinacija.
-- **Worklist = trenutno stanje (aktivna lista nije istorija):** potvrđena rezervacija je na **aktivnoj** listi **ako i samo ako** status je `ready_to_adjust` (ili `pending_payment`) i barem jedan njen **trenutni** termin ima `is_blocked=1`. Posle uspješne izmjene slotova (`AdminReservationUpdateService` ili Prilagodi) `BlockZoneWorklistService::reconcileForReservation` osvježava `old_*` / `affected_*` ili briše red. Djelimično rješenje (npr. samo drop pomjeren, pick i dalje blokiran) **zadržava** stavku. Istorija ostaje u logovima (`block_zone_reservation_adjusted`, `admin_panel_reservation_updated`, `block_zone_worklist_acknowledged_realized`) i u terminalnim worklist redovima.
+- **Worklist = trenutno stanje (aktivna lista nije istorija):** potvrđena rezervacija je na **aktivnoj** listi **ako i samo ako** status je `ready_to_adjust` (ili `pending_payment`) i barem jedan njen **trenutni** termin ima `is_blocked=1`. Posle uspješne izmjene slotova (`AdminReservationUpdateService` ili Prilagodi) `BlockZoneWorklistService::reconcileForReservation` osvježava `old_*` / `affected_*` ili briše red. Djelimično rješenje (npr. samo drop pomjeren, pick i dalje blokiran) **zadržava** stavku. Terminalni statusi (uključujući `converted_to_daily_fee`) se **ne** brišu i **ne** reotvaraju. Istorija ostaje u logovima i u terminalnim worklist redovima.
 
-**Tri admin akcije (jasno razdvajanje):**
+**Admin akcije na worklist / danu (jasno razdvajanje):**
 
 | Akcija | Šta radi | Šta **ne** dira |
 |--------|----------|-----------------|
 | **Prilagodi rezervaciju** | Premješta datum/termine rezervacije van blok zone (ili djelimično); usklađuje `reserved`; pošalje ažurirani dokument. | Ne deblokira termine automatski. |
-| **Deblokiraj** | Postavlja `is_blocked=0` na izabrane termine; čisti aktivne worklist stavke koje više nisu u blok zoni. | Ne mijenja rezervacije. |
+| **Deblokiraj** | Postavlja `is_blocked=0` na izabrane termine; čisti aktivne worklist stavke koje više nisu u blok zoni; skida fee zabranu ako dan više nije potpuno blokiran. | Ne mijenja rezervacije. |
 | **Potvrdi realizaciju** | Admin potvrđuje da je rezervacija **uspješno realizovana uprkos blokadi** i da **nije** potrebno prilagođavanje. Status → `acknowledged_no_adjustment`; upis `reviewed_by_admin_id`, `reviewed_at`, opciona `resolution_note`. Stavka nestaje sa aktivne liste. Log: `block_zone_worklist_acknowledged_realized`. | **Ne** mijenja rezervaciju (datum, slotovi, status, iznos, fiskal), **ne** deblokira termine. |
+| **Pretvori u dnevnu naknadu** | In-place: ista rezervacija → `reservation_kind=daily_ticket`, `reservation_date` = izabrani datum važenja, slotovi `NULL`; oslobađa timed `reserved` kapacitet; worklist → `converted_to_daily_fee`; canonical `AdminReservationUpdateNotification` / `SendAdminUpdatedReservationDocumentJob` (email+PDF). | **Ne** mijenja iznos / plaćanje / JIR / IKOF / fiskal; **ne** deblokira termine; **nije** nova prodaja ni refund. |
 
 **Potvrdi realizaciju — pravila:**
 
@@ -232,7 +248,16 @@ Napomena: blokiranje je **odvojeno** od kapaciteta. `availableCapacity()` i `pen
 - Ako se rezervacija **kasnije premjesti** na druge termine koji su blokirani, to je **nova** intervencija → ponovo `ready_to_adjust` (staro priznanje se ne koristi za suzbijanje).
 - Autorizacija: samo `auth:panel_admin` + `admin.panel` (ista ruta grupe kao ostali moduli Blokiranja).
 
-**UI (jasno razdvajanje Blokiraj / Deblokiraj):** na **`GET /admin/blokiranje`** u sekciji **Blokiraj** mogu se čekirati samo termini koji **nisu** već blokirani (već blokirani su prikazani kao informacija, bez `slot_ids[]`). Na **`GET /admin/blokiranje/dan/{date}`** (Deblokiraj) mogu se birati samo termini koji **jesu** blokirani; neblokirani su onemogućeni. Opcija **„Blokiraj ceo dan"** i dalje šalje kompletan skup slot ID-jeva; **`BlockingService::applyBlock`** je idempotentan za već blokirane redove (i dalje može dopuniti worklist za okupatore).
+**Pretvori u dnevnu naknadu — pravila:**
+
+- Samo `ready_to_adjust` **timed** rezervacija (ne `daily_ticket`, ne `pending_payment`); MTID / fingerprint konzistentni; transakcija + row lock.
+- Destinacioni datum: isti ili budući validan booking datum; **ne** prošlost; **ne** datum iz `daily_fee_blocked_dates`.
+- Cijena je po tipu vozila (ne po vrsti rezervacije) — historijski `invoice_amount` / snapshot / plaćanje / fiskal ostaju netaknuti; nema re-fiskalizacije.
+- Kapacitet: postojeća logika oslobađanja timed `reserved`; dnevna naknada **ne** troši `daily_parking_data`. `is_blocked` ostaje.
+- Ponovljeni POST nakon uspjeha je idempotentan (bez dvostrukog `reserved--`).
+- Ruta: `POST /admin/blokiranje/worklist/{row}/pretvori-u-dnevnu-naknadu` (`panel_admin.blocking.worklist.convert_daily_fee`).
+
+**UI (jasno razdvajanje Blokiraj / Deblokiraj):** na **`GET /admin/blokiranje`** u sekciji **Blokiraj** mogu se čekirati samo termini koji **nisu** već blokirani (već blokirani su prikazani kao informacija, bez `slot_ids[]`). Na **`GET /admin/blokiranje/dan/{date}`** (Deblokiraj) mogu se birati samo termini koji **jesu** blokirani; neblokirani su onemogućeni. Opcija **„Blokiraj ceo dan"** šalje kompletan skup slot ID-jeva i **tada** otkriva checkbox fee zabrane; **`BlockingService::applyBlock`** je idempotentan za već blokirane redove (i dalje može dopuniti worklist za okupatore).
 Rute (admin panel):
 - `GET /admin/blokiranje` (`panel_admin.blocking`)
 - `POST /admin/blokiranje` (`panel_admin.blocking.apply`)
@@ -240,6 +265,7 @@ Rute (admin panel):
 - `POST /admin/blokiranje/dan/apply` (`panel_admin.blocking.unblock.apply`)
 - `GET|POST /admin/blokiranje/worklist/{row}/prilagodi` (prilagođavanje rezervacije)
 - `POST /admin/blokiranje/worklist/{row}/potvrdi-realizaciju` (`panel_admin.blocking.worklist.acknowledge`) — potvrda realizacije bez premještanja
+- `POST /admin/blokiranje/worklist/{row}/pretvori-u-dnevnu-naknadu` (`panel_admin.blocking.worklist.convert_daily_fee`) — pretvaranje u dnevnu naknadu
 
 **`reservations.created_by_admin`:** boolean, default `false`. **`true`** samo za admin panel **Besplatne rezervacije** (`AdminDirectFreeReservationService`). Ostali tokovi eksplicitno postavljaju `false`. **Migracija:** `2026_04_11_120000_add_created_by_admin_to_reservations_table.php`.
 
@@ -247,7 +273,7 @@ Rute (admin panel):
 
 **Upit po datumu:** u modulu blokiranja/prilagođavanja, učitavanje i `lockForUpdate` nad `daily_parking_data` koristi **`whereDate('date', …)`** (ne striktno `where('date', …)`), da se datum uvek poklapa sa vrednošću u bazi i na SQLite-u.
 
-**Testovi (izbor):** `tests/Feature/AdminPanel/AdminPanelAuthTest.php` (guard `panel_admin` vs `web`, 403, logout). `tests/Feature/AdminPanel/BlockReservationHardeningTest.php` (default kolone, post-lock odbijanje, blokiran novi slot bez delimičnih izmena, uspešan adjust + `_fresh`, deblok `_fresh`). `tests/Feature/AdminPanel/ImmediateBlockingSemanticsTest.php` (odmah `is_blocked`, worklist za okupatore, grandfather pending SUCCESS, checkout/advance odbijanje, move out/in, admin current-slot, unblock). `tests/Feature/AdminPanel/BlockZoneWorklistReconciliationTest.php` (live worklist reconcile posle Admin Rezervacije / Prilagodi, djelimični drop/pick, pending regresija). `tests/Feature/AdminPanel/BlockZoneAcknowledgeRealizedTest.php` (Potvrdi realizaciju; reconcile ne reotvara; nova intervencija posle premještaja; pending/auth). `tests/Feature/AdminPanel/AdminWarningsDashboardTest.php` (dashboard nedostupni/blokirani). `tests/Feature/AdminPanel/AdminPanelFreeReservationTest.php` (besplatne rezervacije). `tests/Feature/AdminPanel/AdminPanelReservationTest.php` (admin pretraga/izmena rezervacija, §1.2).
+**Testovi (izbor):** `tests/Feature/AdminPanel/AdminPanelAuthTest.php` (guard `panel_admin` vs `web`, 403, logout). `tests/Feature/AdminPanel/BlockReservationHardeningTest.php` (default kolone, post-lock odbijanje, blokiran novi slot bez delimičnih izmena, uspešan adjust + `_fresh`, deblok `_fresh`). `tests/Feature/AdminPanel/ImmediateBlockingSemanticsTest.php` (odmah `is_blocked`, worklist za okupatore, grandfather pending SUCCESS, checkout/advance odbijanje, move out/in, admin current-slot, unblock). `tests/Feature/AdminPanel/BlockZoneWorklistReconciliationTest.php` (live worklist reconcile posle Admin Rezervacije / Prilagodi, djelimični drop/pick, pending regresija). `tests/Feature/AdminPanel/BlockZoneAcknowledgeRealizedTest.php` (Potvrdi realizaciju; reconcile ne reotvara; nova intervencija posle premještaja; pending/auth). `tests/Feature/AdminPanel/DailyFeeBlockingAndConversionTest.php` (fee zabrana uz ceo dan; checkout/avans odbijanje; grandfather pending; convert → daily_ticket; kapacitet; email job; terminal `converted_to_daily_fee`). `tests/Feature/AdminPanel/AdminWarningsDashboardTest.php` (dashboard nedostupni/blokirani). `tests/Feature/AdminPanel/AdminPanelFreeReservationTest.php` (besplatne rezervacije). `tests/Feature/AdminPanel/AdminPanelReservationTest.php` (admin pretraga/izmena rezervacija, §1.2).
 
 ---
 

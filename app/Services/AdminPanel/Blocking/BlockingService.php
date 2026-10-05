@@ -28,21 +28,26 @@ class BlockingService
      * Already-pending soft-locks are grandfathered (PaymentSuccessHandler is unchanged).
      *
      * @param  list<int>  $slotIds
-     * @return array{blocked_slots: int, worklist_touched: int}
+     * @return array{blocked_slots: int, worklist_touched: int, daily_fee_blocked: bool}
      */
-    public function applyBlock(string $date, array $slotIds): array
-    {
+    public function applyBlock(
+        string $date,
+        array $slotIds,
+        bool $blockDailyFee = false,
+        ?int $adminId = null,
+    ): array {
         $slotIds = array_values(array_unique(array_map('intval', $slotIds)));
         $slotIds = array_values(array_filter($slotIds, fn (int $id) => $id > 0));
         if ($slotIds === []) {
-            return ['blocked_slots' => 0, 'worklist_touched' => 0];
+            return ['blocked_slots' => 0, 'worklist_touched' => 0, 'daily_fee_blocked' => false];
         }
 
         $blockedSlots = 0;
         /** @var array<string, true> $worklistMtids */
         $worklistMtids = [];
+        $dailyFeeBlocked = false;
 
-        DB::transaction(function () use ($date, $slotIds, &$blockedSlots, &$worklistMtids): void {
+        DB::transaction(function () use ($date, $slotIds, $blockDailyFee, $adminId, &$blockedSlots, &$worklistMtids, &$dailyFeeBlocked): void {
             $daily = DailyParkingData::query()
                 ->whereDate('date', $date)
                 ->whereIn('time_slot_id', $slotIds)
@@ -93,11 +98,21 @@ class BlockingService
                     }
                 }
             }
+
+            $feeService = app(DailyFeeBlockedDateService::class);
+            $feeService->syncAfterSlotMutation(
+                $date,
+                $blockDailyFee,
+                $adminId,
+                'after_apply_block',
+            );
+            $dailyFeeBlocked = $feeService->isSaleProhibited($date);
         });
 
         return [
             'blocked_slots' => $blockedSlots,
             'worklist_touched' => count($worklistMtids),
+            'daily_fee_blocked' => $dailyFeeBlocked,
         ];
     }
 
@@ -122,9 +137,6 @@ class BlockingService
             $work = BlockZoneWorklist::query()
                 ->whereDate('old_date', $date)
                 ->get();
-            if ($work->isEmpty()) {
-                return;
-            }
 
             $blockedBySlot = DailyParkingData::query()
                 ->whereDate('date', $date)
@@ -133,8 +145,8 @@ class BlockingService
                 ->keyBy('time_slot_id');
 
             foreach ($work as $row) {
-                // Keep acknowledged audit rows; acknowledgment is independent of unblock.
-                if ($row->isAcknowledged()) {
+                // Keep terminal audit rows; independent of unblock.
+                if ($row->isTerminalResolved()) {
                     continue;
                 }
 
@@ -158,6 +170,12 @@ class BlockingService
                     $row->save();
                 }
             }
+
+            // Fee prohibition may exist only while the day remains fully slot-blocked.
+            $fee = app(DailyFeeBlockedDateService::class);
+            if (! $fee->isDateFullySlotBlocked($date)) {
+                $fee->clearProhibition($date, 'after_apply_unblock_not_full_day');
+            }
         });
     }
 
@@ -175,14 +193,19 @@ class BlockingService
             return;
         }
 
+        // Terminal conversion history is never silently reopened by slot re-block of old slots.
+        if ($existing !== null && $existing->isConvertedToDailyFee()) {
+            return;
+        }
+
         // When reopening after acknowledgment (reservation moved), do not inherit old affected flags.
-        $priorAffectedDrop = ($existing !== null && ! $existing->isAcknowledged())
+        $priorAffectedDrop = ($existing !== null && ! $existing->isTerminalResolved())
             ? (bool) $existing->affected_drop_off
             : false;
-        $priorAffectedPick = ($existing !== null && ! $existing->isAcknowledged())
+        $priorAffectedPick = ($existing !== null && ! $existing->isTerminalResolved())
             ? (bool) $existing->affected_pick_up
             : false;
-        $priorTargets = ($existing !== null && ! $existing->isAcknowledged())
+        $priorTargets = ($existing !== null && ! $existing->isTerminalResolved())
             ? (array) (($existing->snapshot_json['target_block_slots'] ?? []) ?: [])
             : [];
 
@@ -254,7 +277,7 @@ class BlockingService
     /**
      * Blokirani termini: samo redovi sa `is_blocked`. Datumi iz postojećih redova u tabeli (od danas nadalje).
      *
-     * @return list<array{date:string, is_full_day:bool, ranges:list<string>, slot_ids:list<int>}>
+     * @return list<array{date:string, is_full_day:bool, daily_fee_blocked:bool, ranges:list<string>, slot_ids:list<int>}>
      */
     public function blockedDaySummaries(): array
     {
@@ -265,6 +288,7 @@ class BlockingService
 
         $builder = new DaySlotRangeSummaryBuilder;
         $today = now()->toDateString();
+        $feeService = app(DailyFeeBlockedDateService::class);
 
         $blocked = DailyParkingData::query()
             ->where('is_blocked', true)
@@ -281,6 +305,7 @@ class BlockingService
             $out[] = [
                 'date' => $date,
                 'is_full_day' => $summary['is_full_day'],
+                'daily_fee_blocked' => $feeService->isSaleProhibited($date),
                 'ranges' => $summary['ranges'],
                 'slot_ids' => $slotIds,
             ];

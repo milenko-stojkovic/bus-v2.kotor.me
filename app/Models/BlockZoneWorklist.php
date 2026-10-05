@@ -15,6 +15,9 @@ class BlockZoneWorklist extends Model
     /** Terminal: admin confirmed reservation was honored; no slot adjustment needed. */
     public const STATUS_ACKNOWLEDGED_NO_ADJUSTMENT = 'acknowledged_no_adjustment';
 
+    /** Terminal: timed reservation converted to daily ticket; slots released. */
+    public const STATUS_CONVERTED_TO_DAILY_FEE = 'converted_to_daily_fee';
+
     protected $table = 'block_zone_worklist';
 
     protected $fillable = [
@@ -61,6 +64,16 @@ class BlockZoneWorklist extends Model
     public function isAcknowledged(): bool
     {
         return $this->status === self::STATUS_ACKNOWLEDGED_NO_ADJUSTMENT;
+    }
+
+    public function isConvertedToDailyFee(): bool
+    {
+        return $this->status === self::STATUS_CONVERTED_TO_DAILY_FEE;
+    }
+
+    public function isTerminalResolved(): bool
+    {
+        return $this->isAcknowledged() || $this->isConvertedToDailyFee();
     }
 
     /**

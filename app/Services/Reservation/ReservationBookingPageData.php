@@ -7,6 +7,7 @@ use App\Models\ListOfTimeSlot;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
+use App\Services\AdminPanel\Blocking\DailyFeeBlockedDateService;
 use App\Support\BankartBillingCountry;
 use App\Support\ReservationKind;
 use Carbon\Carbon;
@@ -122,6 +123,12 @@ final class ReservationBookingPageData
 
         unset($slotPayload['effective_departure_id']);
 
+        $feeBlockedDates = app(DailyFeeBlockedDateService::class)
+            ->prohibitedDatesFrom(now()->toDateString());
+        $selectedFeeBlocked = $isDailyTicketBooking
+            && $selectedDate !== null
+            && in_array($selectedDate->toDateString(), $feeBlockedDates, true);
+
         return array_merge($slotPayload, [
             'selected_date' => $selectedDate?->toDateString(),
             'arrival_id' => $arrivalId,
@@ -135,6 +142,8 @@ final class ReservationBookingPageData
             'booking_mode' => 'guest',
             'vehicles' => collect(),
             'vehicle_id' => null,
+            'daily_fee_blocked_dates' => $feeBlockedDates,
+            'daily_fee_selected_date_blocked' => $selectedFeeBlocked,
         ]);
     }
 
@@ -278,6 +287,12 @@ final class ReservationBookingPageData
 
         unset($slotPayload['effective_departure_id']);
 
+        $feeBlockedDates = app(DailyFeeBlockedDateService::class)
+            ->prohibitedDatesFrom(now()->toDateString());
+        $selectedFeeBlocked = $isDailyTicketBooking
+            && $selectedDate !== null
+            && in_array($selectedDate->toDateString(), $feeBlockedDates, true);
+
         return array_merge($slotPayload, [
             'selected_date' => $selectedDate?->toDateString(),
             'arrival_id' => $arrivalId,
@@ -292,6 +307,8 @@ final class ReservationBookingPageData
             'vehicles' => $vehicles,
             'vehicle_id' => $selectedVehicle?->id,
             'termini_vehicles_hidden_count' => $terminiVehiclesHiddenCount,
+            'daily_fee_blocked_dates' => $feeBlockedDates,
+            'daily_fee_selected_date_blocked' => $selectedFeeBlocked,
         ]);
     }
 

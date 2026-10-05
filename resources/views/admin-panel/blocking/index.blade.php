@@ -26,6 +26,9 @@
                                     @if ($day['is_full_day'])
                                         <span class="text-gray-600">— blokiran</span>
                                     @endif
+                                    @if (! empty($day['daily_fee_blocked']))
+                                        <span class="text-red-800 text-sm font-normal"> · dnevna naknada zabranjena</span>
+                                    @endif
                                 </div>
                                 @if (! $day['is_full_day'])
                                     <div class="mt-1 text-sm text-gray-700">
@@ -69,6 +72,36 @@
                     <input id="block_whole_day" type="checkbox" name="block_whole_day" value="1" class="rounded border-red-200 text-red-600 shadow-sm focus:ring-red-500" />
                     <label for="block_whole_day" class="text-sm text-gray-700">Blokiraj ceo dan</label>
                 </div>
+
+                <div id="block_daily_fee_wrap" class="ms-6 hidden">
+                    <div class="flex items-center gap-2">
+                        <input id="block_daily_fee" type="checkbox" name="block_daily_fee" value="1" class="rounded border-red-200 text-red-600 shadow-sm focus:ring-red-500" />
+                        <label for="block_daily_fee" class="text-sm text-gray-700">Blokiraj i prodaju dnevne naknade za ovaj dan</label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 max-w-2xl">
+                        Zabranjuje <strong>nove</strong> kupovine dnevne naknade za ovaj datum. Već prodane dnevne naknade ostaju važeće.
+                        Opcija je dostupna samo uz blokadu cijelog dana.
+                    </p>
+                </div>
+
+                <script>
+                    (function () {
+                        const whole = document.getElementById('block_whole_day');
+                        const wrap = document.getElementById('block_daily_fee_wrap');
+                        const fee = document.getElementById('block_daily_fee');
+                        if (!whole || !wrap || !fee) return;
+                        const sync = () => {
+                            if (whole.checked) {
+                                wrap.classList.remove('hidden');
+                            } else {
+                                wrap.classList.add('hidden');
+                                fee.checked = false;
+                            }
+                        };
+                        whole.addEventListener('change', sync);
+                        sync();
+                    })();
+                </script>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                     @foreach ($slots as $slot)
@@ -116,8 +149,8 @@
                 <h3 class="text-base font-semibold text-gray-900 mb-3">Rezervacije u blok zoni</h3>
                 <p class="text-sm text-gray-600 mb-3 max-w-3xl">
                     Postojeće rezervacije / plaćanja koja koriste već blokirane termine. Termin je blokiran za nove rezervacije.
-                    Stavke možete <strong>prilagoditi</strong> (premjestiti) ili, ako je rezervacija ipak uspješno realizovana bez premještanja,
-                    <strong>potvrditi realizaciju</strong> — tada se uklanja sa aktivne liste bez izmjene rezervacije ili blokade.
+                    Stavke možete <strong>prilagoditi</strong> (premjestiti), <strong>pretvoriti u dnevnu naknadu</strong>,
+                    ili <strong>potvrditi realizaciju</strong> bez izmjene rezervacije.
                 </p>
                 @if ($errors->any())
                     <div class="rounded-md bg-red-50 p-3 text-sm text-red-800 space-y-1 mb-3">
@@ -164,6 +197,32 @@
                                                class="inline-flex items-center justify-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50">
                                                 Prilagodi rezervaciju
                                             </a>
+                                            <form method="POST" action="{{ route('panel_admin.blocking.worklist.convert_daily_fee', $row, false) }}" class="space-y-2 border border-red-100 rounded-md p-2">
+                                                @csrf
+                                                @php
+                                                    $defaultFeeDate = $row->old_date->toDateString();
+                                                    $feeMin = now()->toDateString();
+                                                    $feeMax = now()->copy()->addDays(90)->toDateString();
+                                                    if ($defaultFeeDate < $feeMin) {
+                                                        $defaultFeeDate = $feeMin;
+                                                    }
+                                                @endphp
+                                                <label class="block text-xs text-gray-600" for="fee-date-{{ $row->id }}">Datum dnevne naknade</label>
+                                                <input id="fee-date-{{ $row->id }}" type="date" name="daily_fee_date"
+                                                       value="{{ old('daily_fee_date', $defaultFeeDate) }}"
+                                                       min="{{ $feeMin }}" max="{{ $feeMax }}"
+                                                       required
+                                                       class="block w-full max-w-xs rounded-md border-gray-300 shadow-sm text-xs">
+                                                <label class="block text-xs text-gray-600" for="conv-note-{{ $row->id }}">Napomena (opciono)</label>
+                                                <textarea id="conv-note-{{ $row->id }}" name="resolution_note" rows="1"
+                                                          maxlength="500"
+                                                          class="block w-full max-w-xs rounded-md border-gray-300 shadow-sm text-xs">{{ old('resolution_note') }}</textarea>
+                                                <button type="submit"
+                                                        class="w-full inline-flex items-center justify-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50"
+                                                        onclick="return confirm('Pretvoriti rezervaciju u dnevnu naknadu?\n\n• Termini dolaska/odlaska se uklanjaju\n• Kapacitet termina se oslobađa\n• Datum važenja = izabrani datum\n• Iznos / plaćanje / fiskal se NE mijenjaju\n• Blokada termina ostaje');">
+                                                    Pretvori u dnevnu naknadu
+                                                </button>
+                                            </form>
                                             <form method="POST" action="{{ route('panel_admin.blocking.worklist.acknowledge', $row, false) }}" class="space-y-2">
                                                 @csrf
                                                 <label class="block text-xs text-gray-600" for="ack-note-{{ $row->id }}">Napomena (opciono)</label>
