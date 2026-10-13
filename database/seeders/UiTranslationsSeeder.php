@@ -838,6 +838,8 @@ class UiTranslationsSeeder extends Seeder
             ['group' => 'panel', 'key' => 'fzbr_request_status_approved', 'locale' => 'cg', 'text' => 'Odobreno'],
             ['group' => 'panel', 'key' => 'fzbr_request_status_rejected', 'locale' => 'en', 'text' => 'Rejected'],
             ['group' => 'panel', 'key' => 'fzbr_request_status_rejected', 'locale' => 'cg', 'text' => 'Odbijeno'],
+            ['group' => 'panel', 'key' => 'fzbr_rejection_reason_label', 'locale' => 'en', 'text' => 'Rejection reason'],
+            ['group' => 'panel', 'key' => 'fzbr_rejection_reason_label', 'locale' => 'cg', 'text' => 'Razlog odbijanja'],
 
             // Landing: third branch (students/humanitarian) → free reservation request form
             ['group' => 'landing', 'key' => 'students_title', 'locale' => 'en', 'text' => 'Students / humanitarian'],
@@ -955,6 +957,7 @@ class UiTranslationsSeeder extends Seeder
         Cache::forget('ui_translations:group=panel:locale=cg');
         Cache::forget('ui_translations:group=panel:locale=en');
         Cache::forget('ui_translations:any:group=panel:key=vehicle_remove_blocked_upcoming');
+        Cache::forget('ui_translations:any:group=panel:key=fzbr_rejection_reason_label');
         Cache::forget('ui_translations:group=landing:locale=cg');
         Cache::forget('ui_translations:group=landing:locale=en');
         Cache::forget('ui_translations:group=auth:locale=cg');

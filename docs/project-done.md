@@ -1,9 +1,10 @@
 ﻿# Project DONE (urađeno)
 
-**Poslednje ažuriranje:** 2026-10-06  
+**Poslednje ažuriranje:** 2026-10-13  
 
 Hronološki najnovije na vrhu unutar svake sekcije. Pri zatvaranju zadatka dodaj red sa **datumom** (`YYYY-MM-DD`) i kratak opis; istu stavku ukloni iz `docs/project-todo.md`.
 
+- **2026-10-13** — **Besplatne rezervacije — obavezan Razlog odbijanja:** admin odbijanje (`FreeReservationController::rejectRequest`) traži obrazloženje (min 3, max 2000), upisuje ga uz `rejected_by_admin_id` i `rejected_at` u istoj transakciji, rješava `admin_alerts` kao ranije, i poslije commit-a šalje `SendFreeReservationRequestRejectedMailJob` na `institution_email`. Agencija vidi razlog uz **Odbijeno** / **Rejected**. Već `fulfilled` ili `rejected` zahtjev se ne odbija ponovo. Testovi: **`FreeReservationRequestRejectionTest`**, **`AdminPanelFreeReservationTest`**, **`FzbrSubmittedRequestsListTest`**. Docs: **`agency-panel.md`**, **`admin-panel.md`**, **`auth-and-guests.md`**, **`project-conventions.md`**.
 - **2026-10-06** — **Blokiranje — opciona zabrana dnevne naknade + Pretvori u dnevnu naknadu:** tabela **`daily_fee_blocked_dates`** (samo uz ceo dan + checkbox); checkout guard na **`storeDailyTicketBooking`** (kartica/avans); pending before block grandfathered; worklist akcija **Pretvori u dnevnu naknadu** (`converted_to_daily_fee`, oslobađa timed kapacitet, email+PDF bez finansijske/fiskalne izmjene). Testovi: **`DailyFeeBlockingAndConversionTest`**. Docs: **`admin-panel.md`** §2.
 - **2026-09-24** — **External archive — `superseded`:** stariji `failed` redovi istog izvora (`source_table`+`source_id`+`source_column`) postaju `superseded` kad postoji `uploaded` sibling (write-path + `files:reconcile-external-archives` / `--dry-run`). Health i admin neuspjeli broje samo aktivni `failed`. Testovi: **`ExternalArchiveSupersedeTest`**. Docs: **`external-file-archive.md`**, **`admin-panel.md`**.
 - **2026-09-19** — **Blokiranje — worklist live reconcile:** `BlockZoneWorklistService::reconcileForReservation` drži „Rezervacije u blok zoni“ usklađenim sa **trenutnim** `is_blocked` okupacijom (ne istorija). Poziv posle Admin > Rezervacije update i posle Prilagodi (umjesto slijepog delete). Testovi: **`BlockZoneWorklistReconciliationTest`**. Docs: **`admin-panel.md`** §2.

@@ -4,13 +4,14 @@ namespace Tests\Feature\AdminPanel;
 
 use App\Jobs\SendFreeReservationConfirmationJob;
 use App\Mail\FreeReservationRequestFulfilledMail;
-use App\Models\AdminAlert;
+use App\Mail\FreeReservationRequestRejectedMail;
 use App\Models\Admin;
+use App\Models\AdminAlert;
+use App\Models\DailyParkingData;
 use App\Models\FreeReservationRequest;
 use App\Models\FreeReservationRequestAttachment;
 use App\Models\FreeReservationRequestSegment;
 use App\Models\FreeReservationRequestVehicle;
-use App\Models\DailyParkingData;
 use App\Models\ListOfTimeSlot;
 use App\Models\Reservation;
 use App\Models\VehicleType;
@@ -18,9 +19,9 @@ use App\Models\VehicleTypeTranslation;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AdminPanelFreeReservationTest extends TestCase
@@ -370,6 +371,7 @@ class AdminPanelFreeReservationTest extends TestCase
     public function test_reject_request_marks_request_rejected_and_removes_warning_pointer_but_keeps_request(): void
     {
         Storage::fake('local');
+        Mail::fake();
         $admin = $this->seedAdmin();
         $this->actingAs($admin, 'panel_admin');
 
@@ -404,16 +406,26 @@ class AdminPanelFreeReservationTest extends TestCase
         ]);
 
         $this->delete(route('panel_admin.free-reservation-requests.reject', ['freeReservationRequest' => $req->id], false), [
-            'confirm' => 1,
+            'reason' => 'Dokumentacija nije dovoljna za odobrenje.',
+            'free_reservation_request_id' => $req->id,
         ])->assertRedirect();
 
         $req->refresh();
         $this->assertSame(FreeReservationRequest::STATUS_REJECTED, $req->status);
+        $this->assertSame('Dokumentacija nije dovoljna za odobrenje.', $req->rejection_reason);
+        $this->assertSame($admin->id, (int) $req->rejected_by_admin_id);
+        $this->assertNotNull($req->rejected_at);
+        $this->assertSame('OŠ Kotor', $req->institution_name);
+        $this->assertSame('school@example.com', $req->institution_email);
         $this->assertSame(1, FreeReservationRequestAttachment::query()->where('request_id', $req->id)->count());
         Storage::disk('local')->assertExists('free-reservation-requests/'.$req->id.'/doc.pdf');
         $alert = AdminAlert::query()->first();
         $this->assertNotNull($alert);
         $this->assertNotNull($alert->removed_at);
+        $this->assertSame(AdminAlert::STATUS_DONE, $alert->status);
+        $this->assertNotNull($alert->resolved_at);
+        Mail::assertSent(FreeReservationRequestRejectedMail::class);
+        Mail::assertNotSent(FreeReservationRequestFulfilledMail::class);
     }
 
     public function test_fulfill_creates_one_free_reservation_per_vehicle_and_marks_request_fulfilled_without_deleting_it(): void
@@ -481,7 +493,8 @@ class AdminPanelFreeReservationTest extends TestCase
         ]);
 
         // Mock PDF generator to avoid DomPDF
-        $this->app->instance(\App\Services\Pdf\FreeReservationPdfGenerator::class, new class extends \App\Services\Pdf\FreeReservationPdfGenerator {
+        $this->app->instance(\App\Services\Pdf\FreeReservationPdfGenerator::class, new class extends \App\Services\Pdf\FreeReservationPdfGenerator
+        {
             public function renderBinary(\App\Models\Reservation $reservation): string
             {
                 return 'PDF';
@@ -628,7 +641,8 @@ class AdminPanelFreeReservationTest extends TestCase
         ]);
 
         // Force PDF generator to fail
-        $this->app->instance(\App\Services\Pdf\FreeReservationPdfGenerator::class, new class extends \App\Services\Pdf\FreeReservationPdfGenerator {
+        $this->app->instance(\App\Services\Pdf\FreeReservationPdfGenerator::class, new class extends \App\Services\Pdf\FreeReservationPdfGenerator
+        {
             public function renderBinary(\App\Models\Reservation $reservation): string
             {
                 throw new \RuntimeException('pdf fail');
@@ -795,7 +809,8 @@ class AdminPanelFreeReservationTest extends TestCase
 
     private function mockFreeReservationPdf(): void
     {
-        $this->app->instance(\App\Services\Pdf\FreeReservationPdfGenerator::class, new class extends \App\Services\Pdf\FreeReservationPdfGenerator {
+        $this->app->instance(\App\Services\Pdf\FreeReservationPdfGenerator::class, new class extends \App\Services\Pdf\FreeReservationPdfGenerator
+        {
             public function renderBinary(\App\Models\Reservation $reservation): string
             {
                 return 'PDF';
@@ -1250,7 +1265,7 @@ class AdminPanelFreeReservationTest extends TestCase
         Mail::assertSent(FreeReservationRequestFulfilledMail::class, 1);
     }
 
-    public function test_reject_request_does_not_send_fulfillment_confirmation_email(): void
+    public function test_reject_request_sends_rejection_email_not_fulfillment_confirmation(): void
     {
         Mail::fake();
         $admin = $this->seedAdmin();
@@ -1259,11 +1274,16 @@ class AdminPanelFreeReservationTest extends TestCase
         $req = $seed['req'];
 
         $this->delete(route('panel_admin.free-reservation-requests.reject', ['freeReservationRequest' => $req->id], false), [
-            'confirm' => 1,
+            'reason' => 'Termin nije moguće odobriti.',
         ])->assertRedirect();
 
         $req->refresh();
         $this->assertSame(FreeReservationRequest::STATUS_REJECTED, $req->status);
-        Mail::assertNothingSent();
+        Mail::assertNotSent(FreeReservationRequestFulfilledMail::class);
+        Mail::assertSent(FreeReservationRequestRejectedMail::class, function (FreeReservationRequestRejectedMail $mail) use ($req): bool {
+            return $mail->hasTo('inst@example.com')
+                && $mail->rejectionReason === 'Termin nije moguće odobriti.'
+                && $mail->requestId === (int) $req->id;
+        });
     }
 }

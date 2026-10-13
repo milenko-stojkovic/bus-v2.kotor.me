@@ -11,6 +11,8 @@ use App\Http\Requests\AdminPanel\AdminFreeReservationRequest;
 use App\Http\Requests\AdminPanel\AdminFreeReservationRequestFulfillRequest;
 use App\Http\Requests\AdminPanel\AdminFreeReservationRequestRejectRequest;
 use App\Http\Requests\AdminPanel\AdminFreeReservationRequestUpdateRequest;
+use App\Jobs\SendFreeReservationRequestRejectedMailJob;
+use App\Models\Admin;
 use App\Models\AdminAlert;
 use App\Models\FreeReservationRequest;
 use App\Models\FreeReservationRequestAttachment;
@@ -25,7 +27,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -264,6 +268,7 @@ class FreeReservationController extends Controller
                 $new->pick_up_time_slot_id = (int) $in['pick_up_time_slot_id'];
             }
             $new->setRelation('vehicles', $seg->vehicles);
+
             return $new;
         });
         $clone->setRelation('segments', $cloneSegs);
@@ -308,20 +313,54 @@ class FreeReservationController extends Controller
     ): RedirectResponse {
         App::setLocale('cg');
 
-        // Remove warning pointers then hard-delete request.
-        \App\Models\AdminAlert::query()
-            ->where('type', 'free_reservation_request')
-            ->whereNull('removed_at')
-            ->where('payload_json->free_reservation_request_id', $freeReservationRequest->id)
-            ->update([
-                'status' => \App\Models\AdminAlert::STATUS_DONE,
-                'resolved_at' => now(),
-                'removed_at' => now(),
+        $admin = $request->user('panel_admin');
+        if (! $admin instanceof Admin) {
+            abort(403);
+        }
+
+        $reason = (string) $request->validated('reason');
+
+        DB::transaction(function () use ($freeReservationRequest, $admin, $reason): void {
+            /** @var FreeReservationRequest $locked */
+            $locked = FreeReservationRequest::query()
+                ->whereKey($freeReservationRequest->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $locked->canBeRejected()) {
+                throw ValidationException::withMessages([
+                    'status' => ['Zahtjev više nije moguće odbiti.'],
+                ]);
+            }
+
+            AdminAlert::query()
+                ->where('type', 'free_reservation_request')
+                ->whereNull('removed_at')
+                ->where('payload_json->free_reservation_request_id', $locked->id)
+                ->update([
+                    'status' => AdminAlert::STATUS_DONE,
+                    'resolved_at' => now(),
+                    'removed_at' => now(),
+                ]);
+
+            $locked->update([
+                'status' => FreeReservationRequest::STATUS_REJECTED,
+                'rejection_reason' => $reason,
+                'rejected_by_admin_id' => $admin->id,
+                'rejected_at' => now(),
             ]);
 
-        $freeReservationRequest->update([
-            'status' => FreeReservationRequest::STATUS_REJECTED,
-        ]);
+            Log::channel('payments')->info('free_reservation_request_rejected', [
+                'event' => 'free_reservation_request_rejected',
+                'free_reservation_request_id' => (int) $locked->id,
+                'admin_id' => (int) $admin->id,
+            ]);
+
+            $requestId = (int) $locked->id;
+            DB::afterCommit(function () use ($requestId): void {
+                SendFreeReservationRequestRejectedMailJob::dispatch($requestId);
+            });
+        });
 
         return back()->with('status', 'Zahtjev je odbačen.');
     }

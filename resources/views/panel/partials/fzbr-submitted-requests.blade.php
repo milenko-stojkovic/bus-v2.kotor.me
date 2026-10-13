@@ -61,6 +61,18 @@
                                 <td class="px-3 py-2 text-gray-900">{{ $statusLabel }}</td>
                                 <td class="px-3 py-2 whitespace-nowrap text-gray-700">{{ $req->created_at?->timezone('Europe/Podgorica')->format('d.m.Y. H:i') }}</td>
                             </tr>
+                            @if ($req->status === \App\Models\FreeReservationRequest::STATUS_REJECTED && filled($req->rejection_reason))
+                                <tr>
+                                    <td colspan="6" class="px-3 pb-3 pt-0">
+                                        <details class="max-w-[calc(100vw-3rem)] rounded-md border border-red-100 bg-red-50 px-3 py-2">
+                                            <summary class="cursor-pointer text-sm font-medium text-red-800">
+                                                {{ $p('fzbr_rejection_reason_label', $locale === 'cg' ? 'Razlog odbijanja' : 'Rejection reason') }}
+                                            </summary>
+                                            <div class="mt-2 whitespace-pre-wrap break-words text-sm text-gray-900">{{ $req->rejection_reason }}</div>
+                                        </details>
+                                    </td>
+                                </tr>
+                            @endif
                         @endforeach
                     </tbody>
                 </table>

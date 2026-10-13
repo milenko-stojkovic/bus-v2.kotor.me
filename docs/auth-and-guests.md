@@ -42,7 +42,7 @@ Polje označava **državu izdavanja platne kartice** kojom se plaća (Bankart `c
 - Slanje forme **nije** checkout i **ne** kreira odobrenu rezervaciju (`reservations` / `temp_data` nastaju tek kada administrator odobri zahtjev).
 - Forma upisuje **`free_reservation_requests`** (jedan datum), segmente, vozila iz voznog parka i priloge. Operater dobija email; agencija pri slanju ne dobija potvrdu.
 - Ako termine treba usaglasiti ili dokumentacija nije dovoljna, administrator piše agenciji; dodatni dokumenti idu odgovorom na taj email. Panel ne nudi naknadni upload.
-- Odbijanje mora imati obrazloženje administratora. Lista u panelu prikazuje status **Odbijeno** / **Rejected** i ne prikazuje razlog. Kod trenutno ne čuva razlog i ne šalje email pri odbijanju — v. **[agency-panel.md](./agency-panel.md)**.
+- Odbijanje traži **Razlog odbijanja**. Agencija u listi vidi status **Odbijeno** / **Rejected** i taj razlog, i dobija isti tekst emailom. Detalji: **[agency-panel.md](./agency-panel.md)**.
 
 ## Pravila u kodu
 

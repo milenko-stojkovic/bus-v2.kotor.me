@@ -151,6 +151,17 @@
                 $freeReservationRequests = $freeReservationRequests ?? collect();
             @endphp
 
+            @if ($errors->has('reason') || $errors->has('status'))
+                <div class="rounded-md bg-red-50 p-3 text-sm text-red-800 border border-red-200 space-y-1">
+                    @foreach ($errors->get('reason') as $err)
+                        <div>{{ $err }}</div>
+                    @endforeach
+                    @foreach ($errors->get('status') as $err)
+                        <div>{{ $err }}</div>
+                    @endforeach
+                </div>
+            @endif
+
             @forelse ($freeReservationRequests as $req)
                 <div class="bg-white shadow rounded-lg p-5 border border-red-100 space-y-3">
                     @if (! (bool) ($req->can_fulfill ?? false))
@@ -340,18 +351,50 @@
                             </div>
                         </details>
 
-                        <form method="POST" action="{{ route('panel_admin.free-reservation-requests.reject', ['freeReservationRequest' => $req->id], false) }}">
-                            @csrf
-                            @method('DELETE')
-                            <input type="hidden" name="confirm" value="1">
-                            <button
-                                type="submit"
-                                class="inline-flex items-center justify-center rounded-md bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-700"
-                                onclick="return confirm('Da li si siguran da želiš da odbaciš ovaj zahtjev?');"
-                            >
+                        @php
+                            $rejectOpen = (string) old('free_reservation_request_id') === (string) $req->id
+                                && ($errors->has('reason') || $errors->has('status'));
+                        @endphp
+                        <details class="w-full" @if ($rejectOpen) open @endif>
+                            <summary class="inline-flex cursor-pointer select-none items-center justify-center rounded-md bg-red-600 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-700">
                                 Odbaci zahtjev
-                            </button>
-                        </form>
+                            </summary>
+                            <div class="mt-3 rounded-md border border-red-100 p-3 bg-red-50 space-y-2">
+                                <form method="POST" action="{{ route('panel_admin.free-reservation-requests.reject', ['freeReservationRequest' => $req->id], false) }}" class="space-y-2">
+                                    @csrf
+                                    @method('DELETE')
+                                    <input type="hidden" name="free_reservation_request_id" value="{{ $req->id }}">
+                                    <label class="block text-sm font-medium text-gray-700" for="reject-reason-{{ $req->id }}">Razlog odbijanja</label>
+                                    <textarea
+                                        id="reject-reason-{{ $req->id }}"
+                                        name="reason"
+                                        rows="4"
+                                        required
+                                        minlength="3"
+                                        maxlength="2000"
+                                        class="block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm"
+                                        placeholder="Obrazloženje za agenciju"
+                                    >{{ $rejectOpen ? old('reason') : '' }}</textarea>
+                                    @if ($rejectOpen)
+                                        <x-input-error :messages="$errors->get('reason')" />
+                                        <x-input-error :messages="$errors->get('status')" />
+                                    @endif
+                                    <p class="text-xs text-gray-600">Obrazloženje je obavezno. Agencija ga vidi u panelu i dobija ga emailom.</p>
+                                    <div class="flex flex-wrap gap-2 justify-end">
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50"
+                                            onclick="this.closest('details').open = false"
+                                        >
+                                            Otkaži
+                                        </button>
+                                        <button type="submit" class="inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-red-800">
+                                            Potvrdi odbijanje
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </details>
                     </div>
                 </div>
             @empty
@@ -443,6 +486,7 @@
                             <tr>
                                 <th class="px-3 py-2 text-left font-semibold text-gray-700">id</th>
                                 <th class="px-3 py-2 text-left font-semibold text-gray-700">status</th>
+                                <th class="px-3 py-2 text-left font-semibold text-gray-700 min-w-[14rem]">Razlog odbijanja</th>
                                 <th class="px-3 py-2 text-left font-semibold text-gray-700 min-w-[14rem] sm:min-w-[18rem] w-[22%]">Agencija / ustanova</th>
                                 <th class="px-3 py-2 text-left font-semibold text-gray-700 min-w-[14rem] sm:min-w-[20rem] w-[24%]">Email</th>
                                 <th class="px-3 py-2 text-left font-semibold text-gray-700">reservation_date</th>
@@ -465,6 +509,13 @@
                                 <tr class="hover:bg-red-50">
                                     <td class="px-3 py-2 whitespace-nowrap text-gray-900">{{ $r->id }}</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-gray-900">{{ $fzbrStatusLabel($r->status) }}</td>
+                                    <td class="px-3 py-2 text-gray-900 align-top min-w-[14rem] max-w-md">
+                                        @if ($r->status === \App\Models\FreeReservationRequest::STATUS_REJECTED && filled($r->rejection_reason))
+                                            <div class="whitespace-pre-wrap break-words">{{ $r->rejection_reason }}</div>
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
                                     <td class="px-3 py-2 text-gray-900 min-w-[14rem] sm:min-w-[18rem] align-top">{{ $agencyLine }}</td>
                                     <td class="px-3 py-2 text-gray-700 align-top min-w-[14rem] sm:min-w-[20rem] break-words">
                                         {{ $emailLine }}
@@ -491,7 +542,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="px-3 py-6 text-center text-gray-500">Nema zahtjeva u izabranom periodu i vrsti pregleda.</td>
+                                    <td colspan="10" class="px-3 py-6 text-center text-gray-500">Nema zahtjeva u izabranom periodu i vrsti pregleda.</td>
                                 </tr>
                             @endforelse
                         </tbody>

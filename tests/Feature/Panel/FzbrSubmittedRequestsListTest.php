@@ -92,6 +92,66 @@ final class FzbrSubmittedRequestsListTest extends TestCase
         $this->assertStringContainsString('KO-REJ', $html);
     }
 
+    public function test_agency_sees_its_own_rejection_justification_in_cg(): void
+    {
+        $user = User::factory()->create(['lang' => 'cg', 'country' => 'ME']);
+        $this->actingAs($user);
+
+        $req = $this->seedRequest($user, FreeReservationRequest::STATUS_REJECTED, 'KO-REJ-CG');
+        $req->update([
+            'rejection_reason' => "Dokumentacija nije dovoljna.\nDostavite ovlašćenje.",
+        ]);
+
+        $html = $this->get(route('panel.fzbr.create', [], false))->assertOk()->getContent();
+        $this->assertStringContainsString('Odbijeno', $html);
+        $this->assertStringContainsString('Razlog odbijanja', $html);
+        $this->assertStringContainsString('whitespace-pre-wrap', $html);
+        $this->assertStringContainsString("Dokumentacija nije dovoljna.\nDostavite ovlašćenje.", $html);
+        $this->assertStringContainsString('KO-REJ-CG', $html);
+        $this->assertStringNotContainsString('reject-admin@example.com', $html);
+    }
+
+    public function test_agency_sees_rejection_justification_label_in_english(): void
+    {
+        $user = User::factory()->create(['lang' => 'en', 'country' => 'ME']);
+        $this->actingAs($user);
+
+        $req = $this->seedRequest($user, FreeReservationRequest::STATUS_REJECTED, 'KO-REJ-EN');
+        $req->update([
+            'rejection_reason' => "The documents are not sufficient.\nPlease send the authorization.",
+        ]);
+
+        $html = $this->get(route('panel.fzbr.create', [], false))->assertOk()->getContent();
+        $this->assertStringContainsString('Rejected', $html);
+        $this->assertStringContainsString('Rejection reason', $html);
+        $this->assertStringContainsString("The documents are not sufficient.\nPlease send the authorization.", $html);
+        $this->assertStringNotContainsString('Razlog odbijanja', $html);
+    }
+
+    public function test_agency_cannot_see_another_agencys_rejection_justification(): void
+    {
+        $owner = User::factory()->create(['lang' => 'cg', 'country' => 'ME']);
+        $other = User::factory()->create(['lang' => 'cg', 'country' => 'ME']);
+
+        $foreign = $this->seedRequest($other, FreeReservationRequest::STATUS_REJECTED, 'OTHER_REJ_PLATE');
+        $foreign->update([
+            'rejection_reason' => 'SECRET_REJECTION_REASON_OTHER_AGENCY',
+        ]);
+
+        $own = $this->seedRequest($owner, FreeReservationRequest::STATUS_REJECTED, 'OWN_REJ_PLATE');
+        $own->update([
+            'rejection_reason' => 'OWN_AGENCY_REJECTION_REASON',
+        ]);
+
+        $this->actingAs($owner);
+
+        $html = $this->get(route('panel.fzbr.create', [], false))->assertOk()->getContent();
+        $this->assertStringContainsString('OWN_AGENCY_REJECTION_REASON', $html);
+        $this->assertStringContainsString('OWN_REJ_PLATE', $html);
+        $this->assertStringNotContainsString('SECRET_REJECTION_REASON_OTHER_AGENCY', $html);
+        $this->assertStringNotContainsString('OTHER_REJ_PLATE', $html);
+    }
+
     public function test_approved_fulfilled_request_shows_odobreno(): void
     {
         $user = User::factory()->create(['lang' => 'cg', 'country' => 'ME']);

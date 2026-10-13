@@ -11,11 +11,32 @@ class AdminFreeReservationRequestRejectRequest extends FormRequest
         return $this->user('panel_admin') !== null;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->exists('reason')) {
+            $this->merge([
+                'reason' => trim((string) $this->input('reason')),
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         return [
-            'confirm' => ['required', 'accepted'],
+            'reason' => ['required', 'string', 'min:3', 'max:2000'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'reason.required' => 'Razlog odbijanja je obavezan.',
+            'reason.string' => 'Razlog odbijanja mora biti tekst.',
+            'reason.min' => 'Razlog odbijanja mora imati najmanje :min znaka.',
+            'reason.max' => 'Razlog odbijanja može imati najviše :max znakova.',
         ];
     }
 }
-

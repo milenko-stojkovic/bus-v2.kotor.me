@@ -163,12 +163,9 @@ Tekstovi na vrhu forme (pravni uvod, info-blok, pomoć za upload) dolaze iz **`u
 - Administrator pregleda zahtjev.
 - Ako termine treba usaglasiti ili prilozi nisu dovoljni, administrator piše agenciji na email. Agencija odgovara na taj email i, kada se traži, šalje dodatne dokumente. U panelu nema naknadnog uploada.
 - Forma i `FzbrStoreRequest` i dalje traže **bar jedan** prilog (`documents` required, min 1, ukupno do 10 MB).
-- Administrator na kraju odobrava ili odbija zahtjev. Odbijanje mora imati obrazloženje administratora.
-- Lista u panelu prikazuje status i **ne prikazuje** obrazloženje.
+- Administrator na kraju odobrava ili odbija zahtjev. Odbijanje traži **Razlog odbijanja**: administrator ga unosi, sistem ga čuva uz zahtjev, šalje ga emailom na adresu zahtjeva i prikazuje ga agenciji u listi uz status **Odbijeno** / **Rejected**.
 - **`prihodi@kotor.me` je stari V1 postupak** i nije uputstvo za ovaj zahtjev.
 - **`bus@kotor.me`** je opšti kontakt podrške. Nije kanal za podnošenje zahtjeva. Agenciju koja podršci pošalje zahtjev treba uputiti na formu u panelu. Sistem i dalje šalje operateru obavještenje na `bus@kotor.me` kada je forma sačuvana; to nije zamjena za formu.
-
-**Razlika pravilo ↔ kod (odbijanje).** Poslovno pravilo traži obrazloženje uz odbijanje. Aplikacija trenutno ne čuva razlog i pri `reject` ne šalje email agenciji. Ne pretpostavljati da panel ili automatski mejl prenose to obrazloženje.
 
 Forma je podijeljena u dvije cjeline:
 
@@ -189,17 +186,18 @@ Na vrhu stranice prikazuje se:
 
 ### Email obavještenja (zahtjev za besplatnu rezervaciju)
 
-Razlikovati **dva** mejla u životnom ciklusu zahtjeva:
+Razlikovati **tri** mejla u životnom ciklusu zahtjeva:
 
 | Faza | Mailable | Primalac | Sadržaj |
 |------|----------|----------|---------|
 | **Podnošenje zahtjeva** (`POST /panel/fzbr`) | `AgencyFreeReservationRequestSubmittedMail` | **`bus@kotor.me`** (operater) | Obavještenje da je stigao novi zahtjev + prilozi iz forme |
 | **Admin odobri / fulfill** | `FreeReservationRequestFulfilledMail` | **`free_reservation_requests.institution_email`** (agencija/ustanova) | Tekst *zahtjev obrađen* (`emails.free_request_fulfilled_*`) + **jedan PDF po rezervaciji** (`freeConfirmationPdfFilename()`) |
+| **Admin odbije** | `FreeReservationRequestRejectedMail` preko **`SendFreeReservationRequestRejectedMailJob`** | **`free_reservation_requests.institution_email`** | Obavještenje da je zahtjev odbijen, broj i datum zahtjeva, cijeli **Razlog odbijanja**, uputstvo da se zahtjev pregleda na **bus.kotor.me** (kartica Besplatne rezervacije / Free reservations). Jezik mejla je `locale` zahtjeva (`cg` ili `en`). |
 
 - Agencija **ne** dobija potvrdu pri podnošenju. Operater dobija obavještenje na `bus@kotor.me`. To nije način na koji agencija podnosi zahtjev.
 - Potvrda agenciji šalje se **sinhrono** posle DB commit-a fulfill-a (`FreeReservationRequestFulfillmentService`); nije queue job.
 - **`reservations.email_sent`** na povezanim rezervacijama postaje **`EMAIL_SENT` (1)** tek posle uspješnog slanja; pad mejla **ne** poništava `fulfilled` status.
-- **Odbijanje** (`reject`) u kodu **ne** šalje email agenciji i nema kolonu za razlog. Poslovno pravilo i dalje traži obrazloženje administratora van ovog prikaza (v. proces iznad).
+- **Odbijanje** je odvojen mejl od odobrenja i od operaterskog obavještenja. Job ide na red **tek poslije commit-a** transakcije (`DB::afterCommit`). Pad slanja ne vraća status na `submitted`/`updated`. Queue retry je `$tries = 3`, backoff 60 / 180 / 600 s (Plesk worker `--tries=3`). Ponovni pokušaj odbijanja već odbijenog zahtjeva se odbija i ne šalje drugi mejl. Nakon iscrpljenih pokušaja zahtjev ostaje `rejected`; nema posebne repair komande za ovaj mejl.
 - Ako potvrda nije stigla a zahtjev je `fulfilled`: operater pokreće `php artisan free-reservation-requests:repair-fulfilled --id={id}` (ili `--resend-email` ako su rezervacije pogrešno već `email_sent=1`) — v. **`docs/cron-commands.md`** §12 i **`docs/admin-panel.md`** § Fulfill.
 
 **Arhiva privatnih priloga (MEGA):** kada je zahtjev u terminalnom statusu (`fulfilled` / `rejected`), operativno se mogu arhivirati fajlovi sa privatnog diska na MEGA (`files:archive-private --source=fzbr`); detalji u **[external-file-archive.md](./external-file-archive.md)**. Kredencijali ostaju u `.env`; nema uploada iz browsera. **Admin pregled arhiviranih priloga:** na **`GET /admin/besplatne-rezervacije`** sekcija **„Pregled besplatnih rezervacija”** (filter odobreni/odbijeni + datum po `updated_at`) — link **„Dokument”** otvara privatnu preview rutu sa istim TTL / `files:cleanup-preview-cache` ponašanjem kao ostali admin preview-i iz arhive.
@@ -210,7 +208,8 @@ Na dnu **`GET /panel/fzbr`** prikazuje se sekcija **„Moji poslati zahtjevi”*
 
 - **Izvor:** `AgencyFzbrSubmittedRequestListService` (učitava zahtjeve agencije, filtrira vidljivost).
 - **Kolone:** datum zahtjeva, vrijeme dolaska/odlaska (po segmentu), tablice, status, datum slanja (`created_at`, Podgorica).
-- **Statusi (DB → UI):** `submitted` / `updated` → *Čeka se obrada*; `fulfilled` → *Odobreno*; `rejected` → *Odbijeno*. Obrazloženje odbijanja se u ovoj listi ne prikazuje. U bazi nema polja za razlog.
+- **Statusi (DB → UI):** `submitted` / `updated` → *Čeka se obrada*; `fulfilled` → *Odobreno*; `rejected` → *Odbijeno* / *Rejected*.
+- **Razlog odbijanja:** uz odbijen zahtjev, ispod reda tabele, natpis **Razlog odbijanja** / **Rejection reason** (`panel.fzbr_rejection_reason_label`). Cijeli tekst je u `whitespace-pre-wrap`. Agencija vidi samo svoje zahtjeve (`user_id`). Email administratora i interna polja se ne prikazuju. Stariji odbijeni zahtjev bez upisanog razloga i dalje pokazuje samo status.
 - **Vidljivost:** `submitted` i `updated` uvijek vidljivi. `rejected` vidljiv dok barem jedan segment zahtjeva još nije prošao (kraj pick-up termina na `reservation_date`, ista logika vremena kao `PanelReservationListService::isUpcoming`). `fulfilled` ostaje dok postoji barem jedna povezana besplatna rezervacija koja još nije realizovana; sakriva se kad su sve realizovane.
 - **Veza zahtjev ↔ rezervacija:** migracija `reservations.free_reservation_request_id` (nullable FK); admin fulfill postavlja FK pri kreiranju ili povezivanju `status=free` rezervacija (**idempotentno** — v. `docs/admin-panel.md` § Fulfill). Stariji odobreni bez FK: servis pri učitavanju pronalazi odgovarajuće admin `free` redove (email agencije, tablice i termini iz segmenta zahtjeva) i upisuje FK; prikaz i sakrivanje `fulfilled` tada idu preko povezanih rezervacija. Ako nema pronađenih rezervacija, koriste se termini iz snapshot-a samog zahtjeva.
 - **Prazno stanje:** *Nemate poslatih zahtjeva za besplatne rezervacije.*
