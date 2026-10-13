@@ -1,8 +1,10 @@
 # Limo service
 
-**Poslednje ažuriranje:** 2026-06-19
+**Poslednje ažuriranje:** 2026-10-13
 
-**Phase 2 (2026-06):** QR workflow je **deaktiviran** po defaultu (`LIMO_QR_WORKFLOW_ENABLED=false`). Agencijski `/panel/limo` je informativan; operativni mehanizam je **dnevna naknada** kroz Rezervacije. Kod, tabele i admin istorija su očuvani; rollback preko ENV flaga.
+**Produkcija (potvrđeno 2026-10-13):** kartica **Limo** je vidljiva i vodi na informativnu stranicu. QR generisanje, posebna Limo rezervacija i evidentičar **nisu** agencijska funkcija (`LIMO_QR_WORKFLOW_ENABLED` nije uključen). Limo vozilo plaća **dnevnu naknadu** na **Rezervacije**, karticom ili iz avansa. Sadržaj stranice i pravila menija: **[agency-panel.md](./agency-panel.md)**.
+
+**Phase 2 (2026-06):** QR workflow je **deaktiviran** (`LIMO_QR_WORKFLOW_ENABLED=false`). Kod, tabele i admin istorija su očuvani; rollback preko ENV flaga nije produkcijski režim.
 
 **Produkcija V2 (2026-06-19):** Širi **incident workflow** (statusi reported/closed, admin rešenja), **PWA** instalabilni shell za `/limo` i **native Android** evidentičar — **izbačeni iz operativnog plana**. Terenski model: **dnevna naknada** + **Control** (`/control/dnevna-naknada`). Legacy kod (minimalni incident tok, QR/OCR) ostaje u repou.
 
@@ -75,7 +77,7 @@ Brisanje QR/OCR koda ili tabela **nije predviđeno tokom sezone** bez posebne od
   - `GET /panel/limo/qr/{limoQrToken}` — prikaz QR slike iz dekriptovanog `encrypted_token`
   - `GET /panel/limo/qr/{limoQrToken}/pdf` — **PDF export** za štampu (QR + agencija + datum); token mora biti **današnji** (Podgorica) i vlasništvo agencije, inače 404; nema finansijskog efekta; tekst u PDF-u iz **`ui_translations`** (`panel`, `limo_qr_pdf_*`) prema jeziku korisnika (`LimoQrPdfGenerator` / `users.lang`)
   - navigacija i ostali stringovi Limo QR stranica: **`ui_translations`**, grupa `panel`, ključevi `nav_limo`, `limo_*` (seed u `UiTranslationsSeeder`)
-  - feature gate: **`limo.feature`** (kombinacija flagova — vidi niže); ako je Limo nedostupan → **404** na `/panel/limo*` (UI stavka može biti vidljiva, ali disabled)
+  - feature gate: **`limo.feature`** (oba flaga, vidi niže); ako uslov nije ispunjen → **404** na `/panel/limo`. Navigacija: link samo kad su oba uključena; ako je samo avans uključen, stavka je siva i bez linka; ako je avans isključen, stavka **Limo** se ne iscrtava
 - **Pickup QR (operativa):**
   - `POST /limo/pickup/qr` — validacija tokena (hash + dan), kreiranje `limo_pickup_events`, oduzimanje avansa (`agency_advance_transactions`, tip `usage`), brisanje iskorišćenog reda iz `limo_qr_tokens`
 - **Pickup tablica (fallback, bez QR):**
@@ -137,8 +139,9 @@ Takođe su iza feature gate-a **`limo.feature`** (404 kada je Limo servis isklju
 Limo zavisi od avansnog modela, ali avans **ne zavisi** od Limo:
 
 - **Feature flags:** `config('features.advance_payments')` (ENV `ADVANCE_PAYMENTS_ENABLED`) i `config('features.limo_service')` (ENV `LIMO_SERVICE_ENABLED`)
-- **Effective rule:** Limo je dostupan samo ako je **advance_payments ON** **i** **limo_service ON**
-- Kada je Limo nedostupan: `/panel/limo*` i `/limo*` vraćaju **404**; u agencijskom UI stavka “Limo” može ostati vidljiva ali disabled.
+- **Effective rule:** informativna stranica i `/limo/*` postoje samo ako je **advance_payments ON** **i** **limo_service ON**
+- **Produkcija (2026-10-13):** oba flaga su uključena za informativnu karticu **Limo**. QR tok (`LIMO_QR_WORKFLOW_ENABLED`) nije uključen.
+- Kada je Limo servis isključen u kodu: `/panel/limo*` i `/limo*` vraćaju **404**. Stavka menija nije uvijek disabled: vidi navigaciju u **[agency-panel.md](./agency-panel.md)**.
 
 - **Gosti** ne koriste Limo tokove.
 - Koristi se postojeći **agency advance ledger**; **negativan saldo nije dozvoljen**.
@@ -317,11 +320,11 @@ Evidencija incidenta (bez finansijskog efekta, bez pickup događaja).
 
 ---
 
-## Agency panel (`/panel/limo`) — implementirano
+## Agency panel (`/panel/limo`) — trenutno sučelje
 
-- Vidljivo kada je **`advance_payments` ON**; inače **404** na `/panel/limo*`.
-- Lista **aktivnih** QR za **tekući dan**; iskorišćeni nestaju jer se red briše iz `limo_qr_tokens`.
-- Dugme generisanja, link na stranicu QR-a i **PDF export**: `GET /panel/limo/qr/{limoQrToken}/pdf` (PDF se generiše on-demand, ne čuva se; važi samo za današnje tokene).
+- **Produkcija:** informativna stranica (dnevna naknada, dva mjesta ukrcaja u zoni autobuska–Kamelija, zabrana Benova za 4+1–7+1, kontrola, PDF/email dokaz). Tekst i linkovi: **[agency-panel.md](./agency-panel.md)**.
+- Ruta je dostupna kada su **`advance_payments` i `limo_service`** uključeni. Samo `advance_payments` **nije** dovoljno: tada je URL 404, a stavka menija je siva i bez linka.
+- QR lista, generisanje i PDF QR-a **nisu** trenutna agencijska stranica. Te rute vraćaju **404** dok je `LIMO_QR_WORKFLOW_ENABLED` isključen. Ne opisivati ih kao dostupnu operaciju.
 
 ---
 

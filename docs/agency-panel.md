@@ -1,8 +1,10 @@
 ﻿# Agency panel (ulogovani korisnik, `/panel`)
 
-**Poslednje ažuriranje:** 2026-06-19
+**Poslednje ažuriranje:** 2026-10-13
 
 Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navigacija: `resources/views/layouts/navigation.blade.php`.
+
+**Produkcija i kod.** Feature flag u kodu i `.env.example` nije isto što i potvrđena produkcijska konfiguracija. Na produkciji (potvrđeno 2026-10-13) **Avans** je uključen i operativan, a **Limo** je vidljiv kao informativna stranica. Poseban Limo tok (QR i slično) **nije** uključen i nije agencijska funkcija. Uslovi ispod i dalje opisuju šta kod radi kada je flag isključen.
 
 **Uputstvo (PDF):** kanonski opis fajlova i integracije: **[agency-user-guide.md](./agency-user-guide.md)**. U navigaciji (landing + panel) link pored jezičkih zastavica — prikaz samo ako PDF postoji na disku. Fajlovi: **`public/docs/cgbuskotor.pdf`** (CG), **`public/docs/engbuskotor.pdf`** (EN); mapiranje u **`config/user-guides.php`**; partial **`user-guide-pdf-link`**. Testovi: **`UserGuidePdfLinkTest`**.
 
@@ -17,14 +19,14 @@ Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navig
 | `GET /panel/realized` | `panel.realized` | Realizovane, link na PDF u novom tabu |
 | `GET /panel/vehicles` | `panel.vehicles` | Vozila |
 | `GET /panel/fzbr` | `panel.fzbr.create` | **Besplatne rezervacije** — podnošenje zahtjeva |
-| `GET /panel/avans` | `panel.advance.index` | Avans: stanje, ledger i istorija topup pokušaja |
+| `GET /panel/avans` | `panel.advance.index` | Avans: stanje i ledger (poslednjih 50 knjiženja). Nema posebne liste pokušaja uplate. |
 | `POST /panel/avans/topup` | `panel.advance.topup.store` | Pokretanje avansne uplate (kreira topup attempt + start payment) |
 | `GET /panel/avans/return` | `panel.advance.return` | Povratak sa banke (status se čita iz baze) |
 | `GET /panel/statistics` | `panel.statistics` | Statistika: ukupno plaćeno, broj realizovanih posjeta, tabela po tablicama |
-| `GET /panel/limo` | `panel.limo.index` | **Limo** — informativna stranica (Stari grad, mjesta ukrcaja, obaveza dnevne naknade) |
-| `POST /panel/limo/qr/generate` | `panel.limo.qr.generate` | **Deprecated** — 404 osim ako je `LIMO_QR_WORKFLOW_ENABLED=true` |
-| `GET /panel/limo/qr/{limoQrToken}` | `panel.limo.qr.show` | **Deprecated** — 404 (isti flag) |
-| `GET /panel/limo/qr/{limoQrToken}/pdf` | `panel.limo.qr.pdf` | **Deprecated** — 404 (isti flag) |
+| `GET /panel/limo` | `panel.limo.index` | **Limo** — samo informativna stranica (dnevna naknada, mjesta ukrcaja). U produkciji je dostupna. |
+| `POST /panel/limo/qr/generate` | `panel.limo.qr.generate` | **Nije agencijska funkcija.** U produkciji 404 (`LIMO_QR_WORKFLOW_ENABLED` isključen). |
+| `GET /panel/limo/qr/{limoQrToken}` | `panel.limo.qr.show` | **Nije agencijska funkcija.** U produkciji 404 (isti uslov). |
+| `GET /panel/limo/qr/{limoQrToken}/pdf` | `panel.limo.qr.pdf` | **Nije agencijska funkcija.** U produkciji 404 (isti uslov). |
 | `GET /panel/user` | `panel.user` | Korisnik: ime, jezik, email, lozinka |
 | `PATCH /profile` | `profile.update` | Čuva profil (uključujući lozinku ako je uneta) |
 | `PATCH /panel/reservations/{id}/vehicle` | `panel.reservations.vehicle` | Promjena tablice/vozila na predstojećoj rezervaciji (Termini; dnevna naknada samo kad je `reservation_date` **posle** danas, Podgorica) |
@@ -35,9 +37,11 @@ Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navig
 
 ---
 
-## Avans (advance payments) — implementirano (feature-flag)
+## Avans (advance payments)
 
-**Feature flag:** `config('features.advance_payments')` (ENV `ADVANCE_PAYMENTS_ENABLED`).
+**Produkcija (potvrđeno 2026-10-13):** avans je uključen i operativan. Agencija koristi karticu **Avans** / **Advance** i podržane avansne uplate. Rezervacija se iz avansa može platiti samo kada je saldo dovoljan (`payment_method=advance` ostaje onemogućen ako nije).
+
+**Feature flag u kodu:** `config('features.advance_payments')` (ENV `ADVANCE_PAYMENTS_ENABLED`). Podrazumijevana vrijednost u repou je isključeno; to **ne** opisuje produkciju.
 
 Ako je flag **OFF**:
 - navigaciona stavka **Avans** se vidi kao disabled (bez linka) uz tooltip
@@ -51,8 +55,9 @@ Ako je flag **ON**:
 - **Stranica:** `GET /panel/avans` (`panel.advance.index`)
 - Prikazuje:
   - trenutno stanje avansa (saldo) = **SUM(agency_advance_transactions.amount)**
-  - ledger istoriju (poslednjih 50)
-  - istoriju topup pokušaja (poslednjih 50)
+  - ledger istoriju (poslednjih 50 knjiženja: uplata, korišćenje, korekcija)
+
+Agencijska stranica **ne** prikazuje posebnu listu pokušaja pokretanja uplate (`agency_advance_topups`). Ti redovi nisu dio agencijskog ekrana.
 
 **Pokretanje uplate:** `POST /panel/avans/topup`
 - forma na **`GET /panel/avans`**: ispod dugmeta „Pokreni avansnu uplatu” — logo prihvaćenih kartica (`karticebanka.png`, partial **`bank-cards-logo`**)
@@ -64,6 +69,8 @@ Ako je flag **ON**:
 - topup prelazi u `paid` (callback / fake)
 - kreira se ledger red u `agency_advance_transactions`:
   - `type=topup`, `reference_type=advance_topup`, `reference_id=topup.id`, `amount=+X`
+
+**Otvoreno — povratna poruka poslije banke.** `AdvanceController::paymentReturn` i neuspjeli start uplate postavljaju flash `error` ili `message`. Šablon `resources/views/panel/advance.blade.php` prikazuje `session('status')` i greške validacije. Nije provjereno u browseru da li agencija vidi tekst za neuspjelu ili još neobrađenu avansnu uplatu. Ne opisivati tu poruku kao potvrđen dio sučelja. Saldo i ledger ostaju izvor stanja na stranici.
 
 **avansna uplata se NE fiskalizuje**
 - razlog: uplata avansa predstavlja povećanje obaveze Opštine prema agenciji (prepaid saldo), a ne realizovan prihod
@@ -118,22 +125,30 @@ Na **`GET /panel/reservations`** agencija bira **Termini** (default) ili **Dnevn
 - Predstojeće/realizovane: dnevna naknada je predstojeća cijeli dan važenja, realizovana od sljedećeg kalendarskog dana.
 - Admin analitika (odvojeni brojači) — Phase 3B.
 
-### Limo (informativno; QR workflow ukinut)
+### Limo (informativna stranica)
 
-**Phase 2 (2026-06):** Agencijska stavka menija **Limo** (ranije „Limo QR”) vodi na informativnu stranicu. QR generisanje, skeniranje, evidentičar na `/limo/*` i OCR su **isključeni** po defaultu (`LIMO_QR_WORKFLOW_ENABLED=false`). Operativni mehanizam za dan je **dnevna naknada** kroz Rezervacije.
+**Produkcija (potvrđeno 2026-10-13):** kartica **Limo** je vidljiva i otvara informativnu stranicu. Nema posebne Limo rezervacije niti QR toka. Limo vozilo plaća običnu **dnevnu naknadu** na **Rezervacije** / **Reservations**, karticom ili iz raspoloživog avansa.
 
-Ruta **`GET /panel/limo`** dostupna kada su ispunjena **oba** uslova:
+Stranica (`resources/views/panel/limo/index.blade.php`, ključevi `limo_info_*`) kaže:
 
-- `ADVANCE_PAYMENTS_ENABLED=true` (config `features.advance_payments`)
-- `LIMO_SERVICE_ENABLED=true` (config `features.limo_service`)
+- Za svako limo vozilo i svaki kalendarski dan usluge mora biti plaćena dnevna naknada.
+- U užem centru, od autobuske stanice do tržnog centra Kamelija, ukrcaj i iskrcaj su dozvoljeni samo na dva mjesta:
+  - autobusko stajalište pored pozorišta, kod gradske pijace — https://maps.app.goo.gl/BkmeQ1ZAo8XG1FDb6
+  - izlaz iz parking prostora Riva, preko puta gradske pijace — https://maps.app.goo.gl/qdy9YmTLRBsggPCD6
+- Van te zone druga mjesta smiju se koristiti uz saobraćajna pravila i bezbjednost.
+- Putnička vozila 4+1, 5+1, 6+1 i 7+1 ne smiju ukrcavati ni iskrcavati putnike na Benovu.
+- Kontrolu rade komunalna policija i druga ovlašćena lica.
+- Vozač treba da ima dokaz o plaćenoj dnevnoj naknadi na emailu ili u PDF-u.
 
-Ako je bilo koji uslov false, `/panel/limo` vraća **404**, a navigaciona stavka „Limo” može biti vidljiva ali **disabled** (bez linka) uz tooltip.
+**Kod (odvojeno od produkcije).** `GET /panel/limo` prolazi middleware `limo.feature` samo ako su **oba** `ADVANCE_PAYMENTS_ENABLED` i `LIMO_SERVICE_ENABLED` true. Inače ruta vraća **404**.
 
-- **Informativna stranica:** odobrena mjesta ukrcaja (map linkovi), obaveza važeće **dnevne naknade**, kontrola od strane komunalne policije / ovlašćenih kontrolora (provjera tablice: Control panel `/control/dnevna-naknada` — dnevna naknada ili Termini za danas; v. `docs/control-panel.md`).
-- **Deprecated QR rute** (`panel.limo.qr.*`): ostaju u kodu; middleware **`limo.qr_workflow`** vraća **404** dok je flag isključen. Rollback: `LIMO_QR_WORKFLOW_ENABLED=true`.
-- **Jezik (cg/en):** `nav_limo`, `limo_info_*` u `ui_translations` / `UiText`.
+Navigacija u `resources/views/layouts/navigation.blade.php`:
 
-Istorijski QR podaci, admin pregled događaja (`/admin/limo`) i servisi (fiskalizacija po starim pickup zapisima) **nisu** brisani. Detalji: **[limo-service.md](./limo-service.md)**.
+- oba flaga uključena — link **Limo**
+- avans uključen, limo isključen — siva stavka bez linka i tooltip `limo_disabled_hint`
+- avans isključen — stavka **Limo** se ne iscrtava (nema je ni kao disabled)
+
+QR rute (`panel.limo.qr.*`) dodatno traže `LIMO_QR_WORKFLOW_ENABLED`. U produkciji taj tok **nije** uključen, pa te rute vraćaju **404**. Generisanje QR nije agencijska operacija. Istorijski podaci i admin pregled ostaju u kodu; v. **[limo-service.md](./limo-service.md)**.
 
 ---
 
@@ -143,7 +158,17 @@ Stranica: **`GET /panel/fzbr`** (`panel.fzbr.create`).
 
 Tekstovi na vrhu forme (pravni uvod, info-blok, pomoć za upload) dolaze iz **`ui_translations`** grupe **`free_request`** (`fzbr_description`, `fzbr_instruction`, `documents_hint`, `documents_limit`, …), seedovano u **`UiTranslationsSeeder`**. Poslije izmjene teksta na produkciji ažurirati redove u bazi (npr. ponovnim seedovanjem ili ručnim SQL-om) — **nema promjene validacije, ruta, kontrolera niti zahtjeva za broj priloga u kodu**.
 
-**Operativni proces (škole i slične ustanove):** škola ili ustanova prvo kontaktira **Sekretarijat za lokalne prihode, budžet i finansije** Opštine Kotor na **prihodi@kotor.me**; nakon odobrenja Sekretarijata, odobrenje se proslijedi agenciji/prevozniku koji podnosi zahtjev kroz **Besplatne rezervacije**. Uz formular se prilaže raspoloživa dokumentacija (npr. angažovanje prevoznika, odobrenje Sekretarijata); **nepotpuna dokumentacija se može poslati u prvim koracima**, a ostatak naknadno — **administrator ne odobrava besplatnu rezervaciju dok sva neophodna dokumentacija ne bude dostavljena i pregledana** (poslovno pravilo; implementacija odobrenja ostaje u admin toku).
+**Poslovni proces (V2, potvrđeno 2026-10-13).** Agencija podnosi **zahtjev za besplatnu rezervaciju** isključivo kroz karticu **Besplatne rezervacije** / **Free reservations**. Slanje **ne** kreira odobrenu **besplatnu rezervaciju**.
+
+- Administrator pregleda zahtjev.
+- Ako termine treba usaglasiti ili prilozi nisu dovoljni, administrator piše agenciji na email. Agencija odgovara na taj email i, kada se traži, šalje dodatne dokumente. U panelu nema naknadnog uploada.
+- Forma i `FzbrStoreRequest` i dalje traže **bar jedan** prilog (`documents` required, min 1, ukupno do 10 MB).
+- Administrator na kraju odobrava ili odbija zahtjev. Odbijanje mora imati obrazloženje administratora.
+- Lista u panelu prikazuje status i **ne prikazuje** obrazloženje.
+- **`prihodi@kotor.me` je stari V1 postupak** i nije uputstvo za ovaj zahtjev.
+- **`bus@kotor.me`** je opšti kontakt podrške. Nije kanal za podnošenje zahtjeva. Agenciju koja podršci pošalje zahtjev treba uputiti na formu u panelu. Sistem i dalje šalje operateru obavještenje na `bus@kotor.me` kada je forma sačuvana; to nije zamjena za formu.
+
+**Razlika pravilo ↔ kod (odbijanje).** Poslovno pravilo traži obrazloženje uz odbijanje. Aplikacija trenutno ne čuva razlog i pri `reject` ne šalje email agenciji. Ne pretpostavljati da panel ili automatski mejl prenose to obrazloženje.
 
 Forma je podijeljena u dvije cjeline:
 
@@ -162,7 +187,7 @@ Na vrhu stranice prikazuje se:
 - **instrukcija korisniku** u odvojenom info-bloku (ključ `free_request.fzbr_instruction`)
 - **pomoć za priloge** (`free_request.documents_hint` + `documents_limit`)
 
-### Email obavještenja (FZBR)
+### Email obavještenja (zahtjev za besplatnu rezervaciju)
 
 Razlikovati **dva** mejla u životnom ciklusu zahtjeva:
 
@@ -171,10 +196,10 @@ Razlikovati **dva** mejla u životnom ciklusu zahtjeva:
 | **Podnošenje zahtjeva** (`POST /panel/fzbr`) | `AgencyFreeReservationRequestSubmittedMail` | **`bus@kotor.me`** (operater) | Obavještenje da je stigao novi zahtjev + prilozi iz forme |
 | **Admin odobri / fulfill** | `FreeReservationRequestFulfilledMail` | **`free_reservation_requests.institution_email`** (agencija/ustanova) | Tekst *zahtjev obrađen* (`emails.free_request_fulfilled_*`) + **jedan PDF po rezervaciji** (`freeConfirmationPdfFilename()`) |
 
-- Agencija **ne** dobija potvrdu besplatnih rezervacija pri podnošenju — samo admin na `bus@kotor.me`.
+- Agencija **ne** dobija potvrdu pri podnošenju. Operater dobija obavještenje na `bus@kotor.me`. To nije način na koji agencija podnosi zahtjev.
 - Potvrda agenciji šalje se **sinhrono** posle DB commit-a fulfill-a (`FreeReservationRequestFulfillmentService`); nije queue job.
 - **`reservations.email_sent`** na povezanim rezervacijama postaje **`EMAIL_SENT` (1)** tek posle uspješnog slanja; pad mejla **ne** poništava `fulfilled` status.
-- **Odbijanje** (`reject`) trenutno **ne** šalje email agenciji (nema polja za razlog u bazi).
+- **Odbijanje** (`reject`) u kodu **ne** šalje email agenciji i nema kolonu za razlog. Poslovno pravilo i dalje traži obrazloženje administratora van ovog prikaza (v. proces iznad).
 - Ako potvrda nije stigla a zahtjev je `fulfilled`: operater pokreće `php artisan free-reservation-requests:repair-fulfilled --id={id}` (ili `--resend-email` ako su rezervacije pogrešno već `email_sent=1`) — v. **`docs/cron-commands.md`** §12 i **`docs/admin-panel.md`** § Fulfill.
 
 **Arhiva privatnih priloga (MEGA):** kada je zahtjev u terminalnom statusu (`fulfilled` / `rejected`), operativno se mogu arhivirati fajlovi sa privatnog diska na MEGA (`files:archive-private --source=fzbr`); detalji u **[external-file-archive.md](./external-file-archive.md)**. Kredencijali ostaju u `.env`; nema uploada iz browsera. **Admin pregled arhiviranih priloga:** na **`GET /admin/besplatne-rezervacije`** sekcija **„Pregled besplatnih rezervacija”** (filter odobreni/odbijeni + datum po `updated_at`) — link **„Dokument”** otvara privatnu preview rutu sa istim TTL / `files:cleanup-preview-cache` ponašanjem kao ostali admin preview-i iz arhive.
@@ -185,7 +210,7 @@ Na dnu **`GET /panel/fzbr`** prikazuje se sekcija **„Moji poslati zahtjevi”*
 
 - **Izvor:** `AgencyFzbrSubmittedRequestListService` (učitava zahtjeve agencije, filtrira vidljivost).
 - **Kolone:** datum zahtjeva, vrijeme dolaska/odlaska (po segmentu), tablice, status, datum slanja (`created_at`, Podgorica).
-- **Statusi (DB → UI):** `submitted` / `updated` → *Čeka se obrada*; `fulfilled` → *Odobreno*; `rejected` → *Odbijeno*. Nema polja za razlog odbijanja u bazi.
+- **Statusi (DB → UI):** `submitted` / `updated` → *Čeka se obrada*; `fulfilled` → *Odobreno*; `rejected` → *Odbijeno*. Obrazloženje odbijanja se u ovoj listi ne prikazuje. U bazi nema polja za razlog.
 - **Vidljivost:** `submitted` i `updated` uvijek vidljivi. `rejected` vidljiv dok barem jedan segment zahtjeva još nije prošao (kraj pick-up termina na `reservation_date`, ista logika vremena kao `PanelReservationListService::isUpcoming`). `fulfilled` ostaje dok postoji barem jedna povezana besplatna rezervacija koja još nije realizovana; sakriva se kad su sve realizovane.
 - **Veza zahtjev ↔ rezervacija:** migracija `reservations.free_reservation_request_id` (nullable FK); admin fulfill postavlja FK pri kreiranju ili povezivanju `status=free` rezervacija (**idempotentno** — v. `docs/admin-panel.md` § Fulfill). Stariji odobreni bez FK: servis pri učitavanju pronalazi odgovarajuće admin `free` redove (email agencije, tablice i termini iz segmenta zahtjeva) i upisuje FK; prikaz i sakrivanje `fulfilled` tada idu preko povezanih rezervacija. Ako nema pronađenih rezervacija, koriste se termini iz snapshot-a samog zahtjeva.
 - **Prazno stanje:** *Nemate poslatih zahtjeva za besplatne rezervacije.*
@@ -341,3 +366,15 @@ Dok zahtjev ne bude odobren, vozilo se ne može koristiti sa **novom** kategorij
 ### Napomena (anti-abuse razlog)
 
 Workflow postoji da bi se sprečilo da se ista registarska tablica ponovo unese sa drugom (npr. jeftinijom) kategorijom bez provjere dokumentacije.
+
+---
+
+## Otvoreno (ne popunjavati pretpostavkom)
+
+Ovo nije potvrđeno i dokument ne smije da ga predstavi kao ponašanje sučelja:
+
+- **Avans poslije banke.** Da li agencija vidi poruku za neuspjelu ili još neobrađenu uplatu. V. odjeljak Avans. Uspjeh ide preko `session('status')`, koji šablon prikazuje.
+- **Prijevodi.** Neki kontroli ostaju na engleskom ili na crnogorskom bez obzira na zastavicu: **Log Out** u meniju naloga (`__('Log Out')`), **Email** i **Reset Password** na resetu lozinke, `auth.failed` / `auth.throttle` (nema `lang/` u repou). Predmeti mejla potvrde avansa i godišnje kartice avansa su fiksni crnogorski tekst. `user.delete_account_blocked` i `user.delete_account_failed_title` koriste se u Blade-u, a nisu u `UiTranslationsSeeder`. Tekst na ekranu zavisi od reda u `ui_translations`, ne samo od seedera.
+- **Lozinka.** Registracija, reset i profil koriste `Password::defaults()` bez lokalnog pravila u `AppServiceProvider`. Tačna minimalna dužina i složenost nisu ovdje utvrđene.
+- **PDF uputstvo.** `public/docs/cgbuskotor.pdf` i `engbuskotor.pdf` postoje i link se prikazuje ako je fajl na disku. Usklađenost cijelog PDF-a sa trenutnim ekranima nije provjerena. Tekstualna napomena za promjenu tablice: **[agency-user-guide.md](./agency-user-guide.md)** i `docs/agency-user-guide-plate-change.txt`.
+- **Brisanje naloga.** `ProfileController::destroy` traži trenutnu lozinku. Ako brisanje baci `QueryException` ili vrati false, nalog ostaje i korisnik vidi poruku iz `user.delete_account_blocked` (fallback na crnogorskom ako ključ nije u bazi). Koji tačno zapisi blokiraju brisanje nije posebno dokumentovan izvan tog hvatanja izuzetka.

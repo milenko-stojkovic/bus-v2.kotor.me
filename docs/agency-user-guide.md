@@ -1,8 +1,10 @@
 # Korisničko uputstvo za agencije (PDF)
 
-**Poslednje ažuriranje:** 2026-06-25
+**Poslednje ažuriranje:** 2026-10-13
 
-Javno uputstvo za agencije (rezervacije, dnevna naknada, panel, avans, FZBR, itd.) distribuira se kao **PDF**, ne kao tekst u `docs/`.
+Javno uputstvo za agencije (rezervacije, dnevna naknada, panel, avans, zahtjev za besplatnu rezervaciju, itd.) distribuira se kao **PDF**, ne kao tekst u `docs/`.
+
+**Otvoreno:** nije provjereno da li `cgbuskotor.pdf` i `engbuskotor.pdf` pokrivaju trenutni ekran (dnevna naknada, avans, Limo kao informacija, zahtjev za besplatnu rezervaciju bez V1 email koraka). Dok se PDF ne uporedi sa sučeljem, kanonski opis funkcija je **[agency-panel.md](./agency-panel.md)**.
 
 ---
 

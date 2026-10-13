@@ -38,9 +38,11 @@ Polje označava **državu izdavanja platne kartice** kojom se plaća (Bankart `c
 ## Besplatne rezervacije — ulogovani korisnik (panel)
 
 - Javni “Učenici/humanitarci” ulaz je ukinut.
-- Agencije (ulogovani korisnici) podnose **zahtjev** kroz panel: **`/panel/fzbr`** (stavka navigacije: **Besplatne rezervacije**).
-- Ovo **nije** checkout i **ne kreira** `reservations` niti `temp_data` u trenutku slanja forme.
-- Forma upisuje trajni zapis u tabelu **`free_reservation_requests`** (jedan datum po zahtjevu), zatim segmente u **`free_reservation_request_segments`** (drop/pick po segmentu), vozila u **`free_reservation_request_vehicles`** (snapshot po segmentu), i dokumenta u **`free_reservation_request_attachments`** (na nivou zahtjeva). Zatim šalje admin email i kreira admin warning kao pointer.
+- **Zahtjev za besplatnu rezervaciju** podnosi se isključivo kroz panel: **`/panel/fzbr`**, kartica **Besplatne rezervacije** / **Free reservations**. `bus@kotor.me` je opšti kontakt podrške, ne kanal za podnošenje. Stari V1 korak preko `prihodi@kotor.me` više nije uputstvo.
+- Slanje forme **nije** checkout i **ne** kreira odobrenu rezervaciju (`reservations` / `temp_data` nastaju tek kada administrator odobri zahtjev).
+- Forma upisuje **`free_reservation_requests`** (jedan datum), segmente, vozila iz voznog parka i priloge. Operater dobija email; agencija pri slanju ne dobija potvrdu.
+- Ako termine treba usaglasiti ili dokumentacija nije dovoljna, administrator piše agenciji; dodatni dokumenti idu odgovorom na taj email. Panel ne nudi naknadni upload.
+- Odbijanje mora imati obrazloženje administratora. Lista u panelu prikazuje status **Odbijeno** / **Rejected** i ne prikazuje razlog. Kod trenutno ne čuva razlog i ne šalje email pri odbijanju — v. **[agency-panel.md](./agency-panel.md)**.
 
 ## Pravila u kodu
 
@@ -52,7 +54,7 @@ Polje označava **državu izdavanja platne kartice** kojom se plaća (Bankart `c
 
 ## Istorija plaćanja
 
-- **Autentifikovani** – vidi svoje rezervacije prema `user_id` (npr. `$user->reservations`); u panelu postoji tab **Istorija plaćanja** (`/profile/payments`) — trenutno placeholder koji upućuje na rezervacije dok se ne uvede poseban pregled transakcija.
+- **Autentifikovani** – rezervacije su vezane preko `user_id`. U panelu nema kartice „Istorija plaćanja”. `GET /profile/payments` (`profile.payments`) radi redirect na **`/panel/statistics`**. Pregled prošlih rezervacija je **Realizovane rezervacije** (`/panel/realized`); zbirni pregled je **Statistika**.
 - **Guest** – nema istoriju (osim ako se kasnije ne uvede način da napravi nalog i poveže stari `user_id`).
 
 ## Eloquent relacije
