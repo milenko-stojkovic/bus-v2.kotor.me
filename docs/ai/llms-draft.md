@@ -257,7 +257,7 @@ A daily fee is “upcoming” for the whole validity day and becomes realized on
 
 ### Payment
 
-**Plati karticom** / **Pay by card** is the default. The user is sent to the card page. They enter the card there, not in this chat. When the bank confirms payment, bus.kotor.me creates the reservation and sends the confirmation by email. Back on the site they can see **Rezervacija je uspješno kreirana.** / **Your reservation has been created successfully.** and **Plaćanje je uspješno evidentirano.** / **Payment was processed successfully.** The confirmation follows by email.
+**Plati karticom** / **Pay by card** is the default. The user is sent to the card page. They enter the card there, not in this chat. When the bank confirms payment while that attempt is still open, bus.kotor.me creates the reservation and sends the confirmation by email. Back on the site they can see **Rezervacija je uspješno kreirana.** / **Your reservation has been created successfully.** and **Plaćanje je uspješno evidentirano.** / **Payment was processed successfully.** The confirmation follows by email. If the bank confirms only after the time-slot hold has ended, that reservation is not created. Use **Card charged, no reservation** below.
 
 If the fiscal invoice is not ready at that moment, the site can say the reservation is confirmed and the invoice will follow. That still means the reservation exists.
 
@@ -275,23 +275,38 @@ Read the sentence under the title. The same title covers more than one outcome. 
 - **Plaćanje nije završeno.** / **Payment was not completed.** This title is not, by itself, rejected card details. Read the next sentence. **Vrijeme za plaćanje je isteklo.** / **The payment session has expired.** Or **Potvrda kartice nije uspjela.** / **Card authentication failed.** Or **Podaci kartice nijesu prihvaćeni.** / **The card details were not accepted.** Only the last of those three is rejected card details. The reservation was not created. They can try again.
 - **Došlo je do tehničkog problema.** / **A technical issue occurred.** Then **Plaćanje trenutno nije bilo moguće završiti.** / **The payment could not be completed at the moment.** The reservation was not created. Try again in a few minutes.
 - **Rezultat plaćanja nije bilo moguće potvrditi.** / **The payment result could not be confirmed.** Then **Molimo provjerite status rezervacije ili pokušajte ponovo kasnije.** / **Please check the reservation status or try again later.** Do not treat this as a known failure or a known success.
-- **Plaćanje je potvrđeno kasnije** / **Payment confirmed after the window closed.** Then **Plaćanje je potvrđeno nakon isteka standardnog roka.** / **Payment was confirmed after the reservation window closed.** The reservation was not created automatically. With Advance available, that payment can be added to the advance balance instead. In **Istorija avansa** / **Advance history** the row type is **Uplata avansa** / **Advance top-up**, and the note can read **Late success konvertovan u avans** / **Late success converted to advance**. Write to `bus@kotor.me`. Do not pay again for the same trip.
+- **Plaćanje je potvrđeno kasnije** / **Payment confirmed after the window closed.** Then **Plaćanje je potvrđeno nakon isteka standardnog roka.** / **Payment was confirmed after the reservation window closed.** The screen also says to contact support to verify the reservation. Do not start with support, and do not search **Rezervacije** or **Promjena tablica** for that booking. Follow **Card charged, no reservation** below. Do not pay by card again for the same trip.
 - A free time-slot reservation that cannot be finished says **Rezervacija nije kreirana** / **Reservation could not be created**, then **Nismo mogli da završimo rezervaciju. Pokušajte ponovo.** / **We could not complete your reservation. Please try again.** No card was charged.
 
 **Do not start a second payment while the first result is unknown.**
 
 - If the processing screen is still open, stay on it and use **Osvježi stranicu** / **Refresh page**. Do not go back and click **Rezerviši** / **Reserve** again.
 - For time slots, **Rezerviši** / **Reserve** with the same date and the same arrival and departure, while that payment is still open, returns to the same bank page. It does not start a second charge for that pair of times. Changing the date or either time can start a different payment. Do not change them until the first result is known.
+- An unfinished time-slot card payment also blocks another booking that uses the same plate with the same arrival or the same departure. The site releases that hold on its own. Do not give a number of minutes. After the hold is released, **Rezerviši** / **Reserve** for those same times can start a new card payment. Do not do that until the earlier payment has been checked under **Card charged, no reservation**.
 - A daily fee does not reuse the open payment. A second **Rezerviši** / **Reserve** for a daily fee can start another card payment. Do not press it again until the first result is known.
 - If the page says **Prozor za plaćanje je već otvoren ili je sesija već kreirana. Nastavite postojeće plaćanje ili pokušajte ponovo za nekoliko minuta.** / **The payment window is already open or a session was already created. Please continue the existing payment or try again in a few minutes.** Continue the payment already open. Do not start another one.
 
+**Card charged, no reservation.**
+
+**Rezervacije** / **Reservations** is the form for a new booking. It is not a list of existing reservations. **Promjena tablica** / **Plate change** lists upcoming reservations that already exist. **Avans** / **Advance** shows **Trenutno stanje avansa** / **Current advance balance** and **Istorija avansa** / **Advance history**.
+
+A reported card debit is not, by itself, a converted advance. The first action is **Avans** / **Advance** only. Wait until they are on that page.
+
+Then read **Trenutno stanje avansa** / **Current advance balance** and look in **Istorija avansa** / **Advance history** for **Uplata avansa** / **Advance top-up** with the note **Late success konvertovan u avans** / **Late success converted to advance**.
+
+If that row is there, the original reservation was not created. The original time slots were not kept. The email **Potvrda o evidentiranoj avansnoj uplati** confirms the advance. It is not a reservation confirmation and not a fiscal invoice for a reservation. Do not send them to support yet.
+
+If that row is visible and the balance covers the price, the next action is a new booking on **Rezervacije** / **Reservations**. Do not promise that the same times are still free. After they are on that form, the next step is **Plati iz avansa** / **Pay from advance**, then **Rezerviši** / **Reserve**. Do not send this money to the card page.
+
+If the bank reports a charge, no reservation exists, and that advance row is not visible, or the payment is still unresolved, write to `bus@kotor.me`. Do not pay by card again for the same trip.
+
 **How to tell whether a card payment became a reservation.**
 
-- Read the message on **Rezervacije** / **Reservations** after returning from the bank.
-- Check email for the confirmation.
-- **Promjena tablica** / **Plate change** lists upcoming reservations that already exist, paid or free, and each has a PDF. Finding that plate and date there means the reservation exists. A payment that is still processing, cancelled, declined, or otherwise unfinished does not appear there. Not finding it does not prove the card was not charged while the result is still open, or after the late-confirmation message above. A time-slot reservation whose departure has already ended today is under **Realizovane rezervacije** / **Realized reservations**, not under **Promjena tablica**. A daily fee stays on **Promjena tablica** for the whole validity day.
-- Do not use **Avans** / **Advance** as a history of card payments for reservations. A card payment for a reservation does not appear there. **Plati iz avansa** / **Pay from advance** appears in **Istorija avansa** only after it succeeds, as **Korišćenje avansa** / **Advance usage**. The late-confirmation case above is the exception that can add an **Uplata avansa** row without creating the reservation.
-- If the card was charged, there is no confirmation email, and **Promjena tablica** has no matching reservation, write to `bus@kotor.me`. Do not pay again for the same trip. A message that says the reservation was not created, the payment was not approved, the payment was not completed, or a technical issue occurred means they may start again.
+- After a return from the bank, **Rezervacije** / **Reservations** can show one result message. It still does not list existing reservations.
+- A reservation confirmation email means a reservation was created. **Potvrda o evidentiranoj avansnoj uplati** means advance only.
+- **Promjena tablica** / **Plate change** lists upcoming reservations that already exist, paid or free, and each has a PDF. Finding that plate and date there means the reservation exists. A payment that is still processing, cancelled, declined, or otherwise unfinished does not appear there. Not finding it does not prove the card was not charged. A time-slot reservation whose departure has already ended today is under **Realizovane rezervacije** / **Realized reservations**, not under **Promjena tablica**. A daily fee stays on **Promjena tablica** for the whole validity day.
+- Do not use **Avans** / **Advance** as a history of ordinary reservation card payments. Those do not appear there. **Plati iz avansa** / **Pay from advance** appears in **Istorija avansa** only after it succeeds, as **Korišćenje avansa** / **Advance usage**. A payment confirmed after the hold ended can appear there as **Uplata avansa** / **Advance top-up** without a reservation. Check that before support.
+- A message that says the reservation was not created, the payment was not approved, the payment was not completed, or a technical issue occurred means they may start again. Write to `bus@kotor.me` only when the bank reports a charge, no reservation exists, and the expected **Uplata avansa** row is not visible, or the payment is still unresolved. Do not pay by card again for the same trip.
 
 The invoice or free confirmation PDF is Montenegrin even when the site is English. Paid reservations produce an invoice. Free slot reservations produce a free confirmation, not a fiscal invoice. Advance top-ups are not invoices. See Advance.
 
