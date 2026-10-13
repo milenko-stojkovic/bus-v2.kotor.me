@@ -270,9 +270,17 @@ After the bank, the site does not trust the return address alone. The user first
 - Title **Avansna uplata se obrađuje** / **Advance top-up is being processed**
 - The same sentence continues: **Avansna uplata se obrađuje. Ako je potrebno, osvježite stranicu za nekoliko trenutaka.** / **Advance top-up is being processed. If needed, refresh the page in a few moments.**
 - **Osvježi stranicu** / **Refresh page** reloads this waiting screen.
-- **Nazad na avans** / **Back to advance** leaves it.
+- **Nazad na avans** / **Back to advance** leaves it immediately. This does not decide the payment.
 
-The waiting screen checks the result on its own. When the payment is finished, **Avans** / **Advance** opens with one message. The user does not need to guess from the balance alone.
+The waiting screen checks the result on its own, every few seconds, including after the notice below. When the payment is finished, **Avans** / **Advance** opens with one message. The user does not need to guess from the balance alone.
+
+If the user has been on this waiting screen for 60 seconds and the result is still open, a notice appears. It does not mean the payment failed, was cancelled, or succeeded. The 60 seconds start when this screen opens, not when the top-up was created.
+
+- CG: **Rezultat avansne uplate još nije potvrđen. Možete se vratiti na Avans. Ako banka naknadno potvrdi uplatu, sredstva će biti automatski evidentirana.**
+- EN: **The advance top-up result has not yet been confirmed. You can return to Advance. If the bank confirms the payment later, the funds will be credited automatically.**
+- Button **Povratak na Avans** / **Return to Advance**. It opens **Avans** / **Advance** and does not change the payment.
+
+If they use that button while the payment is still open, **Avans** does not show a success or failure message. The balance stays as it was. If the bank confirms the payment later, the amount is added automatically and appears in **Istorija avansa** / **Advance history**. If they are still on the waiting screen when the bank answers, the screen changes to the success or failure message by itself.
 
 - Success: **Avansna uplata je uspješno evidentirana.** / **Advance top-up was successfully recorded.** Then **Iznos je dodat na raspoloživi avans.** / **The amount has been added to your available advance.** The balance increases and **Istorija avansa** / **Advance history** gains an **Uplata avansa** / **Advance top-up** row. An email arrives with a PDF. That PDF is a confirmation that the advance was recorded. It is not a fiscal invoice and not a reservation.
 - Cancelled, when the bank recorded a cancellation: **Avansna uplata je otkazana.** / **The advance top-up was cancelled.** Then **Sredstva nisu dodata na avans. Možete pokušati ponovo.** / **No funds were added to your advance. You can try again.** The balance does not change.
@@ -290,7 +298,7 @@ Do not read a bank error code or card number out to the user. The sentences abov
 
 **My top-up did not appear.**
 
-1. If the waiting screen is still open, stay on it. It updates by itself. **Osvježi stranicu** / **Refresh page** is the manual version.
+1. If the waiting screen is still open, stay on it. It updates by itself. **Osvježi stranicu** / **Refresh page** is the manual version. After 60 seconds they may use **Povratak na Avans** / **Return to Advance**. That leaves the wait. It does not mean the payment failed.
 2. When **Avans** / **Advance** opens, read the message at the top before looking at the balance.
 3. Compare **Trenutno stanje avansa** / **Current advance balance** with what it was before.
 4. Look in **Istorija avansa** / **Advance history** for a new **Uplata avansa** / **Advance top-up** row.

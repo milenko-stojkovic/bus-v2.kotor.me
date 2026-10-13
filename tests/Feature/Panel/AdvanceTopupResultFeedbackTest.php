@@ -238,6 +238,136 @@ final class AdvanceTopupResultFeedbackTest extends TestCase
         $this->assertSame(0, AgencyAdvanceTransaction::query()->count());
     }
 
+    public function test_waiting_notice_stays_hidden_until_sixty_seconds_on_the_page(): void
+    {
+        $user = $this->agency('en');
+        $topup = $this->pendingTopup($user);
+        $topup->forceFill(['created_at' => now()->subHours(2)])->save();
+
+        $html = $this->actingAs($user)
+            ->get($this->returnUrl($topup->merchant_transaction_id, 'success'))
+            ->assertOk()
+            ->assertSee('id="advance-topup-wait-notice" hidden', false)
+            ->assertSee('data-show-after-ms="60000"', false)
+            ->assertSee('The advance top-up result has not yet been confirmed. You can return to Advance. If the bank confirms the payment later, the funds will be credited automatically.', false)
+            ->assertSee('id="advance-topup-return" href="/panel/avans"', false)
+            ->assertSee('Return to Advance', false)
+            ->assertDontSee('was cancelled', false)
+            ->assertDontSee('was successfully recorded', false)
+            ->getContent();
+
+        $this->assertStringNotContainsString((string) $topup->created_at, $html);
+        $noticeTimeoutStart = strpos($html, 'setTimeout(function() {');
+        $this->assertNotFalse($noticeTimeoutStart);
+        $noticeTimeoutEnd = strpos($html, '}, waitMs);', $noticeTimeoutStart);
+        $this->assertNotFalse($noticeTimeoutEnd);
+        $noticeTimeout = substr($html, $noticeTimeoutStart, $noticeTimeoutEnd - $noticeTimeoutStart);
+        $this->assertStringContainsString('notice.hidden = false', $noticeTimeout);
+        $this->assertStringNotContainsString('clearInterval', $noticeTimeout);
+        $this->assertStringContainsString('}, 3000);', $html);
+        $this->assertStringContainsString("data.status === 'success' || data.status === 'failed'", $html);
+
+        $topup->refresh();
+        $this->assertSame(AgencyAdvanceTopup::STATUS_PENDING, (string) $topup->status);
+    }
+
+    public function test_return_to_advance_does_not_change_a_pending_topup_or_show_a_final_result(): void
+    {
+        $user = $this->agency('en');
+        $topup = $this->pendingTopup($user);
+
+        $this->actingAs($user)
+            ->get(route('panel.advance.index', [], false))
+            ->assertOk()
+            ->assertDontSee('Advance top-up was successfully recorded.', false)
+            ->assertDontSee('The advance top-up was cancelled.', false)
+            ->assertDontSee('Advance top-up was not completed successfully.', false)
+            ->assertDontSee('The advance top-up was not approved.', false);
+
+        $topup->refresh();
+        $this->assertSame(AgencyAdvanceTopup::STATUS_PENDING, (string) $topup->status);
+        $this->assertSame(0, AgencyAdvanceTransaction::query()->count());
+    }
+
+    public function test_late_success_still_resolves_after_the_waiting_notice_is_present(): void
+    {
+        $user = $this->agency('en');
+        $topup = $this->pendingTopup($user);
+
+        $this->actingAs($user)
+            ->get($this->returnUrl($topup->merchant_transaction_id, 'success'))
+            ->assertOk()
+            ->assertSee('id="advance-topup-wait-notice" hidden', false)
+            ->assertSee('}, 3000);', false);
+
+        $this->runCallback($topup->merchant_transaction_id, 'success', ['result' => 'OK']);
+
+        $this->actingAs($user)
+            ->get(route('panel.advance.result', ['merchant_transaction_id' => $topup->merchant_transaction_id], false))
+            ->assertOk()
+            ->assertJson(['status' => 'success']);
+
+        $this->actingAs($user)
+            ->followingRedirects()
+            ->get($this->returnUrl($topup->merchant_transaction_id, 'success'))
+            ->assertOk()
+            ->assertSee('Advance top-up was successfully recorded.', false);
+
+        $this->assertSame(1, AgencyAdvanceTransaction::query()->count());
+    }
+
+    public function test_late_failure_still_resolves_after_the_waiting_notice_is_present(): void
+    {
+        $user = $this->agency('en');
+        $topup = $this->pendingTopup($user);
+
+        $this->actingAs($user)
+            ->get($this->returnUrl($topup->merchant_transaction_id, 'error'))
+            ->assertOk()
+            ->assertSee('id="advance-topup-wait-notice" hidden', false);
+
+        $this->runCallback($topup->merchant_transaction_id, 'ERROR', [
+            'status' => 'ERROR',
+            'error_code' => '2003',
+            'error_reason' => self::SECRET,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('panel.advance.result', ['merchant_transaction_id' => $topup->merchant_transaction_id], false))
+            ->assertOk()
+            ->assertJson(['status' => 'failed'])
+            ->assertDontSee(self::SECRET, false);
+
+        $this->actingAs($user)
+            ->followingRedirects()
+            ->get($this->returnUrl($topup->merchant_transaction_id, 'error'))
+            ->assertOk()
+            ->assertSee('The bank declined the card authorization. No funds were added to your advance.', false)
+            ->assertDontSee(self::SECRET, false);
+
+        $this->assertSame(0, AgencyAdvanceTransaction::query()->count());
+    }
+
+    public function test_waiting_notice_uses_the_agency_language(): void
+    {
+        $en = $this->agency('en');
+        $cg = $this->agency('cg');
+
+        $this->actingAs($en)
+            ->get($this->returnUrl($this->pendingTopup($en)->merchant_transaction_id, 'success'))
+            ->assertOk()
+            ->assertSee('The advance top-up result has not yet been confirmed. You can return to Advance. If the bank confirms the payment later, the funds will be credited automatically.', false)
+            ->assertSee('Return to Advance', false)
+            ->assertDontSee('Povratak na Avans', false);
+
+        $this->actingAs($cg)
+            ->get($this->returnUrl($this->pendingTopup($cg)->merchant_transaction_id, 'success'))
+            ->assertOk()
+            ->assertSee('Rezultat avansne uplate još nije potvrđen. Možete se vratiti na Avans. Ako banka naknadno potvrdi uplatu, sredstva će biti automatski evidentirana.', false)
+            ->assertSee('Povratak na Avans', false)
+            ->assertDontSee('Return to Advance', false);
+    }
+
     public function test_messages_follow_the_agency_language(): void
     {
         $en = $this->agency('en');

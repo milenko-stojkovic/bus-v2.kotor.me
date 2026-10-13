@@ -16,9 +16,20 @@
                         {{ \App\Support\UiText::t('panel', 'advance_topup_back', 'Back to advance') }}
                     </a>
                 </div>
+                <div id="advance-topup-wait-notice" hidden class="hidden rounded-md border border-gray-300 bg-gray-50 p-4 text-sm text-gray-800 space-y-3" data-show-after-ms="60000" role="status">
+                    <p>{{ \App\Support\UiText::t('panel', 'advance_topup_wait_notice', 'The advance top-up result has not yet been confirmed. You can return to Advance. If the bank confirms the payment later, the funds will be credited automatically.') }}</p>
+                    <a id="advance-topup-return" href="{{ route('panel.advance.index', [], false) }}" class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800 focus:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 transition">
+                        {{ \App\Support\UiText::t('panel', 'advance_topup_return', 'Return to Advance') }}
+                    </a>
+                </div>
                 <script>
                     (function() {
                         var txId = @json($merchantTransactionId);
+                        var notice = document.getElementById('advance-topup-wait-notice');
+                        var waitMs = notice ? parseInt(notice.getAttribute('data-show-after-ms'), 10) : 60000;
+                        if (!waitMs || waitMs < 1) {
+                            waitMs = 60000;
+                        }
                         var interval = setInterval(function() {
                             fetch('{{ route('panel.advance.result', [], false) }}?merchant_transaction_id=' + encodeURIComponent(txId), {
                                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -30,6 +41,13 @@
                                 }
                             }).catch(function() {});
                         }, 3000);
+                        setTimeout(function() {
+                            if (!notice) {
+                                return;
+                            }
+                            notice.hidden = false;
+                            notice.classList.remove('hidden');
+                        }, waitMs);
                         setTimeout(function() { clearInterval(interval); }, 300000);
                     })();
                 </script>
