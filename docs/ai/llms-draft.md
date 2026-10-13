@@ -405,7 +405,13 @@ This list is upcoming reservations only. Empty state: **Nema rezervacija za prom
 
 Each paid or free row has **PDF**. That opens the current invoice or free confirmation in the browser. The button stays even when the plate cannot be changed.
 
-To change a plate: **Promijeni tablicu** / **Change plate**, choose another active vehicle, then **Potvrdi** / **Confirm**. **Otkaži** / **Cancel** closes the choice.
+**Replacement plates are not typed on this page.** There is no field for a new registration number. The replacement must already be an active vehicle under **Vozila** / **Vehicles**. The user selects that vehicle from the list.
+
+If the user says they cannot enter the replacement plates, do not start with the reservation, the time, or a search for a text box. Ask whether that replacement is already listed under **Vozila** / **Vehicles**, unless they have already said. If it is not listed, the only next step is **Vozila** / **Vehicles**. Then, one field at a time: **Registarske tablice** / **Registration plates**, **Kategorija vozila** / **Vehicle category**, **Dodaj vozilo** / **Add vehicle**. Wait for **Vozilo je dodato.** / **Vehicle added.** Only then return to **Promjena tablica** / **Plate change**.
+
+If they have already confirmed the replacement is registered, do not send them to add it again. Use the eligibility rules below.
+
+When the replacement is already listed, one action at a time: **Promijeni tablicu** / **Change plate**, choose that vehicle, then **Potvrdi** / **Confirm**. **Otkaži** / **Cancel** closes the choice.
 
 Rules:
 
