@@ -68,8 +68,7 @@ The choice is kept for the browser session. The profile language under **Korisni
 
 - Do not tell the user to email a request to start a free reservation. The only way to submit one is the panel form under **Besplatne rezervacije** / **Free reservations**.
 - Do not offer an old email address as a way to submit that request.
-- Do not describe a list of failed card attempts on **Avans**. That page shows the balance and the advance ledger only.
-- Do not promise that a failed or still-processing advance top-up shows a message on the page. After returning from the bank, the user should read **Ukupan iznos avansa** / **Total advance balance** and **Istorija avansa** / **Advance history**. A success message can appear; a failure message on that page is not confirmed.
+- Do not describe a list of failed card attempts on **Avans**. That page shows the balance, the advance ledger, and the message for the top-up the user just returned from. It does not list older attempts.
 - Do not invent password complexity rules. The form shows the error under the field.
 - Do not claim the printed PDF guide matches every current screen.
 - Do not claim you know which database records block account deletion. If deletion fails, the account stays and a message is shown. Support is `bus@kotor.me`.
@@ -266,16 +265,38 @@ Field **Iznos avansne uplate** / **Top-up amount**. Hint: **Dozvoljeni su samo c
 
 Button: **Pokreni avansnu uplatu** / **Start advance top-up**. The card logos under it are informational. The user then pays on the bank page.
 
-A successful top-up increases the balance and adds an **Uplata avansa** / **Advance top-up** row. The page can show **Avansna uplata je uspješno evidentirana.** / **Advance top-up was successfully recorded.** An email arrives with a PDF. That PDF is a confirmation that the advance was recorded. It is not a fiscal invoice and not a reservation.
+After the bank, the site does not trust the return address alone. The user first sees a waiting screen while the payment is still open:
+
+- Title **Avansna uplata se obrađuje** / **Advance top-up is being processed**
+- The same sentence continues: **Avansna uplata se obrađuje. Ako je potrebno, osvježite stranicu za nekoliko trenutaka.** / **Advance top-up is being processed. If needed, refresh the page in a few moments.**
+- **Osvježi stranicu** / **Refresh page** reloads this waiting screen.
+- **Nazad na avans** / **Back to advance** leaves it.
+
+The waiting screen checks the result on its own. When the payment is finished, **Avans** / **Advance** opens with one message. The user does not need to guess from the balance alone.
+
+- Success: **Avansna uplata je uspješno evidentirana.** / **Advance top-up was successfully recorded.** Then **Iznos je dodat na raspoloživi avans.** / **The amount has been added to your available advance.** The balance increases and **Istorija avansa** / **Advance history** gains an **Uplata avansa** / **Advance top-up** row. An email arrives with a PDF. That PDF is a confirmation that the advance was recorded. It is not a fiscal invoice and not a reservation.
+- Cancelled, when the bank recorded a cancellation: **Avansna uplata je otkazana.** / **The advance top-up was cancelled.** Then **Sredstva nisu dodata na avans. Možete pokušati ponovo.** / **No funds were added to your advance. You can try again.** The balance does not change.
+- Declined authorization: **Avansna uplata nije odobrena.** / **The advance top-up was not approved.** Then **Banka je odbila autorizaciju kartice. Sredstva nisu dodata na avans.** / **The bank declined the card authorization. No funds were added to your advance.**
+- Insufficient funds: the same not-approved title, then **Na računu nema dovoljno sredstava. Sredstva nisu dodata na avans.** / **There are insufficient funds on the card. No funds were added to your advance.**
+- Card authentication failed: **Avansna uplata nije završena.** / **The advance top-up was not completed.** Then **Potvrda kartice nije uspjela. Sredstva nisu dodata na avans.** / **Card authentication failed. No funds were added to your advance.**
+- Card details rejected: the same not-completed title, then **Podaci kartice nijesu prihvaćeni. Sredstva nisu dodata na avans.** / **The card details were not accepted. No funds were added to your advance.**
+- Expired payment: the same not-completed title, then **Vrijeme za plaćanje je isteklo. Sredstva nisu dodata na avans.** / **The payment session has expired. No funds were added to your advance.**
+- Any other recorded failure: **Avansna uplata nije uspješno završena.** / **Advance top-up was not completed successfully.** Then **Sredstva nisu dodata na avans. Pokušajte ponovo za nekoliko minuta.** / **No funds were added to your advance. Please try again in a few minutes.**
+- The return cannot be matched to this agency: **Rezultat avansne uplate nije bilo moguće potvrditi.** / **The advance top-up result could not be confirmed.** Then **Provjerite stanje avansa. Ako je kartica zadužena, a iznos se ne pojavi, pišite na bus@kotor.me.** / **Check your advance balance. If the card was charged and the amount does not appear, write to bus@kotor.me.**
+
+If the bank page never opens, **Avans** shows **Avansna uplata nije mogla biti pokrenuta.** / **Advance top-up could not be started.** No funds were added.
+
+Do not read a bank error code or card number out to the user. The sentences above are the whole explanation.
 
 **My top-up did not appear.**
 
-1. Stay on or reopen **Avans** / **Advance**.
-2. Compare **Ukupan iznos avansa** / **Total advance balance** with what it was before.
-3. Look in **Istorija avansa** / **Advance history** for a new **Uplata avansa** / **Advance top-up** row.
-4. Check email for the confirmation PDF.
-5. If the bank is still processing, wait and refresh this page. Do not tell the user that a specific “pending” or “failed” sentence is visible on the page. Those sentences exist as texts, but it is not confirmed that this screen shows them.
-6. If the card was charged and the balance is unchanged after a reasonable wait, write to `bus@kotor.me`. Do not start a second top-up for the same money until that is checked.
+1. If the waiting screen is still open, stay on it. It updates by itself. **Osvježi stranicu** / **Refresh page** is the manual version.
+2. When **Avans** / **Advance** opens, read the message at the top before looking at the balance.
+3. Compare **Trenutno stanje avansa** / **Current advance balance** with what it was before.
+4. Look in **Istorija avansa** / **Advance history** for a new **Uplata avansa** / **Advance top-up** row.
+5. Check email for the confirmation PDF.
+6. A cancelled or failed message means the balance should be unchanged. The user can start a new top-up.
+7. If the card was charged, the waiting screen has gone, and neither the message nor a new ledger row appears, write to `bus@kotor.me`. Do not start a second top-up for the same money until that is checked.
 
 Spending advance is done on **Rezervacije** / **Reservations**, not by typing a reservation on the Avans page. After a successful advance payment, **Istorija avansa** gains a **Korišćenje avansa** / **Advance usage** row and the balance drops by the reservation amount.
 

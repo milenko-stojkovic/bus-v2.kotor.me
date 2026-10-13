@@ -6,16 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Panel\PanelAdvanceTopupRequest;
 use App\Models\AgencyAdvanceTopup;
 use App\Models\AgencyAdvanceTransaction;
-use App\Services\AgencyAdvance\AgencyAdvanceService;
 use App\Services\AgencyAdvance\AdvanceTopupProcessor;
+use App\Services\AgencyAdvance\AdvanceTopupResultResolver;
+use App\Services\AgencyAdvance\AgencyAdvanceService;
 use App\Services\AgencyAdvance\RealAdvanceTopupPaymentProvider;
 use App\Services\Payment\BankartBillingCountryAlertService;
+use App\Support\AdvanceTopupResultFlash;
 use App\Support\BankartBillingCountry;
 use App\Support\UiText;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 final class AdvanceController extends Controller
@@ -140,39 +143,60 @@ final class AdvanceController extends Controller
     }
 
     /**
-     * Bank redirect return (success/error/cancel). Status is still read from DB.
+     * Bank browser return. The query flag bank_result is ignored.
+     * Paid, failed and cancelled come only from the top-up row.
      */
-    public function paymentReturn(Request $request): RedirectResponse
+    public function paymentReturn(Request $request, AdvanceTopupResultResolver $resolver): View|RedirectResponse
     {
         if (! (bool) config('features.advance_payments')) {
             abort(404);
         }
-        $locale = (string) ($request->user()?->lang ?? app()->getLocale());
 
         $txId = $request->query('merchant_transaction_id');
         $txId = is_string($txId) ? trim($txId) : '';
-        if ($txId === '') {
-            return redirect()->to(route('panel.advance.index', [], false));
+        $agencyUserId = (int) ($request->user()?->id ?? 0);
+        $result = $txId === '' ? null : $resolver->resolveForAgency($txId, $agencyUserId);
+
+        if ($result === null) {
+            return redirect()
+                ->to(route('panel.advance.index', [], false))
+                ->with('checkout_banner', AdvanceTopupResultFlash::unconfirmed());
         }
 
-        $topup = AgencyAdvanceTopup::query()->where('merchant_transaction_id', $txId)->first();
-        if (! $topup) {
-            return redirect()->to(route('panel.advance.index', [], false));
+        if ($result['status'] === 'pending') {
+            return view('panel.advance-return', [
+                'merchantTransactionId' => $txId,
+            ]);
         }
 
-        if ($topup->status === AgencyAdvanceTopup::STATUS_PAID) {
-            return redirect()->to(route('panel.advance.index', [], false))
-                ->with('status', UiText::t('panel', 'advance_topup_success', 'Advance top-up was successfully recorded.', $locale));
+        $banner = $result['status'] === 'success'
+            ? AdvanceTopupResultFlash::success()
+            : AdvanceTopupResultFlash::forFailure($result['resolution_reason'] ?? null);
+
+        return redirect()
+            ->to(route('panel.advance.index', [], false))
+            ->with('checkout_banner', $banner);
+    }
+
+    /**
+     * Poll target for the pending return screen. Own top-ups only.
+     */
+    public function paymentResult(Request $request, AdvanceTopupResultResolver $resolver): JsonResponse
+    {
+        if (! (bool) config('features.advance_payments')) {
+            abort(404);
         }
 
-        if ($topup->status === AgencyAdvanceTopup::STATUS_FAILED) {
-            return redirect()->to(route('panel.advance.index', [], false))
-                ->with('error', UiText::t('panel', 'advance_topup_failed', 'Advance top-up was not completed successfully.', $locale));
+        $txId = $request->query('merchant_transaction_id');
+        $txId = is_string($txId) ? trim($txId) : '';
+        $result = $txId === '' ? null : $resolver->resolveForAgency($txId, (int) ($request->user()?->id ?? 0));
+
+        if ($result === null) {
+            return response()->json(['status' => 'failed'], 404);
         }
 
-        // pending: callback may arrive slightly later
-        return redirect()->to(route('panel.advance.index', [], false))
-            ->with('message', UiText::t('panel', 'advance_topup_pending', 'Advance top-up is being processed. If needed, refresh the page in a few moments.', $locale));
+        return response()->json([
+            'status' => $result['status'],
+        ]);
     }
 }
-

@@ -227,6 +227,7 @@ Route::middleware(['auth', 'verified'])->prefix('panel')->name('panel.')->group(
     Route::get('/avans', [\App\Http\Controllers\Panel\AdvanceController::class, 'index'])->name('advance.index');
     Route::post('/avans/topup', [\App\Http\Controllers\Panel\AdvanceController::class, 'storeTopup'])->name('advance.topup.store');
     Route::get('/avans/return', [\App\Http\Controllers\Panel\AdvanceController::class, 'paymentReturn'])->name('advance.return');
+    Route::get('/avans/result', [\App\Http\Controllers\Panel\AdvanceController::class, 'paymentResult'])->name('advance.result');
     Route::get('/upcoming', [PanelController::class, 'upcoming'])->name('upcoming');
     Route::get('/realized', [PanelController::class, 'realized'])->name('realized');
     Route::get('/statistics', [PanelController::class, 'statistics'])->name('statistics');

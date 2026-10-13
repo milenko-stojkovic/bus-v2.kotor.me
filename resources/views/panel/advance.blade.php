@@ -27,8 +27,18 @@
 
     <div class="py-6">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            @include('partials.checkout-result-banner')
+
             @if (session('status'))
                 <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('status') }}</div>
+            @endif
+
+            @if (session('message'))
+                <div class="rounded-md bg-red-50 p-3 text-sm text-red-900">{{ session('message') }}</div>
+            @endif
+
+            @if (session('error'))
+                <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ session('error') }}</div>
             @endif
 
             @if ($errors->any())

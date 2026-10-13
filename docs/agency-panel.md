@@ -21,7 +21,8 @@ Prefiks ruta: **`/panel`**, middleware **`auth`** + **`verified`**. Gornja navig
 | `GET /panel/fzbr` | `panel.fzbr.create` | **Besplatne rezervacije** — podnošenje zahtjeva |
 | `GET /panel/avans` | `panel.advance.index` | Avans: stanje i ledger (poslednjih 50 knjiženja). Nema posebne liste pokušaja uplate. |
 | `POST /panel/avans/topup` | `panel.advance.topup.store` | Pokretanje avansne uplate (kreira topup attempt + start payment) |
-| `GET /panel/avans/return` | `panel.advance.return` | Povratak sa banke (status se čita iz baze) |
+| `GET /panel/avans/return` | `panel.advance.return` | Povratak sa banke. Pending ostaje na ekranu i poll-uje `panel.advance.result`. Završen status ide na `/panel/avans` sa porukom. `bank_result` u URL-u se ne koristi. |
+| `GET /panel/avans/result` | `panel.advance.result` | JSON status samo za topup te agencije (`success`, `failed`, `pending`) |
 | `GET /panel/statistics` | `panel.statistics` | Statistika: ukupno plaćeno, broj realizovanih posjeta, tabela po tablicama |
 | `GET /panel/limo` | `panel.limo.index` | **Limo** — samo informativna stranica (dnevna naknada, mjesta ukrcaja). U produkciji je dostupna. |
 | `POST /panel/limo/qr/generate` | `panel.limo.qr.generate` | **Nije agencijska funkcija.** U produkciji 404 (`LIMO_QR_WORKFLOW_ENABLED` isključen). |
@@ -70,7 +71,14 @@ Agencijska stranica **ne** prikazuje posebnu listu pokušaja pokretanja uplate (
 - kreira se ledger red u `agency_advance_transactions`:
   - `type=topup`, `reference_type=advance_topup`, `reference_id=topup.id`, `amount=+X`
 
-**Otvoreno — povratna poruka poslije banke.** `AdvanceController::paymentReturn` i neuspjeli start uplate postavljaju flash `error` ili `message`. Šablon `resources/views/panel/advance.blade.php` prikazuje `session('status')` i greške validacije. Nije provjereno u browseru da li agencija vidi tekst za neuspjelu ili još neobrađenu avansnu uplatu. Ne opisivati tu poruku kao potvrđen dio sučelja. Saldo i ledger ostaju izvor stanja na stranici.
+**Povratak sa banke.** `GET /panel/avans/return` čita samo red `agency_advance_topups` te agencije. Parametar `bank_result` ne mijenja status i ne smije sam da označi uplatu kao uspjelu.
+
+- `pending`: agencija ostaje na ekranu čekanja. Tekst je **Avansna uplata se obrađuje** / **Advance top-up is being processed**. Stranica na svake 3 sekunde pita `GET /panel/avans/result` i, kad status više nije `pending`, ponovo učitava return. Link **Nazad na avans** / **Back to advance** napušta čekanje.
+- `paid`: redirect na `/panel/avans` sa **Avansna uplata je uspješno evidentirana.** / **Advance top-up was successfully recorded.** i rečenicom da je iznos dodat na raspoloživi avans. Ledger i dalje dobija jedan red; ponovljen callback ne pravi drugi.
+- `failed`: isti redirect, ali poruka zavisi od sačuvanog bankovnog odgovora, ne od sirovog teksta banke. `status` ili `result` `CANCEL` je otkazivanje: **Avansna uplata je otkazana.** / **The advance top-up was cancelled.** Ostali kodovi idu kroz postojeći `ErrorClassifier` (odbijena autorizacija, nedovoljno sredstava, 3-D Secure, podaci kartice, istek, ostalo). Sirovi payload se ne prikazuje. U bazi i dalje postoji jedan status `failed`; otkazivanje i odbijanje se razlikuju samo kad sačuvani odgovor to podržava.
+- Nepoznat ili tuđi `merchant_transaction_id`: ista neodređena poruka, bez podataka o tuđoj uplati. JSON poll za tuđi ili nepoznat MTID vraća 404 i `{"status":"failed"}`.
+
+Neuspješan start sesije i dalje vraća na `/panel/avans` sa **Avansna uplata nije mogla biti pokrenuta.** / **Advance top-up could not be started.** Taj tekst, `session('status')`, `session('message')` i `checkout_banner` stranica prikazuje. Lista pokušaja i dalje nije na agencijskom ekranu. Ako agencija napusti čekanje prije callback-a, kasniji uspjeh se vidi po saldu i ledgeru; kasniji neuspeh nema novi banner dok se return adresa ne otvori ponovo.
 
 **avansna uplata se NE fiskalizuje**
 - razlog: uplata avansa predstavlja povećanje obaveze Opštine prema agenciji (prepaid saldo), a ne realizovan prihod
@@ -372,7 +380,6 @@ Workflow postoji da bi se sprečilo da se ista registarska tablica ponovo unese 
 
 Ovo nije potvrđeno i dokument ne smije da ga predstavi kao ponašanje sučelja:
 
-- **Avans poslije banke.** Da li agencija vidi poruku za neuspjelu ili još neobrađenu uplatu. V. odjeljak Avans. Uspjeh ide preko `session('status')`, koji šablon prikazuje.
 - **Prijevodi.** Neki kontroli ostaju na engleskom ili na crnogorskom bez obzira na zastavicu: **Log Out** u meniju naloga (`__('Log Out')`), **Email** i **Reset Password** na resetu lozinke, `auth.failed` / `auth.throttle` (nema `lang/` u repou). Predmeti mejla potvrde avansa i godišnje kartice avansa su fiksni crnogorski tekst. `user.delete_account_blocked` i `user.delete_account_failed_title` koriste se u Blade-u, a nisu u `UiTranslationsSeeder`. Tekst na ekranu zavisi od reda u `ui_translations`, ne samo od seedera.
 - **Lozinka.** Registracija, reset i profil koriste `Password::defaults()` bez lokalnog pravila u `AppServiceProvider`. Tačna minimalna dužina i složenost nisu ovdje utvrđene.
 - **PDF uputstvo.** `public/docs/cgbuskotor.pdf` i `engbuskotor.pdf` postoje i link se prikazuje ako je fajl na disku. Usklađenost cijelog PDF-a sa trenutnim ekranima nije provjerena. Tekstualna napomena za promjenu tablice: **[agency-user-guide.md](./agency-user-guide.md)** i `docs/agency-user-guide-plate-change.txt`.
