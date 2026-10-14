@@ -116,6 +116,42 @@ final class AgencyAiAssistLinkTest extends TestCase
 
         $this->assertStringNotContainsString('Start in this browser language: cg', $html);
         $this->assertStringNotContainsString('Start in this browser language: en', $html);
+        $this->assertLanguageNoteFollowsEnterInstruction(
+            $html,
+            'Pritisnite Enter ili Pošalji da razgovor počne.',
+            'Možete postavljati pitanja i dobijati odgovore na svom jeziku.',
+            'Otvori ChatGPT',
+        );
+    }
+
+    public function test_language_note_is_stored_and_rendered_in_both_portal_languages(): void
+    {
+        foreach ([
+            ['landing', 'cg', 'Možete postavljati pitanja i dobijati odgovore na svom jeziku.'],
+            ['landing', 'en', 'You can ask questions and receive answers in your preferred language.'],
+            ['panel', 'cg', 'Možete postavljati pitanja i dobijati odgovore na svom jeziku.'],
+            ['panel', 'en', 'You can ask questions and receive answers in your preferred language.'],
+        ] as [$group, $locale, $text]) {
+            $this->assertDatabaseHas('ui_translations', [
+                'group' => $group,
+                'key' => 'ai_assist_language',
+                'locale' => $locale,
+                'text' => $text,
+            ]);
+        }
+
+        $english = $this->withSession(['locale' => 'en'])
+            ->get(route('login', [], false))
+            ->assertOk()
+            ->assertSee('You can ask questions and receive answers in your preferred language.', false)
+            ->getContent();
+
+        $this->assertLanguageNoteFollowsEnterInstruction(
+            $english,
+            'Press Enter or Send to start the conversation.',
+            'You can ask questions and receive answers in your preferred language.',
+            'Open ChatGPT',
+        );
     }
 
     private function assertAssistPrecedesPdf(string $html, string $pdfPath, int $expectedPairs): void
@@ -129,5 +165,18 @@ final class AgencyAiAssistLinkTest extends TestCase
         }
 
         $this->assertSame($expected, $tokens);
+    }
+
+    private function assertLanguageNoteFollowsEnterInstruction(string $html, string $enter, string $note, string $open): void
+    {
+        $enterAt = strpos($html, $enter);
+        $noteAt = strpos($html, $note);
+        $openAt = strpos($html, $open);
+
+        $this->assertNotFalse($enterAt);
+        $this->assertNotFalse($noteAt);
+        $this->assertNotFalse($openAt);
+        $this->assertLessThan($noteAt, $enterAt);
+        $this->assertLessThan($openAt, $noteAt);
     }
 }

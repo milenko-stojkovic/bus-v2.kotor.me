@@ -28,6 +28,13 @@
         'ai_assist_close',
         $isCg ? 'Zatvori' : 'Close',
     );
+    $languageNote = \App\Support\UiText::t(
+        $uiGroup,
+        'ai_assist_language',
+        $isCg
+            ? 'Možete postavljati pitanja i dobijati odgovore na svom jeziku.'
+            : 'You can ask questions and receive answers in your preferred language.',
+    );
     $visible = request()->routeIs('landing', 'login', 'register', 'panel.*');
     static $agencyAiAssistSeq = 0;
     $agencyAiAssistSeq++;
@@ -104,6 +111,7 @@
             @if ($hintAction !== '')
                 <p class="mt-1.5 font-semibold">{{ $hintAction }}</p>
             @endif
+            <p class="mt-1.5 text-xs leading-snug text-gray-600">{{ $languageNote }}</p>
             <div class="mt-3 flex flex-wrap items-center gap-2">
                 <button
                     type="button"

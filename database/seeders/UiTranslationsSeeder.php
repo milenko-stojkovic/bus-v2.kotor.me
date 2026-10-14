@@ -249,6 +249,8 @@ class UiTranslationsSeeder extends Seeder
             ['group' => 'landing', 'key' => 'agency_cta', 'locale' => 'en', 'text' => 'Agency sign in'],
             ['group' => 'landing', 'key' => 'user_guide_pdf', 'locale' => 'cg', 'text' => 'Uputstvo (PDF)'],
             ['group' => 'landing', 'key' => 'user_guide_pdf', 'locale' => 'en', 'text' => 'User guide (PDF)'],
+            ['group' => 'landing', 'key' => 'ai_assist_language', 'locale' => 'cg', 'text' => 'Možete postavljati pitanja i dobijati odgovore na svom jeziku.'],
+            ['group' => 'landing', 'key' => 'ai_assist_language', 'locale' => 'en', 'text' => 'You can ask questions and receive answers in your preferred language.'],
 
             // reservation (V2 guest reserve)
             ['group' => 'reservation', 'key' => 'title', 'locale' => 'cg', 'text' => 'Rezervacija (guest)'],
@@ -411,6 +413,8 @@ class UiTranslationsSeeder extends Seeder
             ['group' => 'panel', 'key' => 'nav_reservations', 'locale' => 'cg', 'text' => 'Rezervacije'],
             ['group' => 'panel', 'key' => 'user_guide_pdf', 'locale' => 'cg', 'text' => 'Uputstvo (PDF)'],
             ['group' => 'panel', 'key' => 'user_guide_pdf', 'locale' => 'en', 'text' => 'User guide (PDF)'],
+            ['group' => 'panel', 'key' => 'ai_assist_language', 'locale' => 'cg', 'text' => 'Možete postavljati pitanja i dobijati odgovore na svom jeziku.'],
+            ['group' => 'panel', 'key' => 'ai_assist_language', 'locale' => 'en', 'text' => 'You can ask questions and receive answers in your preferred language.'],
             ['group' => 'panel', 'key' => 'nav_advance', 'locale' => 'en', 'text' => 'Advance'],
             ['group' => 'panel', 'key' => 'nav_advance', 'locale' => 'cg', 'text' => 'Avans'],
             ['group' => 'panel', 'key' => 'advance_disabled_hint', 'locale' => 'en', 'text' => 'This feature is currently unavailable'],
@@ -1007,6 +1011,8 @@ class UiTranslationsSeeder extends Seeder
         Cache::forget('ui_translations:group=free_request:locale=cg');
         Cache::forget('ui_translations:group=free_request:locale=en');
         Cache::forget('ui_translations:any:group=landing:key=students_title');
+        Cache::forget('ui_translations:any:group=landing:key=ai_assist_language');
+        Cache::forget('ui_translations:any:group=panel:key=ai_assist_language');
         Cache::forget('ui_translations:any:group=free_request:key=title');
         Cache::forget('ui_translations:group=emails:locale=cg');
         Cache::forget('ui_translations:group=emails:locale=en');
