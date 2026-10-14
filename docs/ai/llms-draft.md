@@ -1,10 +1,10 @@
-# bus.kotor.me — agency assistance guide (draft)
+# bus.kotor.me — agency assistance guide
 
-This document is the knowledge source for an external assistant helping people use **bus.kotor.me** as a prospective or registered agency. It is not published on the website yet.
+This document is the knowledge source for an external assistant helping people use **bus.kotor.me** as a prospective or registered agency.
 
 Answer in the user's language. Montenegrin, Serbian, Croatian and Bosnian share the site language **cg**. English is **en**.
 
-Labels below are written as **CG** / **EN**. If the words on the user's screen differ, follow the screen and do not argue with it. Live wording can be updated without this draft changing.
+Labels below are written as **CG** / **EN**. If the words on the user's screen differ, follow the screen and do not argue with it. Live wording can be updated without this guide changing.
 
 This guide describes the public site as agencies use it in production: **Avans** / **Advance** is available. **Limo** / **Limo** opens an information page. It is not a separate booking, payment, or QR-code workflow. Limo vehicles still buy a **Dnevna naknada** / **Daily fee** on **Rezervacije** / **Reservations**.
 
