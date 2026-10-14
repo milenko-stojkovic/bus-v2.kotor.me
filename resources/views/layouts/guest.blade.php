@@ -45,7 +45,10 @@
                         </a>
                     @endif
                     <div class="flex items-center gap-3">
-                        @include('partials.user-guide-pdf-link', ['variant' => 'guest'])
+                        <div class="flex items-center gap-1">
+                            @include('partials.agency-ai-assist-link', ['variant' => 'guest'])
+                            @include('partials.user-guide-pdf-link', ['variant' => 'guest'])
+                        </div>
                         <a
                             href="{{ url('/locale/cg') }}"
                             class="inline-flex rounded transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 {{ app()->getLocale() === 'cg' ? 'ring-2 ring-red-700 ring-offset-2 ring-offset-red-50' : 'opacity-60 hover:opacity-100' }}"
