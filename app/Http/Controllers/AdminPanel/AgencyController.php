@@ -18,6 +18,9 @@ use App\Services\AgencyAdvance\AgencyAdvanceService;
 use App\Services\AdminPanel\Agency\AdminAgencySearchService;
 use App\Services\AdminPanel\Agency\AgencyV1HistoricalEstimateService;
 use App\Services\AdminPanel\Agency\AgencyV2ReservationStatisticsService;
+use App\Services\Vehicle\VehiclePlateCategoryConsistency;
+use App\Services\Vehicle\VehiclePlateLock;
+use App\Services\Vehicle\VehiclePlateLockNotAcquired;
 use App\Services\VehicleCategoryChange\VehicleCategoryChangeDecisionNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -181,12 +184,39 @@ final class AgencyController extends Controller
         User $user,
         VehicleCategoryChangeRequest $request,
         VehicleCategoryChangeDecisionNotificationService $notifier,
+        VehiclePlateLock $locks,
+        VehiclePlateCategoryConsistency $consistency,
     ): RedirectResponse {
         if ((int) $request->user_id !== (int) $user->id) {
             abort(404);
         }
 
-        DB::transaction(function () use ($user, $request): void {
+        $plate = VehiclePlateCategoryConsistency::normalize((string) $request->license_plate);
+
+        try {
+            $locks->run($plate, function () use ($user, $request, $consistency): void {
+                $this->approveVehicleCategoryChangeLocked($user, $request, $consistency);
+            });
+        } catch (VehiclePlateLockNotAcquired) {
+            throw ValidationException::withMessages([
+                'vehicle' => ['Zaključavanje tablice nije uspjelo. Pokušajte ponovo.'],
+            ]);
+        }
+
+        ArchiveVehicleCategoryChangeRequestAttachmentsJob::dispatch((int) $request->id);
+        $notifier->notifyApproved((int) $request->id);
+
+        return redirect()
+            ->to(route('panel_admin.agencies.show', $user, false))
+            ->with('status', 'Zahtjev je prihvaćen. Kategorija je primijenjena na sve zapise ove tablice.');
+    }
+
+    private function approveVehicleCategoryChangeLocked(
+        User $user,
+        VehicleCategoryChangeRequest $request,
+        VehiclePlateCategoryConsistency $consistency,
+    ): void {
+        DB::transaction(function () use ($user, $request, $consistency): void {
             /** @var VehicleCategoryChangeRequest $locked */
             $locked = VehicleCategoryChangeRequest::query()
                 ->whereKey($request->id)
@@ -197,46 +227,79 @@ final class AgencyController extends Controller
                 throw ValidationException::withMessages(['status' => ['Zahtjev više nije pending.']]);
             }
 
-            /** @var Vehicle $vehicle */
-            $vehicle = Vehicle::query()
-                ->where('user_id', $user->id)
-                ->whereKey((int) $locked->old_vehicle_id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            if ((string) $vehicle->license_plate !== (string) $locked->license_plate) {
-                throw ValidationException::withMessages(['vehicle' => ['Tablica ne odgovara zahtjevu.']]);
-            }
-
+            $plate = VehiclePlateCategoryConsistency::normalize((string) $locked->license_plate);
+            $rows = $consistency->lockedRows($plate);
             $oldTypeId = (int) $locked->old_vehicle_type_id;
             $requestedTypeId = (int) $locked->requested_vehicle_type_id;
-            $currentTypeId = (int) $vehicle->vehicle_type_id;
-            $vehicleStatus = (string) $vehicle->status;
 
-            // Fail closed: vehicle must still be on the recorded OLD category.
-            if ($currentTypeId === $requestedTypeId) {
+            if ($locked->old_vehicle_id !== null) {
+                /** @var Vehicle $vehicle */
+                $vehicle = Vehicle::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey((int) $locked->old_vehicle_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (VehiclePlateCategoryConsistency::normalize((string) $vehicle->license_plate) !== $plate) {
+                    throw ValidationException::withMessages(['vehicle' => ['Tablica ne odgovara zahtjevu.']]);
+                }
+
+                if ($vehicle->status !== Vehicle::STATUS_REMOVED && $vehicle->status !== Vehicle::STATUS_ACTIVE) {
+                    throw ValidationException::withMessages([
+                        'vehicle' => ['Vozilo nije u podržanom statusu za odobrenje (removed ili active).'],
+                    ]);
+                }
+            }
+
+            if ($consistency->isConflicted($rows)) {
+                throw ValidationException::withMessages([
+                    'vehicle' => ['Tablica već ima neusaglašene kategorije. Zahtjev nije odobren.'],
+                ]);
+            }
+
+            $recordedTypeId = $consistency->singleRecordedTypeId($rows);
+            if ($recordedTypeId !== null && $recordedTypeId === $requestedTypeId) {
                 throw ValidationException::withMessages([
                     'vehicle' => ['Vozilo je već na traženoj kategoriji; zahtjev se ne može odobriti iz ovog stanja.'],
                 ]);
             }
 
-            if ($currentTypeId !== $oldTypeId) {
+            if ($recordedTypeId === null || $recordedTypeId !== $oldTypeId) {
                 throw ValidationException::withMessages([
                     'vehicle' => ['Trenutna kategorija vozila ne odgovara staroj kategoriji zahtjeva.'],
                 ]);
             }
 
-            // Supported starting states: removed+old (normal) or active+old (reactivated under old category).
-            if ($vehicleStatus !== Vehicle::STATUS_REMOVED && $vehicleStatus !== Vehicle::STATUS_ACTIVE) {
-                throw ValidationException::withMessages([
-                    'vehicle' => ['Vozilo nije u podržanom statusu za odobrenje (removed ili active).'],
-                ]);
+            $requesterId = (int) $user->id;
+            $hasActive = $rows->contains(function (Vehicle $row) use ($requesterId): bool {
+                return (int) $row->user_id === $requesterId && $row->status === Vehicle::STATUS_ACTIVE;
+            });
+            $hasOwnRow = $rows->contains(fn (Vehicle $row): bool => (int) $row->user_id === $requesterId);
+
+            foreach ($rows as $row) {
+                $updates = [];
+                if ((int) $row->vehicle_type_id !== $requestedTypeId) {
+                    $updates['vehicle_type_id'] = $requestedTypeId;
+                }
+                $reactivate = ! $hasActive
+                    && (int) $row->user_id === $requesterId
+                    && $row->status === Vehicle::STATUS_REMOVED;
+                if ($reactivate) {
+                    $updates['status'] = Vehicle::STATUS_ACTIVE;
+                }
+                if ($updates !== []) {
+                    $row->update($updates);
+                }
             }
 
-            $vehicle->update([
-                'vehicle_type_id' => $requestedTypeId,
-                'status' => Vehicle::STATUS_ACTIVE,
-            ]);
+            if (! $hasActive && ! $hasOwnRow) {
+                Vehicle::query()->create([
+                    'user_id' => $user->id,
+                    'license_plate' => $plate,
+                    'vehicle_type_id' => $requestedTypeId,
+                    'status' => Vehicle::STATUS_ACTIVE,
+                ]);
+            }
 
             $locked->update([
                 'status' => VehicleCategoryChangeRequest::STATUS_APPROVED,
@@ -258,13 +321,6 @@ final class AgencyController extends Controller
                 'admin_id' => request()->user('panel_admin')?->id,
             ]);
         });
-
-        ArchiveVehicleCategoryChangeRequestAttachmentsJob::dispatch((int) $request->id);
-        $notifier->notifyApproved((int) $request->id);
-
-        return redirect()
-            ->to(route('panel_admin.agencies.show', $user, false))
-            ->with('status', 'Zahtjev je prihvaćen i vozilo je reaktivirano.');
     }
 
     public function rejectVehicleCategoryChangeRequest(
@@ -288,15 +344,16 @@ final class AgencyController extends Controller
                 throw ValidationException::withMessages(['status' => ['Zahtjev više nije pending.']]);
             }
 
-            // Ensure old vehicle belongs and stays removed.
-            $vehicle = Vehicle::query()
-                ->where('user_id', $user->id)
-                ->whereKey((int) $locked->old_vehicle_id)
-                ->lockForUpdate()
-                ->firstOrFail();
+            if ($locked->old_vehicle_id !== null) {
+                $vehicle = Vehicle::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey((int) $locked->old_vehicle_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            if ((string) $vehicle->license_plate !== (string) $locked->license_plate) {
-                throw ValidationException::withMessages(['vehicle' => ['Tablica ne odgovara zahtjevu.']]);
+                if ((string) $vehicle->license_plate !== (string) $locked->license_plate) {
+                    throw ValidationException::withMessages(['vehicle' => ['Tablica ne odgovara zahtjevu.']]);
+                }
             }
 
             $locked->update([

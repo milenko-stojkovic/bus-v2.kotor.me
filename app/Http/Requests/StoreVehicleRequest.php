@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Vehicle\VehiclePlateCategoryConsistency;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,10 +17,9 @@ class StoreVehicleRequest extends FormRequest
     {
         $license = $this->input('license_plate');
         if (is_string($license)) {
-            $normalized = strtoupper(trim($license));
-            $normalized = preg_replace('/\s+/', '', $normalized) ?? $normalized;
-            $normalized = preg_replace('/[^A-Z0-9]/', '', $normalized) ?? $normalized;
-            $this->merge(['license_plate' => $normalized]);
+            $this->merge([
+                'license_plate' => VehiclePlateCategoryConsistency::normalize($license),
+            ]);
         }
     }
 
@@ -36,6 +36,8 @@ class StoreVehicleRequest extends FormRequest
                     ->where('status', \App\Models\Vehicle::STATUS_ACTIVE)),
             ],
             'vehicle_type_id' => ['required', 'integer', 'exists:vehicle_types,id'],
+            'category_choice' => ['nullable', 'string', 'in:use_recorded'],
+            'expected_recorded_vehicle_type_id' => ['nullable', 'integer', 'exists:vehicle_types,id'],
         ];
     }
 }

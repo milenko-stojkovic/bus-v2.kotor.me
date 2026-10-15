@@ -156,8 +156,8 @@ final class VehicleCategoryChangeApprovalWorkflowTest extends TestCase
         $response->assertSessionHas('error');
 
         $error = (string) session('error');
-        $this->assertMatchesRegularExpression('/different category|category change request/i', $error);
-        $this->assertStringNotContainsString('Ova tablica već postoji', $error);
+        $this->assertSame('This registration plate is already recorded in another category. Choose one option. The category you entered is not applied automatically.', $error);
+        $this->assertStringNotContainsString('Ova registarska tablica je već evidentirana', $error);
     }
 
     public function test_add_same_plate_different_category_shows_cg_message_when_session_locale_is_cg(): void

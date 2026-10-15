@@ -8,7 +8,7 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $pn('nav_vehicles', 'Vehicles') }}</h2>
     </x-slot>
 
-    <div class="py-6" x-data="{ deleteOpen: false, deleteUrl: '' }">
+    <div class="py-6" x-data="{ deleteOpen: false, deleteUrl: '', correctionId: null }">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if(session('message'))
                 <div class="rounded-md bg-red-50 p-4 text-sm text-red-900">{{ session('message') }}</div>
@@ -63,24 +63,48 @@
 
                     @php
                         $change = session('category_change_needed');
-                        $needsChange = is_array($change) && isset($change['old_vehicle_id'], $change['license_plate'], $change['old_vehicle_type_id'], $change['requested_vehicle_type_id']);
+                        $needsChange = is_array($change)
+                            && isset($change['license_plate'], $change['recorded_vehicle_type_id'], $change['submitted_vehicle_type_id']);
+                        $recordedType = $needsChange
+                            ? $vehicleTypes->firstWhere('id', (int) $change['recorded_vehicle_type_id'])
+                            : null;
+                        $submittedType = $needsChange
+                            ? $vehicleTypes->firstWhere('id', (int) $change['submitted_vehicle_type_id'])
+                            : null;
                     @endphp
 
                     @if ($needsChange)
-                        <div class="mt-6 rounded-md border border-red-200 bg-red-50 p-4 space-y-3">
-                            <div class="text-sm text-red-900 font-semibold">
-                                {{ $pn('vehicle_category_change_title', 'Zahtjev za promjenu kategorije') }}
+                        <div class="mt-6 rounded-md border border-red-200 bg-red-50 p-4 space-y-4">
+                            <div class="text-sm text-red-900 space-y-1">
+                                <div><span class="font-semibold">{{ $pn('vehicle_category_choice_recorded_label', 'Evidentirana kategorija') }}:</span> {{ $recordedType?->formatLabel($locale, 'EUR') }}</div>
+                                <div><span class="font-semibold">{{ $pn('vehicle_category_choice_submitted_label', 'Kategorija koju ste unijeli') }}:</span> {{ $submittedType?->formatLabel($locale, 'EUR') }}</div>
                             </div>
-                            <div class="text-sm text-red-900">
-                                {{ $pn('vehicle_category_change_help', 'Molimo priložite fotografiju ili PDF dokumenta.') }}
-                            </div>
+
+                            <form method="post" action="{{ route('panel.vehicles.store', [], false) }}" class="space-y-2">
+                                @csrf
+                                <input type="hidden" name="license_plate" value="{{ (string) $change['license_plate'] }}">
+                                <input type="hidden" name="vehicle_type_id" value="{{ (int) $change['recorded_vehicle_type_id'] }}">
+                                <input type="hidden" name="category_choice" value="use_recorded">
+                                <input type="hidden" name="expected_recorded_vehicle_type_id" value="{{ (int) $change['recorded_vehicle_type_id'] }}">
+                                <div class="text-sm text-red-900">{{ $pn('vehicle_category_choice_use_recorded_help', 'Dokument nije potreban. Vozilo se dodaje samo u kategoriji koja je već evidentirana za ovu tablicu.') }}</div>
+                                <x-primary-button type="submit">{{ $pn('vehicle_category_choice_use_recorded', 'Dodaj vozilo u evidentiranoj kategoriji') }}</x-primary-button>
+                            </form>
 
                             <form method="post" action="{{ route('panel.vehicles.category_change_requests.store', [], false) }}" enctype="multipart/form-data" class="space-y-3">
                                 @csrf
-                                <input type="hidden" name="old_vehicle_id" value="{{ (int) $change['old_vehicle_id'] }}">
+                                @if (! empty($change['old_vehicle_id']))
+                                    <input type="hidden" name="old_vehicle_id" value="{{ (int) $change['old_vehicle_id'] }}">
+                                @endif
                                 <input type="hidden" name="license_plate" value="{{ (string) $change['license_plate'] }}">
-                                <input type="hidden" name="old_vehicle_type_id" value="{{ (int) $change['old_vehicle_type_id'] }}">
-                                <input type="hidden" name="requested_vehicle_type_id" value="{{ (int) $change['requested_vehicle_type_id'] }}">
+                                <input type="hidden" name="old_vehicle_type_id" value="{{ (int) $change['recorded_vehicle_type_id'] }}">
+                                <input type="hidden" name="requested_vehicle_type_id" value="{{ (int) $change['submitted_vehicle_type_id'] }}">
+
+                                <div class="text-sm text-red-900 font-semibold">
+                                    {{ $pn('vehicle_category_choice_request_correction', 'Zatraži ispravku kategorije') }}
+                                </div>
+                                <div class="text-sm text-red-900">
+                                    {{ $pn('vehicle_category_choice_request_help', 'Priložite fotografije saobraćajne dozvole. Kategorija se mijenja tek kada administrator odobri zahtjev.') }}
+                                </div>
 
                                 <div>
                                     <x-input-label for="change_documents" :value="$pn('vehicle_category_change_document', 'Dokumenti (slika ili PDF)')" />
@@ -111,7 +135,7 @@
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ $ui('registration_plates') }}</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ $ui('vehicle_category') }}</th>
-                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase w-40"></th>
+                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase"></th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -120,13 +144,22 @@
                                         <td class="px-4 py-3 font-medium text-gray-900">{{ $vehicle->license_plate }}</td>
                                         <td class="px-4 py-3">{{ $vehicle->vehicleType?->formatLabel($locale, 'EUR') }}</td>
                                         <td class="px-4 py-3 text-right">
-                                            <button
-                                                type="button"
-                                                class="text-sm font-medium text-red-600 hover:text-red-800"
-                                                x-on:click="deleteUrl = @js(route('panel.vehicles.destroy', $vehicle, false)); deleteOpen = true"
-                                            >
-                                                {{ $pn('vehicles_remove') }}
-                                            </button>
+                                            <div class="flex flex-wrap justify-end gap-3">
+                                                <button
+                                                    type="button"
+                                                    class="text-sm font-medium text-red-700 hover:text-red-900"
+                                                    x-on:click="correctionId = correctionId === {{ (int) $vehicle->id }} ? null : {{ (int) $vehicle->id }}"
+                                                >
+                                                    {{ $pn('vehicle_category_active_correct', 'Ispravi kategoriju') }}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="text-sm font-medium text-red-600 hover:text-red-800"
+                                                    x-on:click="deleteUrl = @js(route('panel.vehicles.destroy', $vehicle, false)); deleteOpen = true"
+                                                >
+                                                    {{ $pn('vehicles_remove') }}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
@@ -137,6 +170,53 @@
                             </tbody>
                         </table>
                     </div>
+
+                    @foreach($vehicles as $vehicle)
+                        @php
+                            $plateConflicted = in_array((string) $vehicle->license_plate, $conflictedPlates, true);
+                            $platePending = in_array((string) $vehicle->license_plate, $pendingPlates, true);
+                        @endphp
+                        <div x-show="correctionId === {{ (int) $vehicle->id }}" x-cloak class="mt-4 rounded-md border border-red-200 bg-red-50 p-4 space-y-3" style="display: none;">
+                            @if($plateConflicted)
+                                <p class="text-sm text-red-900">{{ $pn('vehicle_category_active_conflict', 'Ova registarska tablica već ima neusaglašene kategorije vozila. Ispravka kategorije trenutno nije moguća. Pišite na bus@kotor.me.') }}</p>
+                            @elseif($platePending)
+                                <p class="text-sm text-red-900">{{ $pn('vehicle_category_change_already_sent', 'Zahtjev je već poslat administratoru.') }}</p>
+                                <p class="text-sm text-red-900">{{ $pn('vehicle_category_active_pending', 'Vozilo ostaje dostupno u sadašnjoj kategoriji dok administrator ne pregleda zahtjev.') }}</p>
+                            @else
+                                <p class="text-sm text-red-900">{{ $pn('vehicle_category_active_pending', 'Vozilo ostaje dostupno u sadašnjoj kategoriji dok administrator ne pregleda zahtjev.') }}</p>
+                                <form method="post" action="{{ route('panel.vehicles.category_change_requests.store', [], false) }}" enctype="multipart/form-data" class="space-y-3">
+                                    @csrf
+                                    <input type="hidden" name="old_vehicle_id" value="{{ (int) $vehicle->id }}">
+                                    <input type="hidden" name="license_plate" value="{{ (string) $vehicle->license_plate }}">
+                                    <input type="hidden" name="old_vehicle_type_id" value="{{ (int) $vehicle->vehicle_type_id }}">
+                                    <div>
+                                        <x-input-label :for="'active_requested_type_'.$vehicle->id" :value="$pn('vehicle_category_active_new', 'Nova kategorija')" />
+                                        <select id="active_requested_type_{{ $vehicle->id }}" name="requested_vehicle_type_id" required class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500">
+                                            <option value="">{{ $ui('select_vehicle_category') }}</option>
+                                            @foreach($vehicleTypes as $type)
+                                                @if((int) $type->id !== (int) $vehicle->vehicle_type_id)
+                                                    <option value="{{ $type->id }}">{{ $type->formatLabel($locale, 'EUR') }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <x-input-label :for="'active_documents_'.$vehicle->id" :value="$pn('vehicle_category_change_document', 'Dokumenti (slika ili PDF)')" />
+                                        <input id="active_documents_{{ $vehicle->id }}" name="documents[]" type="file" required multiple
+                                               accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                                               class="mt-1 block w-full text-sm text-gray-700" />
+                                        <div class="mt-1 text-xs text-gray-700">{{ $pn('vehicle_category_choice_request_help', 'Priložite fotografije saobraćajne dozvole. Kategorija se mijenja tek kada administrator odobri zahtjev.') }}</div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-3">
+                                        <x-primary-button type="submit">{{ $pn('vehicle_category_change_send', 'Pošalji zahtjev') }}</x-primary-button>
+                                        <button type="button" class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-widest text-gray-800 hover:bg-red-50" x-on:click="correctionId = null">
+                                            {{ $pn('vehicle_category_change_cancel', 'Odustani') }}
+                                        </button>
+                                    </div>
+                                </form>
+                            @endif
+                        </div>
+                    @endforeach
 
                     @if($vehicles->hasPages())
                         <div class="mt-4">{{ $vehicles->links() }}</div>

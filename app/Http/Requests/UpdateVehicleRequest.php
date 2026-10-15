@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Vehicle\VehiclePlateCategoryConsistency;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,10 +17,9 @@ class UpdateVehicleRequest extends FormRequest
     {
         $license = $this->input('license_plate');
         if (is_string($license)) {
-            $normalized = strtoupper(trim($license));
-            $normalized = preg_replace('/\s+/', '', $normalized) ?? $normalized;
-            $normalized = preg_replace('/[^A-Z0-9]/', '', $normalized) ?? $normalized;
-            $this->merge(['license_plate' => $normalized]);
+            $this->merge([
+                'license_plate' => VehiclePlateCategoryConsistency::normalize($license),
+            ]);
         }
     }
 
