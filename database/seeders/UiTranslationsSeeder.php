@@ -251,6 +251,16 @@ class UiTranslationsSeeder extends Seeder
             ['group' => 'landing', 'key' => 'user_guide_pdf', 'locale' => 'en', 'text' => 'User guide (PDF)'],
             ['group' => 'landing', 'key' => 'ai_assist_language', 'locale' => 'cg', 'text' => 'Možete postavljati pitanja i dobijati odgovore na svom jeziku.'],
             ['group' => 'landing', 'key' => 'ai_assist_language', 'locale' => 'en', 'text' => 'You can ask questions and receive answers in your preferred language.'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_hint', 'locale' => 'cg', 'text' => 'Ako ChatGPT prijavi grešku provjere, koristite ovu opciju.'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_hint', 'locale' => 'en', 'text' => 'If ChatGPT shows a verification error, use this option.'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_open', 'locale' => 'cg', 'text' => 'Kopiraj i otvori ChatGPT'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_open', 'locale' => 'en', 'text' => 'Copy and open ChatGPT'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_paste', 'locale' => 'cg', 'text' => 'U ChatGPT-u nalijepite tekst (Ctrl+V ili Zalijepi) i pritisnite Enter.'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_paste', 'locale' => 'en', 'text' => 'In ChatGPT, paste the text (Ctrl+V or Paste) and press Enter.'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_copied', 'locale' => 'cg', 'text' => 'Tekst je kopiran.'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_copied', 'locale' => 'en', 'text' => 'Text copied.'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_copy_failed', 'locale' => 'cg', 'text' => 'Automatsko kopiranje nije uspjelo. Kopirajte tekst iz polja ispod.'],
+            ['group' => 'landing', 'key' => 'ai_assist_anonymous_copy_failed', 'locale' => 'en', 'text' => 'Automatic copying failed. Copy the text from the box below.'],
 
             // reservation (V2 guest reserve)
             ['group' => 'reservation', 'key' => 'title', 'locale' => 'cg', 'text' => 'Rezervacija (guest)'],
@@ -415,6 +425,16 @@ class UiTranslationsSeeder extends Seeder
             ['group' => 'panel', 'key' => 'user_guide_pdf', 'locale' => 'en', 'text' => 'User guide (PDF)'],
             ['group' => 'panel', 'key' => 'ai_assist_language', 'locale' => 'cg', 'text' => 'Možete postavljati pitanja i dobijati odgovore na svom jeziku.'],
             ['group' => 'panel', 'key' => 'ai_assist_language', 'locale' => 'en', 'text' => 'You can ask questions and receive answers in your preferred language.'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_hint', 'locale' => 'cg', 'text' => 'Ako ChatGPT prijavi grešku provjere, koristite ovu opciju.'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_hint', 'locale' => 'en', 'text' => 'If ChatGPT shows a verification error, use this option.'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_open', 'locale' => 'cg', 'text' => 'Kopiraj i otvori ChatGPT'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_open', 'locale' => 'en', 'text' => 'Copy and open ChatGPT'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_paste', 'locale' => 'cg', 'text' => 'U ChatGPT-u nalijepite tekst (Ctrl+V ili Zalijepi) i pritisnite Enter.'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_paste', 'locale' => 'en', 'text' => 'In ChatGPT, paste the text (Ctrl+V or Paste) and press Enter.'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_copied', 'locale' => 'cg', 'text' => 'Tekst je kopiran.'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_copied', 'locale' => 'en', 'text' => 'Text copied.'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_copy_failed', 'locale' => 'cg', 'text' => 'Automatsko kopiranje nije uspjelo. Kopirajte tekst iz polja ispod.'],
+            ['group' => 'panel', 'key' => 'ai_assist_anonymous_copy_failed', 'locale' => 'en', 'text' => 'Automatic copying failed. Copy the text from the box below.'],
             ['group' => 'panel', 'key' => 'nav_advance', 'locale' => 'en', 'text' => 'Advance'],
             ['group' => 'panel', 'key' => 'nav_advance', 'locale' => 'cg', 'text' => 'Avans'],
             ['group' => 'panel', 'key' => 'advance_disabled_hint', 'locale' => 'en', 'text' => 'This feature is currently unavailable'],
@@ -1013,6 +1033,16 @@ class UiTranslationsSeeder extends Seeder
         Cache::forget('ui_translations:any:group=landing:key=students_title');
         Cache::forget('ui_translations:any:group=landing:key=ai_assist_language');
         Cache::forget('ui_translations:any:group=panel:key=ai_assist_language');
+        foreach ([
+            'ai_assist_anonymous_hint',
+            'ai_assist_anonymous_open',
+            'ai_assist_anonymous_paste',
+            'ai_assist_anonymous_copied',
+            'ai_assist_anonymous_copy_failed',
+        ] as $aiAssistKey) {
+            Cache::forget('ui_translations:any:group=landing:key='.$aiAssistKey);
+            Cache::forget('ui_translations:any:group=panel:key='.$aiAssistKey);
+        }
         Cache::forget('ui_translations:any:group=free_request:key=title');
         Cache::forget('ui_translations:group=emails:locale=cg');
         Cache::forget('ui_translations:group=emails:locale=en');

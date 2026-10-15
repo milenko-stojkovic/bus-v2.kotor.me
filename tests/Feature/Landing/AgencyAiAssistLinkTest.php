@@ -154,6 +154,92 @@ final class AgencyAiAssistLinkTest extends TestCase
         );
     }
 
+    public function test_anonymous_fallback_reuses_the_prompt_and_plain_chatgpt_url(): void
+    {
+        $texts = [
+            'ai_assist_anonymous_hint' => [
+                'cg' => 'Ako ChatGPT prijavi grešku provjere, koristite ovu opciju.',
+                'en' => 'If ChatGPT shows a verification error, use this option.',
+            ],
+            'ai_assist_anonymous_open' => [
+                'cg' => 'Kopiraj i otvori ChatGPT',
+                'en' => 'Copy and open ChatGPT',
+            ],
+            'ai_assist_anonymous_paste' => [
+                'cg' => 'U ChatGPT-u nalijepite tekst (Ctrl+V ili Zalijepi) i pritisnite Enter.',
+                'en' => 'In ChatGPT, paste the text (Ctrl+V or Paste) and press Enter.',
+            ],
+            'ai_assist_anonymous_copied' => [
+                'cg' => 'Tekst je kopiran.',
+                'en' => 'Text copied.',
+            ],
+            'ai_assist_anonymous_copy_failed' => [
+                'cg' => 'Automatsko kopiranje nije uspjelo. Kopirajte tekst iz polja ispod.',
+                'en' => 'Automatic copying failed. Copy the text from the box below.',
+            ],
+        ];
+
+        foreach (['landing', 'panel'] as $group) {
+            foreach ($texts as $key => $byLocale) {
+                foreach ($byLocale as $locale => $text) {
+                    $this->assertDatabaseHas('ui_translations', [
+                        'group' => $group,
+                        'key' => $key,
+                        'locale' => $locale,
+                        'text' => $text,
+                    ]);
+                }
+            }
+        }
+
+        $html = $this->withSession(['locale' => 'cg'])
+            ->get(route('landing', [], false))
+            ->assertOk()
+            ->assertSee('Ako ChatGPT prijavi grešku provjere, koristite ovu opciju.', false)
+            ->assertSee('Kopiraj i otvori ChatGPT', false)
+            ->assertSee('Tekst je kopiran.', false)
+            ->assertSee('Automatsko kopiranje nije uspjelo. Kopirajte tekst iz polja ispod.', false)
+            ->assertSee('U ChatGPT-u nalijepite tekst (Ctrl+V ili Zalijepi) i pritisnite Enter.', false)
+            ->assertSee('type="button"', false)
+            ->assertSee('readonly', false)
+            ->assertSee('https://chatgpt.com/?q=', false)
+            ->assertSee("window.open('https://chatgpt.com/', '_blank', 'noopener,noreferrer')", false)
+            ->assertSee('navigator.clipboard.writeText', false)
+            ->assertSee('promptText()', false)
+            ->assertSee('navigator.languages?.[0] || navigator.language || \'en\'', false)
+            ->assertSee($this->userGuideRelativePath('cg'), false)
+            ->getContent();
+
+        $plainOpenAt = strpos($html, "window.open('https://chatgpt.com/', '_blank', 'noopener,noreferrer')");
+        $copyAt = strpos($html, 'navigator.clipboard.writeText');
+        $copiedAt = strpos($html, "this.fallbackState = 'copied'");
+        $this->assertNotFalse($plainOpenAt);
+        $this->assertNotFalse($copyAt);
+        $this->assertNotFalse($copiedAt);
+        $this->assertLessThan($copyAt, $plainOpenAt);
+        $this->assertLessThan($copiedAt, $copyAt);
+        $this->assertSame(1, substr_count($html, 'Before answering, read https://bus.kotor.me/llms.txt'));
+        $this->assertSame(1, substr_count($html, 'promptText() {'));
+        $this->assertSame(2, substr_count($html, 'this.promptText()'));
+        $hintAt = strpos($html, 'Ako ChatGPT prijavi grešku provjere, koristite ovu opciju.');
+        $buttonAt = strpos($html, 'Kopiraj i otvori ChatGPT');
+        $failureAt = strpos($html, 'Automatsko kopiranje nije uspjelo. Kopirajte tekst iz polja ispod.');
+        $this->assertNotFalse($hintAt);
+        $this->assertNotFalse($buttonAt);
+        $this->assertNotFalse($failureAt);
+        $this->assertLessThan($buttonAt, $hintAt);
+        $this->assertLessThan($failureAt, $buttonAt);
+
+        $this->withSession(['locale' => 'en'])
+            ->get(route('login', [], false))
+            ->assertOk()
+            ->assertSee('If ChatGPT shows a verification error, use this option.', false)
+            ->assertSee('Copy and open ChatGPT', false)
+            ->assertSee('Text copied.', false)
+            ->assertSee('Automatic copying failed. Copy the text from the box below.', false)
+            ->assertSee('In ChatGPT, paste the text (Ctrl+V or Paste) and press Enter.', false);
+    }
+
     private function assertAssistPrecedesPdf(string $html, string $pdfPath, int $expectedPairs): void
     {
         preg_match_all('/data-agency-ai-assist|'.preg_quote($pdfPath, '/').'/', $html, $matches);
