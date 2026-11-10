@@ -8,14 +8,6 @@ Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/pr
 
 ---
 
-## 0. Deploy — zakazana promjena cijena
-
-Lokalna implementacija i QA su završeni (**2026-11-10**, v. `project-done.md`). **Nije** na produkciji. Deploy ne mijenja `vehicle_types.price` dok admin ne zakaže promjenu.
-
-- [ ] Produkcijski deploy zakazane promjene cijena: migracije, `prices:apply-due` u `schedule:list`, `RESERVATIONS_PENDING_EXPIRE_MINUTES` ostaje **15**. Rollback migracije ne vraća cjenovnik ako je raspored već primijenjen. Checklist: **`production-runbook.md`** § Zakazana promjena cijena.
-
----
-
 ## 1. Operativno / audit — post-production hardening
 
 Ove stavke **nisu blokada za produkciju**. Predviđene su za **doradu nakon realnog rada V2** — formalne politike, audit granice i fino podešavanje po iskustvu, ne za prvi deploy baseline-a.

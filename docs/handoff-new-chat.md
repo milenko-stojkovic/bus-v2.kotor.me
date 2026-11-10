@@ -17,14 +17,15 @@
 
 - **Cut-over završen** — 21.342 rezervacija migrirana iz V1; detalji: `docs/production-runbook.md`, `docs/project-done.md`.
 - **Dokumentacija = izvor istine:** produkcijski audit docs↔kod završen **2026-06-19** (`project-done.md`); canonical payment: `payment-state-machine.md`.
-- **Otvoreno:** `docs/project-todo.md` — **deploy zakazane promjene cijena** (lokalno gotovo, nije na produkciji), **post-production hardening** (operativno fino podešavanje), mobile plan. Fiskalni PDF poslije retry-a je već urađen (`project-done.md`).
+- **Otvoreno:** `docs/project-todo.md` — **post-production hardening** (operativno fino podešavanje) i mobile plan. Fiskalni PDF poslije retry-a i zakazana promjena cijena su već urađeni (`project-done.md`).
 
-### Zakazana promjena cijena (lokalno, nije deployovano)
+### Zakazana promjena cijena (produkcija, 2026-11-10)
 
-- Admin → Podešavanja → **Promjena cijena**: jedna buduća promjena, **00:00** `Europe/Podgorica`. `vehicle_types.price` je trenutni cjenovnik. `applyDue()` radi i bez crona; `prices:apply-due` je svake minute.
-- Novi kartični pokušaj rezervacije staje 30 min prije ponoći. Već započeti Bankart pokušaj, avans, top-up, besplatna rezervacija i `late_success` ostaju na postojećoj mašini. Iznos: `invoice_amount_snapshot` → `reservations.invoice_amount`.
+- Radi na `https://bus.kotor.me`. Implementirano, testirano, deployovano i provjereno. Nijedna buduća promjena cijene nije zakazana; `vehicle_types.price` nije mijenjan.
+- Jedna buduća promjena, **00:00** `Europe/Podgorica`. `applyDue()` radi i bez crona; `prices:apply-due` je svake minute. Novi kartični pokušaj staje 30 min prije ponoći. Avansno upozorenje je poslednjih 15 min. Expire pending ostaje **15**.
+- Već započeti Bankart pokušaj, avans, top-up, besplatna rezervacija, `late_success` i fiskalni iznos ostaju na postojećoj mašini. Iznos: `invoice_amount_snapshot` → `reservations.invoice_amount`.
 - Viša/niža kategorija i dalje gleda trenutni cjenovnik. Limo QR iznos nije mijenjan. Rollback migracije ne vraća već primijenjene cijene.
-- Lokalni commit-i: `120c9aec` (kod), `c6abd765` (AI vodič). Produkcijske cijene nisu mijenjane. Sledeće: odobreni deploy, checklist u `production-runbook.md`. Ne dirati `public/llms.txt` ni `docs/ai/llms-draft.md` bez posebnog zadatka.
+- Commit-i na `origin/main`: `120c9aec` (kod), `c6abd765` (AI vodič), `7ce586f` (kanonski docs). Admin: `admin-panel.md` §5.1. Operativa: `production-runbook.md`. Ne dirati `public/llms.txt` ni `docs/ai/llms-draft.md` bez posebnog zadatka.
 
 ### Nedavno u `main` (2026-06-30, detalji u `project-done.md`)
 
@@ -79,7 +80,7 @@ Kratki indeks svih docs: docs/project-status-next-steps.md
 
 Ako diraš payment / temp_data / callback / inquiry / late_success: prvo docs/payment-state-machine.md (canonical invarijanti + tabela prelaza), pa ostali payment docs.
 
-Zakazana promjena cijena je lokalno završena i nije deployovana (2026-11-10). Ne ponavljaj implementaciju i ne tvrdi da je na produkciji. Admin: docs/admin-panel.md §5.1. Deploy/rollback: docs/production-runbook.md.
+Zakazana promjena cijena je u produkciji od 2026-11-10 (implementirano, testirano, deployovano, provjereno). Nijedna promjena cijene nije zakazana. Ne ponavljaj implementaciju. Admin: docs/admin-panel.md §5.1. Operativa i rollback: docs/production-runbook.md. Commit-i: 120c9aec, c6abd765, 7ce586f.
 
 Pravilo ažuriranja: kad nešto završiš, premesti stavku iz docs/project-todo.md u docs/project-done.md (sa datumom). Ne ostavljaj zastarele TODO stavke.
 Ako promena dira domen (payment, fiskal, auth), ažuriraj i odgovarajući tematski fajl u docs/ (v. docs/project-status-next-steps.md i §3 u handoff-new-chat.md). Za payment state machine ažuriraj docs/payment-state-machine.md ako si promenio pravila u kodu.

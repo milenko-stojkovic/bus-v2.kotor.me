@@ -182,19 +182,21 @@ php artisan event:cache
 
 ---
 
-## Zakazana promjena cijena — lokalno gotovo, nije deployovano (2026-11-10)
+## Zakazana promjena cijena — u produkciji (2026-11-10)
 
-Implementacija i QA su lokalni. Produkcijske cijene **nisu** mijenjane. Deploy nije dio ovog zapisa i ne smije sam zakazati promjenu cijene.
+Funkcionalnost je deployovana Plesk Git Pull/Deploy-om (`120c9aec`, `c6abd765`, `7ce586f`). **Nijedna buduća promjena cijene nije zakazana.** `vehicle_types.price` ovim deployem **nije** mijenjan.
 
-Kad deploy bude odobren:
+Zabilježeno na produkciji:
 
-- [ ] `php artisan migrate --force` — tabele `price_change_schedules` i `price_change_schedule_lines`, plus UI tekstovi. Migracija **ne** mijenja `vehicle_types.price`.
-- [ ] `php artisan schedule:list` sadrži `prices:apply-due` (svake minute, `Europe/Podgorica`). Checkout i admin stranica ionako zovu `VehicleTariff::applyDue()`.
-- [ ] `RESERVATIONS_PENDING_EXPIRE_MINUTES` ostaje **15**. Blackout je default **30** (`PRICE_CHANGE_CARD_BLACKOUT_MINUTES`), upozorenje avansa default **15** (`PRICE_CHANGE_ADVANCE_WARNING_MINUTES`). Duži expire traži duži blackout. Oba env-a su opciona.
-- [ ] `GET /admin/podesavanja` prikazuje **Promjena cijena** i trenutne cijene, bez zakazanog reda, dok admin ne napravi jedan.
-- [ ] Jedan običan checkout i dalje koristi trenutni cjenovnik. Besplatna rezervacija i avansni top-up nisu u blackoutu.
+- Migracije `2026_11_10_120000_create_price_change_schedules_tables` i `2026_11_10_120100_add_price_change_ui_translations` su **Ran**, batch **18**. One prave tabele i UI tekstove. Same po sebi ne mijenjaju katalog.
+- Artisan: `config:cache`, `route:clear`, `view:clear`, `view:cache`, `queue:restart`.
+- Scheduler, uz postojeći Plesk `schedule:run` svake minute: `prices:apply-due` svake minute, `reservations:expire-pending` na 5 minuta, `payment:check-pending-inquiry` svake minute, `post-fiscalization:retry` na 10 minuta. Checkout i admin stranica i dalje zovu `VehicleTariff::applyDue()`.
+- `RESERVATIONS_PENDING_EXPIRE_MINUTES=15`. Blackout ostaje podrazumijevanih **30** minuta, upozorenje avansa podrazumijevanih **15**, zona `Europe/Podgorica`. Duži expire traži duži blackout. Env `PRICE_CHANGE_CARD_BLACKOUT_MINUTES` i `PRICE_CHANGE_ADVANCE_WARNING_MINUTES` nisu morali biti postavljeni.
+- Admin → Podešavanja → **Promjena cijena** i postojeći rezervacioni interfejs su provjereni. Javni `llms.txt` sadrži pravila. Trenutne cijene su nepromijenjene i nema zakazanog reda.
 
-**Rollback:** `migrate:rollback` briše nove tabele i **ne** vraća `vehicle_types.price` ako je raspored već primijenjen. Prije primjene, otkazivanje u adminu (`Ukloni`) ostavlja cjenovnik netaknut. Iznos već plaćene rezervacije ostaje `reservations.invoice_amount` (`payment-state-machine.md`).
+Operativa ostaje ista: samo admin u Podešavanjima zakazuje promjenu. Besplatna rezervacija i avansni top-up nisu u blackoutu. Već plaćeni iznos ostaje `reservations.invoice_amount` (`payment-state-machine.md`).
+
+**Rollback:** `migrate:rollback` briše nove tabele i **ne** vraća `vehicle_types.price` ako je raspored već primijenjen. Prije primjene, **Ukloni** u adminu ostavlja cjenovnik netaknut.
 
 ---
 
