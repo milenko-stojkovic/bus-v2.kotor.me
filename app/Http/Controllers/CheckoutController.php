@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Contracts\PaymentService;
 use App\Contracts\PaymentSessionResult;
+use App\Exceptions\CardPaymentBlackoutException;
 use App\Exceptions\DuplicateTerminiReservationException;
 use App\Exceptions\NoCapacityException;
+use App\Exceptions\StaleDisplayedAmountException;
 use App\Helpers\LocaleHelper;
 use App\Http\Requests\CheckoutReservationRequest;
 use App\Models\DailyParkingData;
@@ -23,6 +25,8 @@ use App\Services\Payment\PendingBankartRedirectService;
 use App\Services\Reservation\DuplicateReservationAttemptService;
 use App\Services\Reservation\FreeReservationRules;
 use App\Services\Reservation\GuestPaidLowerCategoryCheckoutGuard;
+use App\Services\Pricing\TariffQuote;
+use App\Services\Pricing\VehicleTariff;
 use App\Support\BankartBillingCountry;
 use App\Support\CheckoutAuditLogger;
 use App\Support\CheckoutResultFlash;
@@ -132,6 +136,13 @@ class CheckoutController extends Controller
             return $billingCountryBlock;
         }
 
+        if (! $isFree && $paymentMethod !== 'advance') {
+            $tariffBlock = $this->cardTariffPrecheck($request, (int) $snapshot['vehicle_type_id']);
+            if ($tariffBlock !== null) {
+                return $tariffBlock;
+            }
+        }
+
         // Agency advance payment (feature-flagged). Only for authenticated panel booking; never for guest.
         if ($panelAuthBooking && $paymentMethod === 'advance' && ! $isFree) {
             if (! (bool) config('features.advance_payments')) {
@@ -139,7 +150,6 @@ class CheckoutController extends Controller
                 return back()->withInput()->with('error', $msg)->withErrors(['payment_method' => $msg]);
             }
 
-            $invoiceAmount = ReservationInvoiceAmount::snapshotForNewReservation('paid', $snapshot['vehicle_type_id'] ?? null);
             $userId = (int) $request->user()->id;
 
             // Allow frontend-supplied merchant_transaction_id for double-submit idempotency.
@@ -149,7 +159,10 @@ class CheckoutController extends Controller
                 : Str::uuid()->toString();
 
             try {
-                $reservation = DB::transaction(function () use ($date, $dropOffSlotId, $pickUpSlotId, $snapshot, $invoiceAmount, $userId, $merchantTransactionId, $duplicateAttemptService, $request) {
+                $reservation = DB::transaction(function () use ($date, $dropOffSlotId, $pickUpSlotId, $snapshot, $userId, $merchantTransactionId, $duplicateAttemptService, $request) {
+                    $quote = app(VehicleTariff::class)->quote((int) $snapshot['vehicle_type_id']);
+                    $this->assertConfirmedAmount($request, $quote);
+                    $invoiceAmount = $quote->payable;
                     // Lock agency user row to serialize advance spending (prevents double-spend).
                     User::query()->whereKey($userId)->lockForUpdate()->first();
 
@@ -181,11 +194,7 @@ class CheckoutController extends Controller
                         ->where('agency_user_id', $userId)
                         ->selectRaw('COALESCE(SUM(amount), 0) as s')
                         ->value('s') ?? 0);
-                    $need = (float) $invoiceAmount;
-                    if ($balance + 0.000001 < $need) {
-                        $msg = 'Raspoloživi avans nije dovoljan za ovu rezervaciju. Možete izabrati plaćanje karticom ili izvršiti avansnu uplatu.';
-                        abort(422, $msg);
-                    }
+                    $this->assertAdvanceBalance($request, $quote, $balance);
 
                     // Create reservation paid immediately (no temp_data, no bank).
                     $reservation = Reservation::create([
@@ -231,6 +240,8 @@ class CheckoutController extends Controller
 
                     return $reservation;
                 });
+            } catch (StaleDisplayedAmountException $e) {
+                return $this->tariffErrorResponse($request, $e->getMessage());
             } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
                 // Double submit with same merchant_transaction_id: return existing reservation.
                 $existing = Reservation::query()->where('merchant_transaction_id', $merchantTransactionId)->first();
@@ -272,6 +283,9 @@ class CheckoutController extends Controller
 
         try {
             $temp = DB::transaction(function () use ($request, $date, $dropOffSlotId, $pickUpSlotId, $merchantTransactionId, $retryToken, $snapshot, $isFree, $duplicateAttemptService) {
+                // Tariff locks before parking locks. Advance checkout uses the same order.
+                $invoiceSnapshot = $this->invoiceSnapshotForCheckout($request, $snapshot, $isFree);
+
                 $duplicateAttemptService->assertNoConflict(
                     $date,
                     (string) $snapshot['license_plate'],
@@ -306,11 +320,6 @@ class CheckoutController extends Controller
                 if (! LocaleHelper::isValid($preferredLocale)) {
                     $preferredLocale = 'en';
                 }
-
-                $invoiceSnapshot = ReservationInvoiceAmount::snapshotForNewReservation(
-                    $isFree ? 'free' : 'paid',
-                    $snapshot['vehicle_type_id'] ?? null
-                );
 
                 $temp = TempData::create([
                     'merchant_transaction_id' => $merchantTransactionId,
@@ -352,6 +361,8 @@ class CheckoutController extends Controller
 
                 return $temp;
             });
+        } catch (CardPaymentBlackoutException|StaleDisplayedAmountException $e) {
+            return $this->tariffErrorResponse($request, $e->getMessage());
         } catch (DuplicateTerminiReservationException $e) {
             $message = $e->getMessage();
 
@@ -705,6 +716,13 @@ class CheckoutController extends Controller
             return $billingCountryBlock;
         }
 
+        if ($paymentMethod !== 'advance') {
+            $tariffBlock = $this->cardTariffPrecheck($request, (int) $snapshot['vehicle_type_id']);
+            if ($tariffBlock !== null) {
+                return $tariffBlock;
+            }
+        }
+
         if ($panelAuthBooking && $paymentMethod === 'advance') {
             if (! (bool) config('features.advance_payments')) {
                 $msg = 'Avansno plaćanje trenutno nije dostupno.';
@@ -712,7 +730,6 @@ class CheckoutController extends Controller
                 return back()->withInput()->with('error', $msg)->withErrors(['payment_method' => $msg]);
             }
 
-            $invoiceAmount = ReservationInvoiceAmount::snapshotForNewReservation('paid', $snapshot['vehicle_type_id'] ?? null);
             $userId = (int) $request->user()->id;
 
             $merchantTransactionId = $request->validated('merchant_transaction_id');
@@ -721,18 +738,18 @@ class CheckoutController extends Controller
                 : Str::uuid()->toString();
 
             try {
-                $reservation = DB::transaction(function () use ($date, $snapshot, $invoiceAmount, $userId, $merchantTransactionId) {
+                $reservation = DB::transaction(function () use ($date, $snapshot, $userId, $merchantTransactionId, $request) {
+                    $quote = app(VehicleTariff::class)->quote((int) $snapshot['vehicle_type_id']);
+                    $this->assertConfirmedAmount($request, $quote);
+                    $invoiceAmount = $quote->payable;
+
                     User::query()->whereKey($userId)->lockForUpdate()->first();
 
                     $balance = (float) (DB::table('agency_advance_transactions')
                         ->where('agency_user_id', $userId)
                         ->selectRaw('COALESCE(SUM(amount), 0) as s')
                         ->value('s') ?? 0);
-                    $need = (float) $invoiceAmount;
-                    if ($balance + 0.000001 < $need) {
-                        $msg = 'Raspoloživi avans nije dovoljan za ovu rezervaciju. Možete izabrati plaćanje karticom ili izvršiti avansnu uplatu.';
-                        abort(422, $msg);
-                    }
+                    $this->assertAdvanceBalance($request, $quote, $balance);
 
                     $reservation = Reservation::create([
                         'user_id' => $userId,
@@ -767,6 +784,8 @@ class CheckoutController extends Controller
 
                     return $reservation;
                 });
+            } catch (StaleDisplayedAmountException $e) {
+                return $this->tariffErrorResponse($request, $e->getMessage());
             } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
                 $existing = Reservation::query()->where('merchant_transaction_id', $merchantTransactionId)->first();
                 if ($existing) {
@@ -805,10 +824,7 @@ class CheckoutController extends Controller
                     $preferredLocale = 'en';
                 }
 
-                $invoiceSnapshot = ReservationInvoiceAmount::snapshotForNewReservation(
-                    'paid',
-                    $snapshot['vehicle_type_id'] ?? null
-                );
+                $invoiceSnapshot = $this->invoiceSnapshotForCheckout($request, $snapshot, false);
 
                 $temp = TempData::create([
                     'merchant_transaction_id' => $merchantTransactionId,
@@ -842,6 +858,8 @@ class CheckoutController extends Controller
 
                 return $temp;
             });
+        } catch (CardPaymentBlackoutException|StaleDisplayedAmountException $e) {
+            return $this->tariffErrorResponse($request, $e->getMessage());
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
             $existingByMtid = TempData::where('merchant_transaction_id', $merchantTransactionId)
                 ->where('status', TempData::STATUS_PENDING)
@@ -1074,5 +1092,123 @@ class CheckoutController extends Controller
                 ->with('guest_lower_category_block', $block)
                 ->with('error', $message)
                 ->withErrors(['vehicle_type_id' => $message]);
+    }
+
+    /**
+     * @param  array{vehicle_id:int|null,user_name:string,country:string,license_plate:string,vehicle_type_id:int,email:string}  $snapshot
+     */
+    private function invoiceSnapshotForCheckout(CheckoutReservationRequest $request, array $snapshot, bool $isFree): string
+    {
+        if ($isFree) {
+            return ReservationInvoiceAmount::snapshotForNewReservation('free', $snapshot['vehicle_type_id'] ?? null);
+        }
+
+        $quote = app(VehicleTariff::class)->quote((int) $snapshot['vehicle_type_id']);
+        if ($quote->cardBlocked) {
+            throw new CardPaymentBlackoutException($this->cardBlackoutMessage($request));
+        }
+        $this->assertConfirmedAmount($request, $quote);
+
+        return $quote->payable;
+    }
+
+    private function cardTariffPrecheck(CheckoutReservationRequest $request, int $vehicleTypeId): RedirectResponse|JsonResponse|null
+    {
+        $quote = app(VehicleTariff::class)->quote($vehicleTypeId);
+        if ($quote->cardBlocked) {
+            return $this->tariffErrorResponse($request, $this->cardBlackoutMessage($request));
+        }
+        if (! app(VehicleTariff::class)->confirmedAmountMatches($this->confirmedAmount($request), $quote->payable)) {
+            return $this->tariffErrorResponse($request, $this->staleAmountMessage($request, $quote->payable));
+        }
+
+        return null;
+    }
+
+    private function assertConfirmedAmount(CheckoutReservationRequest $request, TariffQuote $quote): void
+    {
+        if (! app(VehicleTariff::class)->confirmedAmountMatches($this->confirmedAmount($request), $quote->payable)) {
+            throw new StaleDisplayedAmountException($this->staleAmountMessage($request, $quote->payable));
+        }
+    }
+
+    private function assertAdvanceBalance(CheckoutReservationRequest $request, TariffQuote $quote, float $balance): void
+    {
+        $required = (float) $quote->balanceRequired();
+        if ($balance + 0.000001 >= $required) {
+            return;
+        }
+
+        if ($quote->advanceWarning && ($balance + 0.000001) >= (float) $quote->payable) {
+            $locale = $this->checkoutLocale($request);
+            $message = str_replace(
+                [':current', ':incoming'],
+                [$quote->payable, $quote->incoming],
+                UiText::t(
+                    'reservation',
+                    'tariff_advance_need_incoming',
+                    $locale === 'en'
+                        ? 'Your advance balance must cover both the current price (:current EUR) and the price from midnight (:incoming EUR).'
+                        : 'Raspoloživi avans mora pokrivati i trenutnu cijenu (:current EUR) i cijenu od ponoći (:incoming EUR).',
+                    $locale,
+                ),
+            );
+            abort(422, $message);
+        }
+
+        abort(422, 'Raspoloživi avans nije dovoljan za ovu rezervaciju. Možete izabrati plaćanje karticom ili izvršiti avansnu uplatu.');
+    }
+
+    private function confirmedAmount(CheckoutReservationRequest $request): ?string
+    {
+        $confirmed = $request->input('confirmed_amount');
+
+        return is_string($confirmed) ? $confirmed : null;
+    }
+
+    private function checkoutLocale(CheckoutReservationRequest $request): string
+    {
+        $locale = $request->user()?->lang ?? app()->getLocale();
+
+        return is_string($locale) && $locale !== '' ? $locale : 'en';
+    }
+
+    private function cardBlackoutMessage(CheckoutReservationRequest $request): string
+    {
+        $locale = $this->checkoutLocale($request);
+
+        return UiText::t(
+            'reservation',
+            'tariff_card_blackout',
+            $locale === 'en'
+                ? 'Card payment is unavailable until midnight because a price change takes effect at 00:00. You can try again after the new prices apply. Advance payment and free reservations are not affected.'
+                : 'Plaćanje karticom nije dostupno do ponoći jer nova tarifa počinje u 00:00. Nakon toga možete pokušati ponovo po novim cijenama. Plaćanje iz avansa i besplatne rezervacije nisu obustavljeni.',
+            $locale,
+        );
+    }
+
+    private function staleAmountMessage(CheckoutReservationRequest $request, string $payable): string
+    {
+        $locale = $this->checkoutLocale($request);
+
+        return str_replace(
+            ':amount',
+            $payable,
+            UiText::t(
+                'reservation',
+                'tariff_confirm_amount',
+                $locale === 'en'
+                    ? 'The price has changed. Confirm the amount of :amount EUR before payment.'
+                    : 'Cijena je promijenjena. Potvrdite iznos od :amount EUR prije plaćanja.',
+                $locale,
+            ),
+        );
+    }
+
+    private function tariffErrorResponse(CheckoutReservationRequest $request, string $message): RedirectResponse|JsonResponse
+    {
+        return $request->expectsJson()
+            ? response()->json(['message' => $message], 422)
+            : back()->withInput()->with('error', $message)->withErrors(['payment_method' => $message]);
     }
 }

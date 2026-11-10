@@ -168,6 +168,7 @@ final class BankartBillingCountryCheckoutTest extends TestCase
             'country' => 'OTHER',
             'license_plate' => 'KO123',
             'vehicle_type_id' => $fixtures['vt']->id,
+            'invoice_amount_snapshot' => '10.00',
             'email' => 't@example.com',
             'status' => TempData::STATUS_PENDING,
         ]);
@@ -205,6 +206,7 @@ final class BankartBillingCountryCheckoutTest extends TestCase
             'vehicle_id' => $vehicle->id,
             'accept_terms' => 1,
             'accept_privacy' => 1,
+            'confirmed_amount' => '50.00',
         ])->assertRedirect('https://bank.test/pay');
 
         $this->assertSame(1, TempData::query()->where('country', 'HR')->count());
@@ -350,6 +352,7 @@ final class BankartBillingCountryCheckoutTest extends TestCase
             'country' => 'ME',
             'license_plate' => 'KO123',
             'vehicle_type_id' => $fixtures['vt']->id,
+            'invoice_amount_snapshot' => '10.00',
             'email' => 't@example.com',
             'status' => TempData::STATUS_PENDING,
         ]);

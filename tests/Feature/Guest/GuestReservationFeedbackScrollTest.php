@@ -139,6 +139,7 @@ final class GuestReservationFeedbackScrollTest extends TestCase
             'license_plate' => 'GUESTOK9',
             'email' => 'guest-daily@example.com',
             'accept_terms' => 1,
+            'confirmed_amount' => '22.00',
         ])->assertRedirect('https://bank.example/pay');
     }
 

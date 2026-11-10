@@ -91,6 +91,7 @@ final class AdvanceReservationPaymentTest extends TestCase
             'accept_terms' => 1,
             'accept_privacy' => 1,
             'merchant_transaction_id' => 'mtid_adv_1',
+            'confirmed_amount' => '10.00',
         ])->assertRedirect(route('panel.reservations', [], false));
 
         $res = Reservation::query()->where('merchant_transaction_id', 'mtid_adv_1')->firstOrFail();
@@ -158,6 +159,7 @@ final class AdvanceReservationPaymentTest extends TestCase
             'accept_terms' => 1,
             'accept_privacy' => 1,
             'merchant_transaction_id' => 'mtid_adv_2',
+            'confirmed_amount' => '10.00',
         ])->assertSessionHas('error');
 
         $this->assertSame(0, Reservation::query()->where('merchant_transaction_id', 'mtid_adv_2')->count());

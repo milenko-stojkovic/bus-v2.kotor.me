@@ -182,6 +182,11 @@
             <input type="hidden" name="pick_up_time_slot_id" id="guestPostPickUp" value="{{ $isDailyTicketBooking ? '' : ($departure_id ?? '') }}">
             <input type="hidden" name="vehicle_type_id" value="{{ request('vehicle_type_id') }}">
 
+            @if (! ($is_free_reservation ?? false) && ($paid_amount ?? null))
+                <input type="hidden" name="confirmed_amount" value="{{ $paid_amount }}">
+            @endif
+            @include('partials.tariff-change-notice')
+
             <div class="rounded-md bg-red-50 p-3 text-sm text-gray-800">
                 @if ($isDailyTicketBooking && !empty($selected_date) && request('vehicle_type_id'))
                     <strong>{{ $ui('total_to_pay') }}:</strong>

@@ -45,6 +45,7 @@ Nikad kreiranje rezervacije ili fiskalizacija u HTTP request-u niti u samoj Arti
 ### Bankart `createSession` (`RealPaymentProvider`)
 
 - **Sync debit init** (HTTP POST); detalji u `config/http-outbound.php` (`bankart.create_session`).
+- Iznos debit-a je `temp_data.invoice_amount_snapshot`. Provider ne čita `vehicle_types.price`. Snapshot koji nedostaje prekida pokušaj prije HTTP poziva.
 - **Log kanal `payments` (strukturisano):**
   - `bankart_create_session_request` — prije HTTP poziva: `merchant_transaction_id`, `temp_data_id`, `amount`, `currency`, `stage` = `create_session`.
   - `bankart_create_session_response` — uspjeh: `http_status`, `outcome` = `success`, isti identifikatori + polja iz odgovora banke (npr. `uuid`, `purchaseId`) **bez** tajni.

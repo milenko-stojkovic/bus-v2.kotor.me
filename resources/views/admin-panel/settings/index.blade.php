@@ -11,10 +11,11 @@
         deleteOpen: false,
         deleteEmail: '',
         deleteUrl: '',
+        priceDeleteOpen: false,
     }">
         <div>
             <h1 class="text-lg font-semibold text-gray-900">Podešavanja</h1>
-            <p class="text-sm text-gray-600 mt-1">Kapacitet i liste email adresa za zakazane izvještaje i za obavještenja o Limo incidentima.</p>
+            <p class="text-sm text-gray-600 mt-1">Kapacitet, liste email adresa i zakazana promjena cijena.</p>
         </div>
 
         @if (session('status'))
@@ -199,6 +200,176 @@
                 </form>
             </div>
         </section>
+
+        <section class="bg-white shadow rounded-lg p-6 border border-red-100">
+            @php
+                $scheduledPrices = [];
+                if (($priceChangeEditing ?? false) && $pendingPriceChange) {
+                    foreach ($pendingPriceChange->lines as $scheduledLine) {
+                        $scheduledPrices[(int) $scheduledLine->vehicle_type_id] = (string) $scheduledLine->price_after;
+                    }
+                }
+                $priceInputs = old('prices', $scheduledPrices);
+            @endphp
+            <div>
+                <h2 class="text-base font-semibold text-gray-900">Promjena cijena</h2>
+                <p class="text-sm text-gray-600 mt-1">Nova cijena važi od 00:00 izabranog datuma (Europe/Podgorica). Do tada ostaje trenutna cijena. Može postojati samo jedna zakazana promjena.</p>
+            </div>
+
+            @if ($pendingPriceChange && ! ($priceChangeEditing ?? false))
+                <p class="mt-4 text-sm text-gray-700">Zakazana promjena već postoji. Za izmjenu koristite Izmijeni. Potvrdi ne pravi drugu promjenu.</p>
+            @else
+                <form method="POST"
+                      action="{{ ($priceChangeEditing ?? false) ? route('panel_admin.settings.price-change.update', [], false) : route('panel_admin.settings.price-change.store', [], false) }}"
+                      class="mt-4 space-y-4"
+                      id="price-change-form">
+                    @csrf
+                    @if ($priceChangeEditing ?? false)
+                        @method('PUT')
+                    @endif
+
+                    <div class="max-w-xs">
+                        <x-input-label for="effective_on" value="Datum važenja" />
+                        <x-text-input
+                            id="effective_on"
+                            name="effective_on"
+                            type="date"
+                            class="mt-1 block w-full"
+                            min="{{ \Carbon\Carbon::now('Europe/Podgorica')->addDay()->toDateString() }}"
+                            value="{{ old('effective_on', ($priceChangeEditing ?? false) ? $pendingPriceChange->effectiveAt()->toDateString() : '') }}"
+                            required
+                        />
+                        <x-input-error class="mt-2" :messages="$errors->get('effective_on')" />
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-gray-600">
+                                    <th class="py-2 pr-4 font-medium">Kategorija</th>
+                                    <th class="py-2 pr-4 font-medium">Trenutna cijena</th>
+                                    <th class="py-2 font-medium">Nova cijena</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($priceChangeVehicleTypes as $vt)
+                                    <tr class="border-t border-red-100">
+                                        <td class="py-2 pr-4 text-gray-900">{{ $vt->formatLabel('cg', 'EUR') }}</td>
+                                        <td class="py-2 pr-4 text-gray-700">{{ number_format((float) $vt->price, 2, '.', '') }} EUR</td>
+                                        <td class="py-2">
+                                            <x-text-input
+                                                name="prices[{{ $vt->id }}]"
+                                                type="text"
+                                                inputmode="decimal"
+                                                class="block w-32"
+                                                value="{{ $priceInputs[$vt->id] ?? '' }}"
+                                                placeholder="{{ number_format((float) $vt->price, 2, '.', '') }}"
+                                            />
+                                            <x-input-error class="mt-1" :messages="$errors->get('prices.'.$vt->id)" />
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <x-input-error :messages="$errors->get('prices')" />
+                    <x-input-error class="mt-2" :messages="$errors->get('price_change')" />
+
+                    <div class="flex flex-wrap gap-2">
+                        <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-800">
+                            Potvrdi
+                        </button>
+                        @if ($priceChangeEditing ?? false)
+                            <a href="{{ route('panel_admin.settings', [], false) }}"
+                               class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50">
+                                Otkaži
+                            </a>
+                        @else
+                            <button type="button"
+                                class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50"
+                                onclick="document.getElementById('price-change-form').reset();">
+                                Otkaži
+                            </button>
+                        @endif
+                    </div>
+                </form>
+            @endif
+
+            @if ($pendingPriceChange)
+                <div class="mt-6 rounded border border-red-100 p-4">
+                    <div class="flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-900">Zakazana promjena</h3>
+                            <p class="text-sm text-gray-700 mt-1">Važi od {{ $pendingPriceChange->effectiveAt()->format('d.m.Y.') }} u 00:00. Status: Zakazano.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="{{ route('panel_admin.settings', ['price_change' => 'edit'], false) }}"
+                               class="inline-flex items-center px-3 py-2 border border-red-200 rounded-md text-xs font-semibold text-gray-700 uppercase tracking-widest hover:bg-red-50">
+                                Izmijeni
+                            </a>
+                            <button type="button"
+                                class="inline-flex items-center px-3 py-2 border border-red-300 rounded-md text-xs font-semibold text-red-800 uppercase tracking-widest hover:bg-red-50"
+                                @click="priceDeleteOpen = true">
+                                Ukloni
+                            </button>
+                        </div>
+                    </div>
+                    <ul class="mt-3 space-y-1 text-sm text-gray-800">
+                        @foreach ($pendingPriceChange->lines as $line)
+                            <li>
+                                {{ $line->vehicleType?->formatLabel('cg', 'EUR') ?? ('#'.$line->vehicle_type_id) }}:
+                                {{ number_format((float) $line->price_before, 2, '.', '') }} EUR
+                                → {{ number_format((float) $line->price_after, 2, '.', '') }} EUR
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @if ($priceChangeHistory->isNotEmpty())
+                <div class="mt-6">
+                    <h3 class="text-sm font-semibold text-gray-900">Istorija cijena</h3>
+                    <div class="mt-3 space-y-3">
+                        @foreach ($priceChangeHistory as $historical)
+                            <div class="rounded border border-red-100 p-3 text-sm">
+                                <p class="text-gray-700">Važilo od {{ $historical->effectiveAt()->format('d.m.Y.') }} u 00:00. Status: Na snazi.</p>
+                                <ul class="mt-2 space-y-1 text-gray-800">
+                                    @foreach ($historical->lines as $line)
+                                        <li>
+                                            {{ $line->vehicleType?->formatLabel('cg', 'EUR') ?? ('#'.$line->vehicle_type_id) }}:
+                                            {{ number_format((float) $line->price_before, 2, '.', '') }} EUR
+                                            → {{ number_format((float) $line->price_after, 2, '.', '') }} EUR
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </section>
+
+        <div x-show="priceDeleteOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50" @click="priceDeleteOpen = false"></div>
+            <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4" @click.stop>
+                <h3 class="text-base font-semibold text-gray-900">Uklanjanje promjene cijena</h3>
+                <p class="text-sm text-gray-700">Da li ste sigurni da želite ukloniti zakazanu promjenu cijena? Trenutne cijene ostaju na snazi.</p>
+                <form action="{{ route('panel_admin.settings.price-change.destroy', [], false) }}" method="POST" class="flex justify-end gap-2">
+                    @csrf
+                    @method('DELETE')
+                    <button type="button"
+                        class="inline-flex items-center px-4 py-2 border border-red-200 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-red-50"
+                        @click="priceDeleteOpen = false">
+                        Ne
+                    </button>
+                    <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-red-600 border border-red-700 rounded-md font-semibold text-xs text-white uppercase tracking-widest shadow-sm hover:bg-red-700">
+                        Da
+                    </button>
+                </form>
+            </div>
+        </div>
 
         <div x-show="deleteOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/50" @click="deleteOpen = false"></div>

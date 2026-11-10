@@ -22,7 +22,8 @@ Pregled svih trenutno planiranih (scheduled) taskova u projektu.
 
 | Command | Schedule | Command file | Kratko |
 |---|---|---|---|
-| `reservations:expire-pending` | every 5 minutes | `app/Console/Commands/ExpirePendingReservations.php` | Pending -> expired, oslobađa soft lock (prag default 5 min) |
+| `reservations:expire-pending` | every 5 minutes | `app/Console/Commands/ExpirePendingReservations.php` | Pending -> expired, oslobađa soft lock (prag default 5 min; produkcija 15) |
+| `prices:apply-due` | every minute, `Europe/Podgorica` | `app/Console/Commands/ApplyDuePriceChanges.php` | Primjenjuje dospjela zakazivanja cijena; ponovljivo. Checkout ne čeka ovaj cron |
 | `parking:sync-days` | daily at 00:05 | `app/Console/Commands/SyncDailyParkingDays.php` | Sinhronizuje redove `daily_parking_data` za današnji dan + narednih 90 dana; briše stare datume |
 | `limo:cleanup-temporary-data` | daily at 00:10 | `app/Console/Commands/LimoCleanupTemporaryData.php` | Briše stare nekorišćene `limo_qr_tokens` i istekle nekonzumirane `limo_plate_uploads` (+ privremeni fajlovi); **ne** briše dokaze u `limo_pickup_evidence/` |
 | `files:cleanup-preview-cache` | daily at 00:15 | `app/Console/Commands/CleanupArchivePreviewCacheCommand.php` | Briše istekle privremene MEGA preview fajlove (`external_file_archives` ostaje `uploaded`) |

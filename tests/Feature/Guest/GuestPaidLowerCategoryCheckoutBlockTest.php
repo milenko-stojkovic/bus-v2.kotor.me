@@ -124,6 +124,7 @@ final class GuestPaidLowerCategoryCheckoutBlockTest extends TestCase
             'email' => 'guest@example.com',
             'accept_terms' => 1,
             'accept_privacy' => 1,
+            'confirmed_amount' => number_format((float) (VehicleType::query()->find($vehicleTypeId)?->price ?? 0), 2, '.', ''),
         ];
     }
 
@@ -412,6 +413,7 @@ final class GuestPaidLowerCategoryCheckoutBlockTest extends TestCase
             'vehicle_id' => $vehicle->id,
             'accept_terms' => 1,
             'accept_privacy' => 1,
+            'confirmed_amount' => '15.00',
         ])->assertRedirect(route('panel.reservations', [], false));
 
         $this->assertSame(1, Reservation::query()->where('user_id', $user->id)->where('status', 'paid')->count());

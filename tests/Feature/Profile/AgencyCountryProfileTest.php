@@ -174,6 +174,7 @@ final class AgencyCountryProfileTest extends TestCase
             'vehicle_id' => $vehicle->id,
             'accept_terms' => 1,
             'accept_privacy' => 1,
+            'confirmed_amount' => '50.00',
         ])->assertRedirect('https://bank.test/pay');
 
         $this->assertTrue(BankartBillingCountry::isSelectablePaymentCountry($user->fresh()->country));

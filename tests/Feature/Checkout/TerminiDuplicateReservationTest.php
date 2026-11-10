@@ -215,6 +215,7 @@ class TerminiDuplicateReservationTest extends TestCase
                 'email' => 'n@example.com',
                 'accept_terms' => 1,
                 'accept_privacy' => 1,
+                'confirmed_amount' => '10.00',
             ])
             ->assertRedirect('https://bank.test/pay')
             ->assertSessionMissing('error');
@@ -250,6 +251,7 @@ class TerminiDuplicateReservationTest extends TestCase
                 'email' => 'n@example.com',
                 'accept_terms' => 1,
                 'accept_privacy' => 1,
+                'confirmed_amount' => '10.00',
             ])
             ->assertRedirect('https://bank.test/pay')
             ->assertSessionMissing('error');
@@ -384,6 +386,7 @@ class TerminiDuplicateReservationTest extends TestCase
                 'email' => 'n@example.com',
                 'accept_terms' => 1,
                 'accept_privacy' => 1,
+                'confirmed_amount' => '10.00',
             ])
             ->assertRedirect('https://bank.test/pay')
             ->assertSessionMissing('error');
@@ -457,6 +460,7 @@ class TerminiDuplicateReservationTest extends TestCase
                 'reservation_date' => $d,
                 'vehicle_id' => $vehicle->id,
                 'accept_terms' => 1,
+                'confirmed_amount' => '40.00',
             ])
             ->assertSessionMissing('error');
 
@@ -492,6 +496,12 @@ class TerminiDuplicateReservationTest extends TestCase
             'email' => 'race@example.com',
             'status' => TempData::STATUS_PENDING,
         ]);
+        foreach ([$drop->id, $pick->id] as $slotId) {
+            DailyParkingData::query()
+                ->whereDate('date', $d)
+                ->where('time_slot_id', $slotId)
+                ->update(['pending' => 1]);
+        }
 
         $created = app(PaymentSuccessHandler::class)->handle($temp, ['status' => 'success'], true, true);
 
@@ -499,6 +509,14 @@ class TerminiDuplicateReservationTest extends TestCase
         $temp->refresh();
         $this->assertSame(TempData::STATUS_LATE_MANUAL_REVIEW, $temp->status);
         $this->assertSame(1, Reservation::query()->where('license_plate', 'KORACE1')->count());
+        foreach ([$drop->id, $pick->id] as $slotId) {
+            $row = DailyParkingData::query()
+                ->whereDate('date', $d)
+                ->where('time_slot_id', $slotId)
+                ->first();
+            $this->assertSame(0, (int) $row->pending);
+            $this->assertSame(0, (int) $row->reserved);
+        }
     }
 
     public function test_service_excludes_reservation_when_editing(): void

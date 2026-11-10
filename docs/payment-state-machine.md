@@ -35,7 +35,10 @@ mora biti **isti iznos koji je poslat banci u trenutku checkout-a**.
 - **`reservation_kind`:** `time_slots` (default) ili `daily_ticket` (agencija `/panel/reservations` ili gost `/guest/reserve` — samo kartica, bez avansa). Za `daily_ticket` slot FK su `NULL` i **ne** dira se `daily_parking_data` (nema `pending`/`reserved` na slotovima; expire/cancel/success handler preskače soft-lock). Fiskalni PDF (`pdf/paid-invoice`) i email potvrda prikazuju vrstu/datum važenja/lokacije umjesto termina dolaska/odlaska.
 - Taj iznos se čuva kao snapshot u `temp_data` (npr. `invoice_amount_snapshot`).
 - Nakon kreiranja `temp_data` taj iznos se **više nikada ne računa ponovo iz cjenovnika**.
+- `RealPaymentProvider::resolveAmount()` šalje banci `invoice_amount_snapshot`. Ako snapshot nedostaje, pokušaj ne ide na banku (log `bankart_amount_snapshot_missing`); ne čita se `vehicle_types.price`.
+- `PaymentSuccessHandler::createReservationFromTempData()` upisuje `reservations.invoice_amount` preko `ReservationInvoiceAmount::forPaymentAttempt()`. Numerički snapshot se čuva. Legacy red bez snapshota i dalje loguje upozorenje i pada na tadašnju katalog cijenu.
 - Promjene cijena **ne utiču** na već započete ili završene payment pokušaje.
+- Prelazak ponoći **nije** `late_success`. Pending red ostaje običan uspjeh dok ga `reservations:expire-pending` ne označi `expired`. Blackout novih kartičnih pokušaja (`config/pricing.php`) nije novo stanje i ne dodaje timestamp provjeru u ovu mašinu.
 - **`daily_fee_blocked_dates` je NEW-CHECKOUT availability guard, ne payment-SUCCESS guard.** Nova prodaja dnevne naknade se zabranjuje u checkout-u (`storeDailyTicketBooking`). Ako je daily-ticket plaćanje već pokrenuto (`pending`) **prije** zabrane, **`pending` → SUCCESS mora i dalje završiti normalno**. **Ne dodavati** `DailyFeeBlockedDate` / `isSaleProhibited()` re-check u **`PaymentSuccessHandler`** — to je namjerno grandfathering, ne propuštena validacija. Isto porodično načelo kao Termini: plaćanje već u toku se **ne** poništava samo zato što operativni slot kasnije postane `is_blocked`. Poslovni detalji: **`docs/admin-panel.md`** §2.
 
 ### Payment callback / payload

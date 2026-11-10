@@ -5,9 +5,15 @@ namespace App\Http\Controllers\AdminPanel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AdminPanel\AdminPanelCapacityUpdateRequest;
 use App\Http\Requests\AdminPanel\AdminPanelLimoIncidentEmailStoreRequest;
+use App\Http\Requests\AdminPanel\AdminPanelPriceChangeRequest;
 use App\Http\Requests\AdminPanel\AdminPanelReportEmailStoreRequest;
+use App\Models\Admin;
+use App\Models\PriceChangeSchedule;
 use App\Models\ReportEmail;
 use App\Models\SystemConfig;
+use App\Models\VehicleType;
+use App\Services\Pricing\PriceChangeAdmin;
+use App\Services\Pricing\VehicleTariff;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,7 +21,7 @@ use Illuminate\View\View;
 
 class SettingsController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, VehicleTariff $tariff): View
     {
         $capacity = (int) (SystemConfig::getValue('available_parking_slots') ?? 0);
         if ($capacity < 1) {
@@ -24,6 +30,12 @@ class SettingsController extends Controller
         }
 
         $effectiveFrom = Carbon::now()->startOfDay()->addDays(91);
+        $tariff->applyDue();
+
+        $pendingPriceChange = PriceChangeSchedule::query()
+            ->where('status', PriceChangeSchedule::STATUS_SCHEDULED)
+            ->with(['lines.vehicleType.translations'])
+            ->first();
 
         return view('admin-panel.settings.index', [
             'navActive' => 'settings',
@@ -32,6 +44,15 @@ class SettingsController extends Controller
             'capacityEffectiveFrom' => $effectiveFrom,
             'reportEmails' => ReportEmail::query()->forReport()->orderBy('email')->get(),
             'limoIncidentEmails' => ReportEmail::query()->forLimoIncidents()->orderBy('email')->get(),
+            'priceChangeVehicleTypes' => VehicleType::query()->with('translations')->orderBy('id')->get(),
+            'pendingPriceChange' => $pendingPriceChange,
+            'priceChangeEditing' => $request->query('price_change') === 'edit' && $pendingPriceChange !== null,
+            'priceChangeHistory' => PriceChangeSchedule::query()
+                ->where('status', PriceChangeSchedule::STATUS_EFFECTIVE)
+                ->with(['lines.vehicleType.translations'])
+                ->orderByDesc('effective_on')
+                ->orderByDesc('id')
+                ->get(),
         ]);
     }
 
@@ -109,6 +130,40 @@ class SettingsController extends Controller
 
         return redirect()->to(route('panel_admin.settings', [], false))
             ->with('status', "Email adresa za incidente {$email} je obrisana.");
+    }
+
+    public function storePriceChange(AdminPanelPriceChangeRequest $request, PriceChangeAdmin $priceChanges): RedirectResponse
+    {
+        $priceChanges->create($this->panelAdmin($request), $request->validated());
+
+        return redirect()->to(route('panel_admin.settings', [], false))
+            ->with('status', 'Zakazana promjena cijena je sačuvana. Nove cijene ne važe odmah.');
+    }
+
+    public function updatePriceChange(AdminPanelPriceChangeRequest $request, PriceChangeAdmin $priceChanges): RedirectResponse
+    {
+        $priceChanges->update($this->panelAdmin($request), $request->validated());
+
+        return redirect()->to(route('panel_admin.settings', [], false))
+            ->with('status', 'Zakazana promjena cijena je izmijenjena. Nove cijene ne važe odmah.');
+    }
+
+    public function destroyPriceChange(Request $request, PriceChangeAdmin $priceChanges): RedirectResponse
+    {
+        $priceChanges->cancel($this->panelAdmin($request));
+
+        return redirect()->to(route('panel_admin.settings', [], false))
+            ->with('status', 'Zakazana promjena cijena je uklonjena.');
+    }
+
+    private function panelAdmin(Request $request): Admin
+    {
+        $admin = $request->user();
+        if (! $admin instanceof Admin) {
+            abort(403);
+        }
+
+        return $admin;
     }
 }
 

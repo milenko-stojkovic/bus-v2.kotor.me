@@ -106,6 +106,9 @@ Route::prefix('admin')->name('panel_admin.')->group(function () {
         Route::delete('podesavanja/report-emails/{reportEmail}', [AdminPanelSettingsController::class, 'destroyReportEmail'])->name('settings.report-emails.destroy');
         Route::post('podesavanja/limo-incident-emails', [AdminPanelSettingsController::class, 'storeLimoIncidentEmail'])->name('settings.limo-incident-emails.store');
         Route::delete('podesavanja/limo-incident-emails/{reportEmail}', [AdminPanelSettingsController::class, 'destroyLimoIncidentEmail'])->name('settings.limo-incident-emails.destroy');
+        Route::post('podesavanja/promjena-cijena', [AdminPanelSettingsController::class, 'storePriceChange'])->name('settings.price-change.store');
+        Route::put('podesavanja/promjena-cijena', [AdminPanelSettingsController::class, 'updatePriceChange'])->name('settings.price-change.update');
+        Route::delete('podesavanja/promjena-cijena', [AdminPanelSettingsController::class, 'destroyPriceChange'])->name('settings.price-change.destroy');
 
         Route::get('analitika', [AdminPanelAnalyticsController::class, 'index'])->name('analytics');
         Route::get('analitika/pdf', [AdminPanelAnalyticsController::class, 'pdf'])->name('analytics.pdf');

@@ -240,9 +240,10 @@ Posle izmene `.env`: `.\laragon-artisan.ps1 config:clear` (ili ista PHP putanja 
 ### Payment amount integrity
 
 - Nakon kreiranja `temp_data`, cijena se smatra zaključanom (`invoice_amount_snapshot`).
-- Nikada ne koristiti `vehicle_types.price` (ili druge runtime izvore) u payment flow-u nakon tog trenutka.
-- Svi downstream procesi (reservation, fiskalizacija, late_success → advance) moraju koristiti snapshot iz `temp_data`.
+- Nikada ne koristiti `vehicle_types.price` (ili druge runtime izvore) u payment flow-u nakon tog trenutka. To uključuje Bankart `createSession` i kreiranje rezervacije iz `temp_data`.
+- Svi downstream procesi (reservation, fiskalizacija, late_success → advance) moraju koristiti snapshot iz `temp_data`. Fiskalni PDF i dalje čita `reservations.invoice_amount`.
 - Korišćenje runtime cijene u payment flow-u nakon checkout-a smatra se bugom.
+- Zakazana promjena cijena mijenja `vehicle_types.price` tek u 00:00 `Europe/Podgorica`. Do tada je to i dalje trenutni cjenovnik. Poređenje kategorija (viša/niža, zamjena) čita tu kolonu i ne dobija poseban istorijski poredak.
 
 ---
 

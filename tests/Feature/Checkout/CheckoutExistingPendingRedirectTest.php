@@ -72,6 +72,7 @@ final class CheckoutExistingPendingRedirectTest extends TestCase
             'email' => $email,
             'accept_terms' => 1,
             'accept_privacy' => 1,
+            'confirmed_amount' => number_format((float) $fixtures['vt']->price, 2, '.', ''),
         ];
     }
 
@@ -225,6 +226,12 @@ final class CheckoutExistingPendingRedirectTest extends TestCase
             'status' => TempData::STATUS_PENDING,
             'payment_redirect_url' => self::PAY_URL,
         ]);
+        foreach ([$fixtures['drop']->id, $fixtures['pick']->id] as $slotId) {
+            DailyParkingData::query()
+                ->whereDate('date', $fixtures['date'])
+                ->where('time_slot_id', $slotId)
+                ->update(['pending' => 1]);
+        }
 
         (new PaymentCallbackJob(
             ['merchant_transaction_id' => $temp->merchant_transaction_id, 'status' => 'failed'],
@@ -234,6 +241,13 @@ final class CheckoutExistingPendingRedirectTest extends TestCase
         $temp->refresh();
         $this->assertSame(TempData::STATUS_CANCELED, (string) $temp->status);
         $this->assertSame(0, Reservation::query()->where('merchant_transaction_id', $temp->merchant_transaction_id)->count());
+        foreach ([$fixtures['drop']->id, $fixtures['pick']->id] as $slotId) {
+            $pending = (int) DailyParkingData::query()
+                ->whereDate('date', $fixtures['date'])
+                ->where('time_slot_id', $slotId)
+                ->value('pending');
+            $this->assertSame(0, $pending);
+        }
     }
 
     public function test_expire_pending_releases_lock(): void

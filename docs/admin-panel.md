@@ -359,19 +359,26 @@ Napomena: `system_config` ima `name` (unique) i `value` (integer). Za admin form
 
 | Ruta | Namena |
 |------|--------|
-| `GET /admin/podesavanja` | `panel_admin.settings` — stranica sa sekcijama: Kapacitet, **Izvještaji – email adrese** (`purpose=report`), **Incident – email adrese** (`purpose=limo_incidents`). |
+| `GET /admin/podesavanja` | `panel_admin.settings` — stranica sa sekcijama: Kapacitet, **Izvještaji – email adrese** (`purpose=report`), **Incident – email adrese** (`purpose=limo_incidents`), **Promjena cijena**. |
 | `PUT /admin/podesavanja/capacity` | `panel_admin.settings.capacity.update` — validacija `1..99`, upis u `system_config.available_parking_slots`. Promena **ne važi retroaktivno** i primenjuje se za nove dane od **danas + 91 dan** (bez retroaktivnog update `daily_parking_data`). |
 | `POST /admin/podesavanja/report-emails` | `panel_admin.settings.report-emails.store` — trim + lowercase + email sintaksa + duplicate unutar **`purpose=report`**, upis u `report_emails`. |
 | `DELETE /admin/podesavanja/report-emails/{reportEmail}` | `panel_admin.settings.report-emails.destroy` — hard delete samo ako je red **`purpose=report`** (inače 404); confirm UI. |
 | `POST /admin/podesavanja/limo-incident-emails` | `panel_admin.settings.limo-incident-emails.store` — polje **`limo_incident_email`**, ista validacija kao izvještaji; duplicate unutar **`purpose=limo_incidents`**. |
 | `DELETE /admin/podesavanja/limo-incident-emails/{reportEmail}` | `panel_admin.settings.limo-incident-emails.destroy` — hard delete samo ako je red **`purpose=limo_incidents`** (inače 404); confirm UI. |
+| `POST /admin/podesavanja/promjena-cijena` | `panel_admin.settings.price-change.store` — jedna buduća promjena; bar jedna kategorija mora promijeniti cijenu; datum je obavezan i strogo poslije današnjeg u `Europe/Podgorica`. |
+| `PUT /admin/podesavanja/promjena-cijena` | `panel_admin.settings.price-change.update` — izmjena samo dok je status `scheduled`. |
+| `DELETE /admin/podesavanja/promjena-cijena` | `panel_admin.settings.price-change.destroy` — status `cancelled`, red ostaje; trenutne cijene se ne mijenjaju. |
 
 - **Kontroler:** `App\Http\Controllers\AdminPanel\SettingsController`.
 - **Kapacitet (UX):** input je inicijalno read-only; `Promjeni` → editable + `Primjeni`/`Odkaži`. Success poruka sadrži konkretan datum važenja (danas + 91 dan).
 - **Report emails (UX):** lista sortirana abecedno po emailu; `Dodaj email adresu` otvara formu; `Obriši` ima confirm modal (isti modal za obje liste, različiti `DELETE` URL-i).
 - **Incident emails (UX):** analogno izvještajima; prazna lista u podešavanjima je dozvoljena. **Backend:** kada nema redova sa `purpose=limo_incidents`, `LimoIncidentService` i dalje šalje incident na podrazumijevanu adresu **`komunalna.policija@kotor.me`** i loguje fallback na kanalu **`payments`** (ovo se **ne** prikazuje u UI liste). **`ReportEmailsSeeder`** osigurava red **`komunalna.policija@kotor.me`** sa `purpose=limo_incidents` (idempotentno), tako da se ta adresa obično vodi u listi incident primalaca.
 
-**Testovi:** `tests/Feature/AdminPanel/AdminPanelSettingsTest.php`.
+- **Promjena cijena:** na dnu stranice. `vehicle_types.price` ostaje trenutni cjenovnik. Zakazana promjena (`price_change_schedules` + `price_change_schedule_lines`) stupa na snagu u **00:00** `Europe/Podgorica` na izabrani datum. Primjena ne čeka isključivo cron: `VehicleTariff::applyDue()` radi i na čitanju cijene (checkout, booking stranica, ova stranica). `prices:apply-due` je zakazan svake minute u istoj zoni, `withoutOverlapping`, i smije se ponoviti. Najviše jedna buduća promjena (`pending_slot = pending`). Uklanjanje je otkazivanje, ne brisanje. Redovi `effective` su istorija i ne mogu se mijenjati. Prazan unos cijene znači „bez izmjene“. Poređenje više/niže kategorije i zamjena vozila i dalje koriste trenutni `vehicle_types.price` nakon što promjena stupi na snagu; redosled kategorija nije posebno redefinisan.
+- **Kartični blackout:** `config/pricing.php` `card_blackout_minutes` (default **30**, env `PRICE_CHANGE_CARD_BLACKOUT_MINUTES`). Od 23:30 uključivo do 00:00 isključivo nema **novog** Bankart pokušaja za rezervaciju. Postojeća sesija, callback, inquiry, avansna uplata (top-up) i besplatna rezervacija nisu blokirani. Poslije 00:00 novi pokušaj ide po novoj cijeni.
+- **Avans:** ostaje otvoren. U poslednjih `advance_warning_minutes` (default **15**) stranica upozorava da se cijena mijenja u ponoć i da se naplaćuje tarifa u trenutku izvršenja. Stanje mora pokrivati i trenutni i dolazni iznos; debit je i dalje tarifa koja važi u tom trenutku. Ako poslati `confirmed_amount` ne odgovara tom iznosu, nema knjiženja dok korisnik ne potvrdi novi iznos.
+
+**Testovi:** `tests/Feature/AdminPanel/AdminPanelSettingsTest.php`, `tests/Feature/Pricing/ScheduledPriceChangeTest.php`, `tests/Unit/Pricing/VehicleTariffTest.php`.
 
 ---
 

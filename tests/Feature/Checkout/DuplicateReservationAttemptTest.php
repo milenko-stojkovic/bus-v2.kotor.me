@@ -160,6 +160,7 @@ class DuplicateReservationAttemptTest extends TestCase
                 'email' => 'n@example.com',
                 'accept_terms' => 1,
                 'accept_privacy' => 1,
+                'confirmed_amount' => '10.00',
             ])
             ->assertStatus(422)
             ->assertDontSee('A reservation already exists for this license plate on the selected date with the same arrival time or the same departure time.', false);

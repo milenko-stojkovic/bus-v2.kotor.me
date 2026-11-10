@@ -110,6 +110,7 @@ final class GuestCheckoutPaymentInitFailureTest extends TestCase
             'email' => 'guest@example.com',
             'accept_terms' => 1,
             'accept_privacy' => 1,
+            'confirmed_amount' => '15.00',
         ];
     }
 
@@ -342,6 +343,7 @@ final class GuestCheckoutPaymentInitFailureTest extends TestCase
                 'vehicle_id' => $vehicle->id,
                 'accept_terms' => 1,
                 'accept_privacy' => 1,
+                'confirmed_amount' => '15.00',
             ])
             ->assertRedirect('https://bank.example/agency-pay');
     }

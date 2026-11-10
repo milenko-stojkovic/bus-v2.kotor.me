@@ -208,6 +208,11 @@
                             <input type="hidden" name="pick_up_time_slot_id" id="panelPostPickUp" value="{{ $isDailyTicketBooking ? '' : ($departure_id ?? '') }}">
                             <input type="hidden" name="vehicle_id" value="{{ $vehicle_id ?? '' }}">
 
+                            @if (! ($is_free_reservation ?? false) && ($paid_amount ?? null))
+                                <input type="hidden" name="confirmed_amount" value="{{ $paid_amount }}">
+                            @endif
+                            @include('partials.tariff-change-notice')
+
                             <div class="rounded-md bg-red-50 p-3 text-sm text-gray-800">
                                 @if ($isDailyTicketBooking && !empty($selected_date) && !empty($vehicle_id))
                                     <strong>{{ $ui('total_to_pay') }}:</strong>
@@ -275,12 +280,12 @@
                                     <div class="space-y-1">
                                         <div class="font-medium text-gray-800">{{ $pn('payment_method_title', $locale === 'cg' ? 'Način plaćanja' : 'Payment method') }}</div>
                                         <label class="flex items-center gap-2">
-                                            <input type="radio" name="payment_method" value="card" class="rounded border-red-200" {{ old('payment_method', 'card') === 'card' ? 'checked' : '' }}>
+                                            <input type="radio" name="payment_method" value="card" class="rounded border-red-200" {{ old('payment_method', ($card_payment_blocked ?? false) ? 'advance' : 'card') === 'card' ? 'checked' : '' }} {{ ($card_payment_blocked ?? false) ? 'disabled' : '' }}>
                                             <span>{{ $pn('pay_by_card', $locale === 'cg' ? 'Plati karticom' : 'Pay by card') }}</span>
                                         </label>
                                         @if ($advanceEnabled)
                                             <label class="flex items-center gap-2">
-                                                <input type="radio" name="payment_method" value="advance" class="rounded border-red-200" {{ old('payment_method') === 'advance' ? 'checked' : '' }} {{ $advanceCanPay ? '' : 'disabled' }}>
+                                                <input type="radio" name="payment_method" value="advance" class="rounded border-red-200" {{ old('payment_method', ($card_payment_blocked ?? false) ? 'advance' : '') === 'advance' ? 'checked' : '' }} {{ $advanceCanPay ? '' : 'disabled' }}>
                                                 <span class="{{ $advanceCanPay ? '' : 'text-gray-400' }}">{{ $pn('pay_from_advance', $locale === 'cg' ? 'Plati iz avansa' : 'Pay from advance') }}</span>
                                             </label>
                                             @if (! $advanceCanPay)

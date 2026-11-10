@@ -304,15 +304,18 @@ class RealPaymentProvider implements PaymentService
 
     private function resolveAmount(TempData $tempData): ?string
     {
-        $price = $tempData->vehicleType?->price;
-        if ($price === null) {
-            return null;
-        }
-        if (! is_numeric((string) $price)) {
+        $snapshot = $tempData->invoice_amount_snapshot;
+        if ($snapshot === null || ! is_numeric((string) $snapshot)) {
+            Log::channel('payments')->warning('bankart_amount_snapshot_missing', [
+                'merchant_transaction_id' => $tempData->merchant_transaction_id,
+                'temp_data_id' => $tempData->id,
+                'vehicle_type_id' => $tempData->vehicle_type_id,
+            ]);
+
             return null;
         }
 
-        return number_format((float) $price, 2, '.', '');
+        return number_format((float) $snapshot, 2, '.', '');
     }
 
     private function truncateForLog(?string $raw, int $max = 4000): ?string

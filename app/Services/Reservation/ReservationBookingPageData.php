@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
 use App\Services\AdminPanel\Blocking\DailyFeeBlockedDateService;
+use App\Services\Pricing\VehicleTariff;
 use App\Support\BankartBillingCountry;
 use App\Support\ReservationKind;
 use Carbon\Carbon;
@@ -67,6 +68,7 @@ final class ReservationBookingPageData
      */
     public function forGuest(Request $request): array
     {
+        app(VehicleTariff::class)->applyDue();
         $locale = app()->getLocale();
 
         $dateStr = (string) $request->query('reservation_date', '');
@@ -144,7 +146,11 @@ final class ReservationBookingPageData
             'vehicle_id' => null,
             'daily_fee_blocked_dates' => $feeBlockedDates,
             'daily_fee_selected_date_blocked' => $selectedFeeBlocked,
-        ]);
+        ], $this->tariffPresentation(
+            $selectedVehicleType !== null ? (int) $selectedVehicleType->id : null,
+            $paidAmount,
+            $isFreeReservation,
+        ));
     }
 
     /**
@@ -192,6 +198,7 @@ final class ReservationBookingPageData
      */
     public function forAuthenticated(Request $request, User $user): array
     {
+        app(VehicleTariff::class)->applyDue();
         $locale = app()->getLocale();
 
         $dateStr = (string) $request->query('reservation_date', '');
@@ -309,7 +316,11 @@ final class ReservationBookingPageData
             'termini_vehicles_hidden_count' => $terminiVehiclesHiddenCount,
             'daily_fee_blocked_dates' => $feeBlockedDates,
             'daily_fee_selected_date_blocked' => $selectedFeeBlocked,
-        ]);
+        ], $this->tariffPresentation(
+            $selectedVehicle !== null ? (int) $selectedVehicle->vehicle_type_id : null,
+            $paidAmount,
+            $isFreeReservation,
+        ));
     }
 
     /**
@@ -481,6 +492,25 @@ final class ReservationBookingPageData
         }
 
         return sprintf('%s (%d spots left)', $timeSlot, $spotsLeft);
+    }
+
+    /**
+     * @return array{card_payment_blocked: bool, advance_warning: bool, tariff_incoming_amount: ?string}
+     */
+    private function tariffPresentation(?int $vehicleTypeId, ?string $paidAmount, bool $isFree): array
+    {
+        $tariff = app(VehicleTariff::class);
+        $window = $tariff->scheduleWindow();
+        $incoming = $paidAmount;
+        if ($vehicleTypeId !== null && ($window['card_blocked'] || $window['advance_warning'])) {
+            $incoming = $tariff->quote($vehicleTypeId)->incoming;
+        }
+
+        return [
+            'card_payment_blocked' => $window['card_blocked'] && ! $isFree,
+            'advance_warning' => $window['advance_warning'] && ! $isFree,
+            'tariff_incoming_amount' => $incoming,
+        ];
     }
 
 }

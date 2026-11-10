@@ -132,6 +132,7 @@ final class DailyTicketCheckoutTest extends TestCase
             'reservation_date' => $date,
             'vehicle_id' => $vehicle->id,
             'accept_terms' => 1,
+            'confirmed_amount' => '12.50',
         ])->assertRedirect('https://bank.example/pay');
     }
 
@@ -147,6 +148,7 @@ final class DailyTicketCheckoutTest extends TestCase
             'reservation_date' => $date,
             'vehicle_id' => $vehicle->id,
             'accept_terms' => 1,
+            'confirmed_amount' => '12.50',
         ]);
 
         $temp = TempData::query()->latest('id')->firstOrFail();
@@ -183,6 +185,7 @@ final class DailyTicketCheckoutTest extends TestCase
             'vehicle_id' => $vehicle->id,
             'accept_terms' => 1,
             'merchant_transaction_id' => 'mtid_dt_adv_1',
+            'confirmed_amount' => '12.50',
         ])->assertRedirect(route('panel.reservations', [], false));
 
         $res = Reservation::query()->where('merchant_transaction_id', 'mtid_dt_adv_1')->firstOrFail();
@@ -221,6 +224,7 @@ final class DailyTicketCheckoutTest extends TestCase
             'reservation_date' => $date,
             'vehicle_id' => $vehicle->id,
             'accept_terms' => 1,
+            'confirmed_amount' => '12.50',
         ]);
 
         $daily->refresh();
@@ -374,6 +378,7 @@ final class DailyTicketCheckoutTest extends TestCase
             'reservation_date' => $date,
             'vehicle_id' => $vehicle->id,
             'accept_terms' => 1,
+            'confirmed_amount' => '12.50',
         ])->assertRedirect('https://bank.example/pay');
 
         $this->assertSame(1, TempData::query()->where('reservation_kind', ReservationKind::DAILY_TICKET)->count());
@@ -432,6 +437,7 @@ final class DailyTicketCheckoutTest extends TestCase
             'reservation_date' => $date,
             'vehicle_id' => $vehicle->id,
             'accept_terms' => 1,
+            'confirmed_amount' => '12.50',
         ])->assertRedirect('https://bank.example/pay');
     }
 

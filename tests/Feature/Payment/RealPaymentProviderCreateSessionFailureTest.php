@@ -57,6 +57,7 @@ class RealPaymentProviderCreateSessionFailureTest extends TestCase
             'country' => 'ME',
             'license_plate' => 'AB123',
             'vehicle_type_id' => $vt->id,
+            'invoice_amount_snapshot' => '12.34',
             'email' => 't@example.com',
             'status' => TempData::STATUS_PENDING,
         ]);

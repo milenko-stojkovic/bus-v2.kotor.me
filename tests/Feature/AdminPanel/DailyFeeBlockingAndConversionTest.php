@@ -110,6 +110,7 @@ final class DailyFeeBlockingAndConversionTest extends TestCase
             'vehicle_type_id' => $vt->id,
             'email' => $email,
             'accept_terms' => 1,
+            'confirmed_amount' => number_format((float) $vt->price, 2, '.', ''),
         ];
     }
 

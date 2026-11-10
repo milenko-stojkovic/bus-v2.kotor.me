@@ -10,6 +10,7 @@ use App\Models\Vehicle;
 use App\Services\Reservation\VehicleReplacementCandidateService;
 use App\Services\Pdf\FreeReservationPdfGenerator;
 use App\Services\Pdf\PaidInvoicePdfGenerator;
+use App\Services\Pricing\VehicleTariff;
 use App\Services\Reservation\ReservationBookingPageData;
 use App\Services\AgencyAdvance\AgencyAdvanceService;
 use App\Support\ReservationPdfFilename;
@@ -31,7 +32,11 @@ class UserReservationController extends Controller
         if ((bool) config('features.advance_payments')) {
             $balance = app(AgencyAdvanceService::class)->balance((int) $request->user()->id);
             $price = (string) ($booking['paid_amount'] ?? '0.00');
-            $canPay = is_numeric($balance) && is_numeric($price) && ((float) $balance + 0.000001) >= (float) $price;
+            $required = $price;
+            if (($booking['advance_warning'] ?? false) && is_string($booking['tariff_incoming_amount'] ?? null)) {
+                $required = VehicleTariff::moneyMax($price, (string) $booking['tariff_incoming_amount']);
+            }
+            $canPay = is_numeric($balance) && is_numeric($required) && ((float) $balance + 0.000001) >= (float) $required;
             $booking['advance_balance'] = $balance;
             $booking['advance_can_pay'] = $canPay;
             $booking['advanceBalance'] = $balance;

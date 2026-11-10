@@ -154,6 +154,7 @@ final class CardBillingCountryWordingTest extends TestCase
             'country' => 'CN',
             'license_plate' => 'CN123',
             'vehicle_type_id' => $vt->id,
+            'invoice_amount_snapshot' => '12.00',
             'email' => 'cn@example.com',
             'status' => TempData::STATUS_PENDING,
         ]);

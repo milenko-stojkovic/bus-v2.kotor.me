@@ -1031,6 +1031,14 @@ class UiTranslationsSeeder extends Seeder
             ['group' => 'free_request', 'key' => 'success_message', 'locale' => 'cg', 'text' => 'Zahtjev je uspješno poslat. Administrator će Vas kontaktirati.'],
             ['group' => 'free_request', 'key' => 'success_click_anywhere', 'locale' => 'en', 'text' => 'Click anywhere to return to the landing page.'],
             ['group' => 'free_request', 'key' => 'success_click_anywhere', 'locale' => 'cg', 'text' => 'Kliknite bilo gdje da se vratite na početnu stranicu.'],
+            ['group' => 'reservation', 'key' => 'tariff_card_blackout', 'locale' => 'en', 'text' => 'Card payment is unavailable until midnight because a price change takes effect at 00:00. You can try again after the new prices apply. Advance payment and free reservations are not affected.'],
+            ['group' => 'reservation', 'key' => 'tariff_card_blackout', 'locale' => 'cg', 'text' => 'Plaćanje karticom nije dostupno do ponoći jer nova tarifa počinje u 00:00. Nakon toga možete pokušati ponovo po novim cijenama. Plaćanje iz avansa i besplatne rezervacije nisu obustavljeni.'],
+            ['group' => 'reservation', 'key' => 'tariff_advance_warning', 'locale' => 'en', 'text' => 'Prices change at midnight (00:00). The amount charged is the price in effect when the payment is completed. Until midnight the current price is used. Your advance balance must also cover the price that applies from midnight.'],
+            ['group' => 'reservation', 'key' => 'tariff_advance_warning', 'locale' => 'cg', 'text' => 'Cijene se mijenjaju u ponoć (00:00). Naplaćuje se cijena koja važi u trenutku plaćanja. Do ponoći važi trenutna cijena. Raspoloživi avans mora pokrivati i cijenu koja važi od ponoći.'],
+            ['group' => 'reservation', 'key' => 'tariff_confirm_amount', 'locale' => 'en', 'text' => 'The price has changed. Confirm the amount of :amount EUR before payment.'],
+            ['group' => 'reservation', 'key' => 'tariff_confirm_amount', 'locale' => 'cg', 'text' => 'Cijena je promijenjena. Potvrdite iznos od :amount EUR prije plaćanja.'],
+            ['group' => 'reservation', 'key' => 'tariff_advance_need_incoming', 'locale' => 'en', 'text' => 'Your advance balance must cover both the current price (:current EUR) and the price from midnight (:incoming EUR).'],
+            ['group' => 'reservation', 'key' => 'tariff_advance_need_incoming', 'locale' => 'cg', 'text' => 'Raspoloživi avans mora pokrivati i trenutnu cijenu (:current EUR) i cijenu od ponoći (:incoming EUR).'],
         ];
 
         $rows = array_map(function (array $row) use ($now): array {

@@ -200,6 +200,7 @@ final class GuestDailyFeeCheckoutTest extends TestCase
                 'license_plate' => 'GUESTDN1',
                 'email' => 'guest-daily@example.com',
                 'accept_terms' => 1,
+                'confirmed_amount' => '22.00',
             ])
             ->assertRedirect('https://bank.example/pay');
     }
@@ -219,6 +220,7 @@ final class GuestDailyFeeCheckoutTest extends TestCase
             'license_plate' => 'GUESTDN2',
             'email' => 'guest-temp@example.com',
             'accept_terms' => 1,
+            'confirmed_amount' => '18.50',
         ]);
 
         $temp = TempData::query()->latest('id')->firstOrFail();
@@ -256,6 +258,7 @@ final class GuestDailyFeeCheckoutTest extends TestCase
             'license_plate' => 'GUESTDN3',
             'email' => 'guest-card@example.com',
             'accept_terms' => 1,
+            'confirmed_amount' => '12.00',
         ])->assertRedirect('https://bank.example/pay');
     }
 

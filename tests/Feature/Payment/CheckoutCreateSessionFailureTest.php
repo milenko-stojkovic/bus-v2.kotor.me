@@ -74,6 +74,7 @@ class CheckoutCreateSessionFailureTest extends TestCase
             'email' => 'guest@example.com',
             'accept_terms' => 1,
             'accept_privacy' => 1,
+            'confirmed_amount' => '15.00',
         ];
     }
 
@@ -252,6 +253,7 @@ class CheckoutCreateSessionFailureTest extends TestCase
             'country' => 'ME',
             'license_plate' => 'KO555AA',
             'vehicle_type_id' => $fixtures['vt']->id,
+            'invoice_amount_snapshot' => '10.00',
             'email' => 'guest@example.com',
             'status' => TempData::STATUS_PENDING,
         ]);

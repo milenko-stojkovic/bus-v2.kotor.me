@@ -258,7 +258,7 @@ class PaymentSuccessHandler
             'email' => $temp->email,
             'preferred_locale' => $temp->preferred_locale,
             'status' => $status,
-            'invoice_amount' => ReservationInvoiceAmount::snapshotForNewReservation($status, $temp->vehicle_type_id),
+            'invoice_amount' => ReservationInvoiceAmount::forPaymentAttempt($temp, $status),
             'email_sent' => Reservation::EMAIL_NOT_SENT,
             'created_by_admin' => false,
         ]);
