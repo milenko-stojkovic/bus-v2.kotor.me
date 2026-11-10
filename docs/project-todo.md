@@ -42,7 +42,7 @@ Ove stavke **nisu blokada za produkciju**. Predviđene su za **doradu nakon real
 
 ## 4. Istorijska V1 atribucija i agencijski izvještaji
 
-Priprema je lokalno implementirana i nije deployovana (`project-done.md`, 2026-11-10). Ovo i dalje nije završeno:
+Priprema i read-only dry-run batch 1 su lokalno implementirani. Dry-run nije pokrenut nad produkcijom. Ovo i dalje nije završeno:
 
-- [ ] Pripisivanje istorijskih V1 rezervacija na `reservations.user_id` nije odobreno i nije izvršeno. Nijedan postojeći `user_id` nije mijenjan.
+- [ ] Pripisivanje istorijskih V1 rezervacija na `reservations.user_id` nije odobreno i nije izvršeno. Nijedan postojeći `user_id` nije mijenjan. CSV od 4.609 kandidata je predlog, ne nalog za upis.
 - [ ] Novi agencijski finansijski izvještaji (lista sa V1 istorijom, rezervacije po tablici, finansijska kartica) nisu implementirani.
