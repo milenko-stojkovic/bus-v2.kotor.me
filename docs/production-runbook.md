@@ -78,9 +78,13 @@ Podaci preneseni iz V1 tabele `reservations` u V2 bazu **`bus`**, preko privreme
 
 **Privremene tabele** `v1_reservations` / `v1_vehicle_types`: korištene samo tokom migracije; **uklonjene** iz baze **`bus`** nakon potvrde stabilnog rada V2 (operativno, 2026-06-19). Rollback i dalje preko V1 rezerve na **`opstinakotor_busnova`**, ne preko ovih tabela.
 
-### V1 batch 1 atribucija — nije izvršeno
+### V1 batch 1 atribucija — izvršeno i provjereno
 
-Produkcijski dry-run (`reservations:dry-run-v1-attribution`) je završen: **4.609 prihvaćenih, 0 odbijenih, 151 agencija**, bez upisa. Writer `reservations:apply-v1-attribution` je pripremljen i **nije pokrenut**. Nije u scheduleru. Ne šalje mejl, ne pravi račun i ne dira plaćanje. Jedina izmjena rezervacije je `reservations.user_id`, preko `HistoricalReservationAttributionService`.
+Batch 1 je završen na produkciji 2026-11-11, commit `829aa6dc5bc313f0034a108b2cde6d336bc7268b`. Writer je javio `Complete: yes`. SQL provjera: kandidata 4.609, pripisano 4.609, agencija 151, preostalih 0, blokiranih 0, aktivnih audit redova 4.609, različitih rezervacija 4.609, `user_id` jednak `agency_user_id` na 4.609, neslaganja 0, nedostajućih agencija 0. Ostale uvezene V1 rezervacije nisu u ovom batchu i nisu pripisane.
+
+Kriterijum ostaje tačan normalizovan email, jedinstveno tačno ime i isključiva normalizovana tablica među `active` i `removed` vozilima. Evidence je `v1-phase2-batch1:exact_email_unique_exact_name_exclusive_plate`. Komanda nije u scheduleru. Ne šalje mejl, ne pravi račun i ne dira plaćanje. Jedina izmjena rezervacije je `reservations.user_id`, preko `HistoricalReservationAttributionService`.
+
+Ponovni isti CSV preskače već upisane redove ovog batcha i, kad je sve već upisano, javlja `Wrote: 0` i `Complete: yes`. Slijede nalozi za ponovni pokušaj i za poništavanje samo ovog batcha.
 
 Komande se pokreću iz produkcijskog direktorijuma aplikacije. CSV je odobreni kandidatski fajl. `--report` mora biti postojeći direktorijum **van** repozitorijuma i ne smije biti isti fajl kao CSV. `--admin-id` je `admins.id` sa `admin_access = 1`.
 
@@ -100,7 +104,7 @@ php artisan reservations:apply-v1-attribution /path/to/v1_phase2_batch1_candidat
 
 Bez oba, `--execute` i tačnog `--confirm=APPLY-V1-BATCH-1`, nema upisa. Svaki prihvaćeni red je posebna transakcija. Pod zaključavanjem te rezervacije ponovo se čitaju trenutni `users` (oko 516 redova) i `active`/`removed` vozila (oko 2.635 redova) i primjenjuje se isti kriterijum. Nema watermarka i nema nove migracije. Evidence je `v1-phase2-batch1:exact_email_unique_exact_name_exclusive_plate`. Ako jedan red padne, komanda staje, izlaz je 1, a već upisani redovi ovog poziva ostaju. Ponovni isti poziv preskače redove koje je ovaj batch već upisao i nastavlja ostatak. Tuđa atribucija zaustavlja poziv i ne prepisuje se. Potpun ponovni poziv, kad su svi redovi već ovog batch-a, završava sa `Wrote: 0`, `Complete: yes` i izlazom 0. Izmjena tuđeg imena ili tablice koja se sačuva tek nakon početka transakcije tog reda u tom redu nije vidljiva. Tokom upisa ne mijenjati nazive agencija ni tablice.
 
-Upis ide u mirnom periodu. Tokom izvršavanja nema planiranih izmjena naziva agencija ni tablica. Prvi poziv mjeri ponašanje na produkciji i ograničen je na 50 upisa. Poslije provjere izvještaja, trajanja i broja upisa, sljedeći poziv može biti 250 ili 500. Izlaz 0 uz `Complete: no` znači da je limit dostignut, ne da je batch završen. Neočekivani pad provjere zaustavlja rad i traži provjeru prije novog poziva. Isti nalog se ponavlja dok izlaz ne bude `Complete: yes`.
+Završeni upis je išao u mirnom periodu, bez planiranih izmjena naziva agencija i tablica, prvo sa `--limit=50`, pa sa većim limitom dok nije javljeno `Complete: yes`. Isti oprez važi za svaki ponovni poziv. Izlaz 0 uz `Complete: no` znači da je limit dostignut, ne da je batch završen. Neočekivani pad provjere zaustavlja rad i traži provjeru prije novog poziva.
 
 ```bash
 php artisan reservations:apply-v1-attribution /path/to/v1_phase2_batch1_candidates.csv --report=/path/outside/repo/v1-batch1-apply.csv --execute --confirm=APPLY-V1-BATCH-1 --admin-id=ADMIN_ID --limit=50
