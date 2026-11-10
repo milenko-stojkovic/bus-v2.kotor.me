@@ -78,6 +78,42 @@ Podaci preneseni iz V1 tabele `reservations` u V2 bazu **`bus`**, preko privreme
 
 **Privremene tabele** `v1_reservations` / `v1_vehicle_types`: korištene samo tokom migracije; **uklonjene** iz baze **`bus`** nakon potvrde stabilnog rada V2 (operativno, 2026-06-19). Rollback i dalje preko V1 rezerve na **`opstinakotor_busnova`**, ne preko ovih tabela.
 
+### V1 batch 1 atribucija — nije izvršeno
+
+Produkcijski dry-run (`reservations:dry-run-v1-attribution`) je završen: **4.609 prihvaćenih, 0 odbijenih, 151 agencija**, bez upisa. Writer `reservations:apply-v1-attribution` je pripremljen i **nije pokrenut**. Nije u scheduleru. Ne šalje mejl, ne pravi račun i ne dira plaćanje. Jedina izmjena rezervacije je `reservations.user_id`, preko `HistoricalReservationAttributionService`.
+
+Komande se pokreću iz produkcijskog direktorijuma aplikacije. CSV je odobreni kandidatski fajl. `--report` mora biti postojeći direktorijum **van** repozitorijuma i ne smije biti isti fajl kao CSV. `--admin-id` je `admins.id` sa `admin_access = 1`.
+
+Preflight, bez upisa:
+
+```bash
+php artisan reservations:apply-v1-attribution /path/to/v1_phase2_batch1_candidates.csv --report=/path/outside/repo/v1-batch1-preflight.csv
+```
+
+Izlaz 0 i `Wrote: 0` znače da preflight nema blokirajuću razliku. Izlaz 1 znači da postoji razlika od dry-runa i da **nijedan** red nije upisan.
+
+Upis, tek po izričitom nalogu:
+
+```bash
+php artisan reservations:apply-v1-attribution /path/to/v1_phase2_batch1_candidates.csv --report=/path/outside/repo/v1-batch1-apply.csv --execute --confirm=APPLY-V1-BATCH-1 --admin-id=ADMIN_ID
+```
+
+Bez oba, `--execute` i tačnog `--confirm=APPLY-V1-BATCH-1`, nema upisa. Svaki prihvaćeni red je posebna transakcija. Pod zaključavanjem te rezervacije ponovo se čitaju trenutni `users` (oko 516 redova) i `active`/`removed` vozila (oko 2.635 redova) i primjenjuje se isti kriterijum. Nema watermarka i nema nove migracije. Evidence je `v1-phase2-batch1:exact_email_unique_exact_name_exclusive_plate`. Ako jedan red padne, komanda staje, izlaz je 1, a već upisani redovi ovog poziva ostaju. Ponovni isti poziv preskače redove koje je ovaj batch već upisao i nastavlja ostatak. Tuđa atribucija zaustavlja poziv i ne prepisuje se. Potpun ponovni poziv, kad su svi redovi već ovog batch-a, završava sa `Wrote: 0`, `Complete: yes` i izlazom 0. Izmjena tuđeg imena ili tablice koja se sačuva tek nakon početka transakcije tog reda u tom redu nije vidljiva. Tokom upisa ne mijenjati nazive agencija ni tablice.
+
+Upis ide u mirnom periodu. Tokom izvršavanja nema planiranih izmjena naziva agencija ni tablica. Prvi poziv mjeri ponašanje na produkciji i ograničen je na 50 upisa. Poslije provjere izvještaja, trajanja i broja upisa, sljedeći poziv može biti 250 ili 500. Izlaz 0 uz `Complete: no` znači da je limit dostignut, ne da je batch završen. Neočekivani pad provjere zaustavlja rad i traži provjeru prije novog poziva. Isti nalog se ponavlja dok izlaz ne bude `Complete: yes`.
+
+```bash
+php artisan reservations:apply-v1-attribution /path/to/v1_phase2_batch1_candidates.csv --report=/path/outside/repo/v1-batch1-apply.csv --execute --confirm=APPLY-V1-BATCH-1 --admin-id=ADMIN_ID --limit=50
+```
+
+Poništavanje samo ovog batch-a:
+
+```bash
+php artisan reservations:apply-v1-attribution --report=/path/outside/repo/v1-batch1-rollback.csv --rollback --execute --confirm=ROLLBACK-V1-BATCH-1 --admin-id=ADMIN_ID
+```
+
+`--rollback` bez `--execute` ne piše. Poništavaju se samo aktivni audit redovi sa tom evidence, jedan po jedan. Drugačija evidence ostaje. Ako red ili agencija više ne postoje, rollback staje i javlja djelimično poništenje; ne ide drugim SQL putem.
+
 ### Seeder / referentni podaci
 
 Zadržane seeder tabele (test podaci uklonjeni prije go-live):

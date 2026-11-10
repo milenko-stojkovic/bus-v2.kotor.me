@@ -42,7 +42,7 @@ Ove stavke **nisu blokada za produkciju**. Predviđene su za **doradu nakon real
 
 ## 4. Istorijska V1 atribucija i agencijski izvještaji
 
-Priprema i read-only dry-run batch 1 su lokalno implementirani. Dry-run nije pokrenut nad produkcijom. Ovo i dalje nije završeno:
+Produkcijski dry-run batch 1 je završen: 4.609 prihvaćenih, 0 odbijenih, 151 agencija. Writer je lokalno završen i testiran. Nije deployovan. Nijedan `user_id` nije upisan. Ovo i dalje nije završeno:
 
-- [ ] Pripisivanje istorijskih V1 rezervacija na `reservations.user_id` nije odobreno i nije izvršeno. Nijedan postojeći `user_id` nije mijenjan. CSV od 4.609 kandidata je predlog, ne nalog za upis.
+- [ ] Pripisivanje istorijskih V1 rezervacija na `reservations.user_id` nije izvršeno. `reservations:apply-v1-attribution` ne smije se pokrenuti sa `--execute` dok vlasnik izričito ne naredi taj poziv.
 - [ ] Novi agencijski finansijski izvještaji (lista sa V1 istorijom, rezervacije po tablici, finansijska kartica) nisu implementirani.

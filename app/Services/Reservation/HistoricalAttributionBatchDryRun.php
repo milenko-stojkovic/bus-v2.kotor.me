@@ -2,6 +2,7 @@
 
 namespace App\Services\Reservation;
 
+use App\Models\Reservation;
 use App\Models\Vehicle;
 use App\Support\ReservationOrigin;
 use Illuminate\Support\Facades\DB;
@@ -76,7 +77,8 @@ final class HistoricalAttributionBatchDryRun
      *     agencies: int,
      *     by_reason: array<string, int>,
      *     by_agency: list<array{user_id: int, name: string, count: int}>,
-     *     exclusions: list<array{reservation_id: string, proposed_user_id: string, reason: string}>
+     *     exclusions: list<array{reservation_id: string, proposed_user_id: string, reason: string}>,
+     *     accepted_rows: list<array{reservation_id: string, proposed_user_id: string}>
      * }
      */
     public function evaluate(string $csvPath): array
@@ -93,12 +95,17 @@ final class HistoricalAttributionBatchDryRun
         $databaseReasons = $this->databaseReasons($pending);
         $exclusions = [];
         $acceptedByAgency = [];
+        $acceptedRows = [];
 
         foreach ($rows as $index => $row) {
             $reason = $structural[$index] ?? $databaseReasons[$row['reservation_id']] ?? null;
             if ($reason === null) {
                 $agencyId = (int) $row['proposed_user_id'];
                 $acceptedByAgency[$agencyId] = ($acceptedByAgency[$agencyId] ?? 0) + 1;
+                $acceptedRows[] = [
+                    'reservation_id' => $row['reservation_id'],
+                    'proposed_user_id' => $row['proposed_user_id'],
+                ];
                 continue;
             }
 
@@ -140,7 +147,108 @@ final class HistoricalAttributionBatchDryRun
             'by_reason' => $byReason,
             'by_agency' => $byAgency,
             'exclusions' => $exclusions,
+            'accepted_rows' => $acceptedRows,
         ];
+    }
+
+    /**
+     * Re-check the approved three-part criterion against the current user and vehicle rows.
+     * A passed snapshot is used only by the read-only preflight after it has just loaded one.
+     * The writer omits it, so each attribution reads the tables again inside its transaction.
+     * Does not treat a null user_id as a failure; the attribution service checks that under the same lock.
+     *
+     * @param  array{
+     *     emails: array<string, list<int>>,
+     *     names: array<string, list<int>>,
+     *     plates: array<string, list<int>>,
+     *     agencies: array<int, array{email: string, name: string}>
+     * }|null  $snapshot
+     */
+    public function criterionMismatch(Reservation $reservation, int $agencyId, ?array $snapshot = null): ?string
+    {
+        $snapshot ??= $this->loadIdentitySnapshot();
+
+        return $this->reasonFromSnapshot(
+            $reservation->created_at,
+            $reservation->email,
+            $reservation->user_name,
+            $reservation->license_plate,
+            $agencyId,
+            $snapshot,
+        );
+    }
+
+    /**
+     * Current normalized email owners, name owners, plate owners, and agency identity.
+     * Reads users once and active/removed vehicles once. No timestamp watermark.
+     *
+     * @return array{
+     *     emails: array<string, list<int>>,
+     *     names: array<string, list<int>>,
+     *     plates: array<string, list<int>>,
+     *     agencies: array<int, array{email: string, name: string}>
+     * }
+     */
+    public function loadIdentitySnapshot(): array
+    {
+        return $this->readIdentityMaps();
+    }
+
+    /**
+     * @param  array{
+     *     emails: array<string, list<int>>,
+     *     names: array<string, list<int>>,
+     *     plates: array<string, list<int>>,
+     *     agencies: array<int, array{email: string, name: string}>
+     * }  $snapshot
+     */
+    private function reasonFromSnapshot(mixed $createdAt, mixed $email, mixed $userName, mixed $plate, int $agencyId, array $snapshot): ?string
+    {
+        if (! ReservationOrigin::isImportedV1($createdAt)) {
+            return self::REASON_NOT_IMPORTED_V1;
+        }
+        $agency = $snapshot['agencies'][$agencyId] ?? null;
+        if ($agency === null) {
+            return self::REASON_AGENCY_MISSING;
+        }
+
+        $normalizedEmail = self::normalizeEmail(is_string($email) ? $email : (string) $email);
+        if ($normalizedEmail === '') {
+            return self::REASON_EMAIL_MISSING;
+        }
+        $emailOwnerIds = $snapshot['emails'][$normalizedEmail] ?? [];
+        if ($normalizedEmail !== $agency['email'] || ! in_array($agencyId, $emailOwnerIds, true)) {
+            return self::REASON_EMAIL_MISMATCH;
+        }
+        if (count($emailOwnerIds) !== 1) {
+            return self::REASON_EMAIL_NOT_UNIQUE;
+        }
+
+        $normalizedName = self::normalizeAgencyName(is_string($userName) ? $userName : (string) $userName);
+        if ($normalizedName === '') {
+            return self::REASON_NAME_MISSING;
+        }
+        $nameOwnerIds = $snapshot['names'][$normalizedName] ?? [];
+        if ($normalizedName !== $agency['name'] || ! in_array($agencyId, $nameOwnerIds, true)) {
+            return self::REASON_NAME_MISMATCH;
+        }
+        if (count($nameOwnerIds) !== 1) {
+            return self::REASON_NAME_NOT_UNIQUE;
+        }
+
+        $normalizedPlate = DuplicateReservationAttemptService::normalizeLicensePlate(is_string($plate) ? $plate : (string) $plate);
+        if ($normalizedPlate === '') {
+            return self::REASON_PLATE_MISSING;
+        }
+        $owners = $snapshot['plates'][$normalizedPlate] ?? [];
+        if ($owners === []) {
+            return self::REASON_PLATE_NOT_IN_REGISTRY;
+        }
+        if ($owners !== [$agencyId]) {
+            return self::REASON_PLATE_NOT_EXCLUSIVE;
+        }
+
+        return null;
     }
 
     public static function normalizeEmail(?string $email): string
@@ -259,13 +367,9 @@ final class HistoricalAttributionBatchDryRun
         }
 
         $reservationIds = array_values(array_unique(array_map(static fn (array $row) => (int) $row['reservation_id'], $rows)));
-        $agencyIds = array_values(array_unique(array_map(static fn (array $row) => (int) $row['proposed_user_id'], $rows)));
 
         $reservations = $this->reservationsById($reservationIds);
-        $agencies = $this->usersById($agencyIds);
-        $emailOwners = $this->ownersByNormalizedEmail();
-        $nameOwners = $this->ownersByNormalizedName();
-        $plateOwners = $this->plateOwners();
+        $snapshot = $this->loadIdentitySnapshot();
         $activeAudits = $this->activeAuditReservationIds($reservationIds);
 
         $reasons = [];
@@ -289,55 +393,16 @@ final class HistoricalAttributionBatchDryRun
                 $reasons[$row['reservation_id']] = self::REASON_ACTIVE_AUDIT;
                 continue;
             }
-            if (! isset($agencies[$agencyId])) {
-                $reasons[$row['reservation_id']] = self::REASON_AGENCY_MISSING;
-                continue;
-            }
-
-            $email = self::normalizeEmail($reservation->email);
-            $agencyEmail = self::normalizeEmail($agencies[$agencyId]->email);
-            if ($email === '') {
-                $reasons[$row['reservation_id']] = self::REASON_EMAIL_MISSING;
-                continue;
-            }
-            $emailOwnerIds = $emailOwners[$email] ?? [];
-            if ($email !== $agencyEmail || ! in_array($agencyId, $emailOwnerIds, true)) {
-                $reasons[$row['reservation_id']] = self::REASON_EMAIL_MISMATCH;
-                continue;
-            }
-            if (count($emailOwnerIds) !== 1) {
-                $reasons[$row['reservation_id']] = self::REASON_EMAIL_NOT_UNIQUE;
-                continue;
-            }
-
-            $name = self::normalizeAgencyName($reservation->user_name);
-            $agencyName = self::normalizeAgencyName($agencies[$agencyId]->name);
-            if ($name === '') {
-                $reasons[$row['reservation_id']] = self::REASON_NAME_MISSING;
-                continue;
-            }
-            $nameOwnerIds = $nameOwners[$name] ?? [];
-            if ($name !== $agencyName || ! in_array($agencyId, $nameOwnerIds, true)) {
-                $reasons[$row['reservation_id']] = self::REASON_NAME_MISMATCH;
-                continue;
-            }
-            if (count($nameOwnerIds) !== 1) {
-                $reasons[$row['reservation_id']] = self::REASON_NAME_NOT_UNIQUE;
-                continue;
-            }
-
-            $plate = DuplicateReservationAttemptService::normalizeLicensePlate($reservation->license_plate);
-            if ($plate === '') {
-                $reasons[$row['reservation_id']] = self::REASON_PLATE_MISSING;
-                continue;
-            }
-            $owners = $plateOwners[$plate] ?? [];
-            if ($owners === []) {
-                $reasons[$row['reservation_id']] = self::REASON_PLATE_NOT_IN_REGISTRY;
-                continue;
-            }
-            if ($owners !== [$agencyId]) {
-                $reasons[$row['reservation_id']] = self::REASON_PLATE_NOT_EXCLUSIVE;
+            $reason = $this->reasonFromSnapshot(
+                $reservation->created_at,
+                $reservation->email,
+                $reservation->user_name,
+                $reservation->license_plate,
+                $agencyId,
+                $snapshot,
+            );
+            if ($reason !== null) {
+                $reasons[$row['reservation_id']] = $reason;
             }
         }
 
@@ -401,74 +466,61 @@ final class HistoricalAttributionBatchDryRun
     }
 
     /**
-     * @return array<string, list<int>>
+     * @return array{
+     *     emails: array<string, list<int>>,
+     *     names: array<string, list<int>>,
+     *     plates: array<string, list<int>>,
+     *     agencies: array<int, array{email: string, name: string}>
+     * }
      */
-    private function ownersByNormalizedEmail(): array
+    private function readIdentityMaps(): array
     {
-        $owners = [];
-        DB::table('users')->select(['id', 'email'])->orderBy('id')->chunkById(self::CHUNK, function ($rows) use (&$owners): void {
+        $emails = [];
+        $names = [];
+        $agencies = [];
+        DB::table('users')->select(['id', 'name', 'email'])->orderBy('id')->chunkById(self::CHUNK, function ($rows) use (&$emails, &$names, &$agencies): void {
             foreach ($rows as $row) {
+                $id = (int) $row->id;
                 $email = self::normalizeEmail($row->email);
-                if ($email === '') {
-                    continue;
-                }
-                $owners[$email][] = (int) $row->id;
-            }
-        });
-
-        return $owners;
-    }
-
-    /**
-     * @return array<string, list<int>>
-     */
-    private function ownersByNormalizedName(): array
-    {
-        $owners = [];
-        DB::table('users')->select(['id', 'name'])->orderBy('id')->chunkById(self::CHUNK, function ($rows) use (&$owners): void {
-            foreach ($rows as $row) {
                 $name = self::normalizeAgencyName($row->name);
-                if ($name === '') {
-                    continue;
+                $agencies[$id] = ['email' => $email, 'name' => $name];
+                if ($email !== '') {
+                    $emails[$email][] = $id;
                 }
-                $owners[$name][] = (int) $row->id;
+                if ($name !== '') {
+                    $names[$name][] = $id;
+                }
             }
         });
 
-        return $owners;
-    }
-
-    /**
-     * Normalized plate => sorted agency user ids.
-     * A null vehicle user_id is recorded as 0 and therefore is not an exclusive agency owner.
-     *
-     * @return array<string, list<int>>
-     */
-    private function plateOwners(): array
-    {
-        $owners = [];
+        $plateSets = [];
         DB::table('vehicles')
             ->select(['id', 'user_id', 'license_plate'])
             ->whereIn('status', [Vehicle::STATUS_ACTIVE, Vehicle::STATUS_REMOVED])
             ->orderBy('id')
-            ->chunkById(self::CHUNK, function ($rows) use (&$owners): void {
+            ->chunkById(self::CHUNK, function ($rows) use (&$plateSets): void {
                 foreach ($rows as $row) {
                     $plate = DuplicateReservationAttemptService::normalizeLicensePlate($row->license_plate);
                     if ($plate === '') {
                         continue;
                     }
-                    $owners[$plate][(int) ($row->user_id ?? 0)] = true;
+                    $plateSets[$plate][(int) ($row->user_id ?? 0)] = true;
                 }
             });
 
-        $exclusive = [];
-        foreach ($owners as $plate => $userIds) {
+        $plates = [];
+        foreach ($plateSets as $plate => $userIds) {
             $ids = array_map('intval', array_keys($userIds));
             sort($ids);
-            $exclusive[$plate] = $ids;
+            $plates[$plate] = $ids;
         }
 
-        return $exclusive;
+        return [
+            'emails' => $emails,
+            'names' => $names,
+            'plates' => $plates,
+            'agencies' => $agencies,
+        ];
     }
 
     /**

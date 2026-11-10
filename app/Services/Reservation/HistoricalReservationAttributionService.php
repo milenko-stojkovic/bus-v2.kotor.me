@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\ReservationAttribution;
 use App\Models\User;
 use App\Support\ReservationOrigin;
+use Closure;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -25,8 +26,13 @@ final class HistoricalReservationAttributionService
      */
     public const ACCOUNT_DELETED_EVIDENCE = 'agency_account_deleted';
 
-    public function attribute(Reservation $reservation, User $agency, string $evidence, Admin $actor): ReservationAttribution
-    {
+    public function attribute(
+        Reservation $reservation,
+        User $agency,
+        string $evidence,
+        Admin $actor,
+        ?Closure $assertLocked = null,
+    ): ReservationAttribution {
         $evidence = trim($evidence);
         if ($evidence === '') {
             throw new HistoricalAttributionException(
@@ -35,7 +41,7 @@ final class HistoricalReservationAttributionService
             );
         }
 
-        return DB::transaction(function () use ($reservation, $agency, $evidence, $actor): ReservationAttribution {
+        return DB::transaction(function () use ($reservation, $agency, $evidence, $actor, $assertLocked): ReservationAttribution {
             $locked = Reservation::query()->whereKey($reservation->id)->lockForUpdate()->firstOrFail();
             $this->assertImportedV1($locked);
 
@@ -44,6 +50,10 @@ final class HistoricalReservationAttributionService
                     HistoricalAttributionException::ALREADY_ATTRIBUTED,
                     'Reservation already has an agency attribution.',
                 );
+            }
+
+            if ($assertLocked !== null) {
+                $assertLocked($locked);
             }
 
             $previousUserId = $locked->user_id;
