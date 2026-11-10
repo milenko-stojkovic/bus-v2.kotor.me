@@ -182,6 +182,22 @@ php artisan event:cache
 
 ---
 
+## Zakazana promjena cijena — lokalno gotovo, nije deployovano (2026-11-10)
+
+Implementacija i QA su lokalni. Produkcijske cijene **nisu** mijenjane. Deploy nije dio ovog zapisa i ne smije sam zakazati promjenu cijene.
+
+Kad deploy bude odobren:
+
+- [ ] `php artisan migrate --force` — tabele `price_change_schedules` i `price_change_schedule_lines`, plus UI tekstovi. Migracija **ne** mijenja `vehicle_types.price`.
+- [ ] `php artisan schedule:list` sadrži `prices:apply-due` (svake minute, `Europe/Podgorica`). Checkout i admin stranica ionako zovu `VehicleTariff::applyDue()`.
+- [ ] `RESERVATIONS_PENDING_EXPIRE_MINUTES` ostaje **15**. Blackout je default **30** (`PRICE_CHANGE_CARD_BLACKOUT_MINUTES`), upozorenje avansa default **15** (`PRICE_CHANGE_ADVANCE_WARNING_MINUTES`). Duži expire traži duži blackout. Oba env-a su opciona.
+- [ ] `GET /admin/podesavanja` prikazuje **Promjena cijena** i trenutne cijene, bez zakazanog reda, dok admin ne napravi jedan.
+- [ ] Jedan običan checkout i dalje koristi trenutni cjenovnik. Besplatna rezervacija i avansni top-up nisu u blackoutu.
+
+**Rollback:** `migrate:rollback` briše nove tabele i **ne** vraća `vehicle_types.price` ako je raspored već primijenjen. Prije primjene, otkazivanje u adminu (`Ukloni`) ostavlja cjenovnik netaknut. Iznos već plaćene rezervacije ostaje `reservations.invoice_amount` (`payment-state-machine.md`).
+
+---
+
 ## Posle deploy-a (smoke)
 
 - [ ] **`GET /up`** (health) — 200.

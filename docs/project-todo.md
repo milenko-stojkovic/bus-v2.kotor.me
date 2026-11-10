@@ -1,10 +1,18 @@
 ﻿# Project TODO (otvoreno)
 
-**Poslednje ažuriranje:** 2026-07-01
+**Poslednje ažuriranje:** 2026-11-10
 
 Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/project-done.md` i ukloni odavde.
 
 **Produkcija V2 je u hodu** na `https://bus.kotor.me` (folder `bus-v2.kotor.me`, baza `bus`). V1 rezerva: `https://bus-v1.kotor.me`. Cut-over rezime: `production-runbook.md`. Ovaj fajl sadrži **samo preostalo**.
+
+---
+
+## 0. Deploy — zakazana promjena cijena
+
+Lokalna implementacija i QA su završeni (**2026-11-10**, v. `project-done.md`). **Nije** na produkciji. Deploy ne mijenja `vehicle_types.price` dok admin ne zakaže promjenu.
+
+- [ ] Produkcijski deploy zakazane promjene cijena: migracije, `prices:apply-due` u `schedule:list`, `RESERVATIONS_PENDING_EXPIRE_MINUTES` ostaje **15**. Rollback migracije ne vraća cjenovnik ako je raspored već primijenjen. Checklist: **`production-runbook.md`** § Zakazana promjena cijena.
 
 ---
 

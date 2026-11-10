@@ -249,7 +249,7 @@ Korisnički naziv menija: **Promjena tablica** (EN: **Plate change**). Ruta i kl
 - **Dnevna naknada** (`daily_ticket`): promjena tablice samo kad je `reservation_date` **striktno posle** današnjeg dana (`Europe/Podgorica`); isti dan i prošlost blokirani radi sprečavanja zloupotrebe. Konflikt termina (drop/pick) **ne** važi.
 
 - Dozvoljeno samo vozilo istog korisnika koje ispunjava:
-  - **kategorija**: **`vehicle_types.price` ≤** cene kategorije **plaćene na rezervaciji** (`reservations.vehicle_type_id` snapshot — **ne** trenutno dodijeljeno vozilo); pri promjeni tablice **`vehicle_type_id`** i **`invoice_amount`** se **ne** mijenjaju
+  - **kategorija**: trenutni **`vehicle_types.price`** kandidata **≤** trenutnom **`vehicle_types.price`** kategorije zapisane na rezervaciji (`reservations.vehicle_type_id`, ne iznos koji je tada plaćen i ne kategorija trenutno dodijeljenog vozila). Promjena tablice **ne** preračunava `invoice_amount` i **ne** mijenja `vehicle_type_id`
   - **dostupnost (samo Termini)**: kandidat nema konflikt za isti datum ako je **`drop_off_time_slot_id` isti** (drop=drop) **ili** **`pick_up_time_slot_id` isti** (pick=pick); cross-match (**drop=pick** / **pick=drop**) nije konflikt
 - **Plaćena** rezervacija: reset **`invoice_sent_at`** / **`email_sent`**, zatim **`SendInvoiceEmailJob`** (PDF se generiše u jobu, bez trajnog skladišta).
 - **Besplatna** (`reservations.status = free`): ažurira se samo **`license_plate`** / **`vehicle_id`** (bez fiskalizacije, bez računa). Reset **`invoice_sent_at`** / **`email_sent`**, zatim **`SendAdminUpdatedReservationDocumentJob`** — isti job kao poslije admin izmjene rezervacije: predmet/tijelo **`free_reservation_updated_email_*`** (`ui_translations`), prilog **`free-confirmation-{id}-{Y-m-d}.pdf`** (`ReservationPdfFilename` / `FreeReservationPdfGenerator::renderBinary`), referenca u tijelu **`Broj rezervacije: {id}`** ili **`Referenca transakcije`** ako postoji MTID (`ReservationEmailReferenceLine`). Pad slanja **ne** poništava promjenu tablice; agencija može ručno preuzeti PDF sa **Promjena tablica** ili **Realizovane** (`GET /panel/reservations/{id}/invoice/view`).
@@ -324,7 +324,7 @@ Checkout za besplatan termin **ne** ide na banku i **ne** pokreće fiskalizaciju
 
 Ako pokušate da obrišete vozilo koje je vezano za **predstojeće rezervacije**, sistem:
 
-- prvo proverava da li za svaku spornu predstojeću rezervaciju postoji zamensko vozilo (ista agencija, **ista ili niža** kategorija, i bez konflikta po pravilima iznad)
+- prvo proverava da li za svaku spornu predstojeću rezervaciju postoji zamensko vozilo (ista agencija, **ista ili niža** kategorija po trenutnom `vehicle_types.price`, i bez konflikta po pravilima iznad)
 - ako **ne postoji** zamena za bar jednu rezervaciju → brisanje se ne dozvoljava i prikazuje se poruka da je potrebno dodati drugo vozilo iste kategorije
 - ako **postoji** zamena za sve → otvara se workflow **`GET /panel/vehicles/{vehicle}/remove`** gde za svaku spornu rezervaciju birate zamensko vozilo, pa se uz potvrdu:
   - u jednoj transakciji radi finalna provera kombinacije (da ista zamena ne napravi konflikt drop=drop/pick=pick između više rezervacija),

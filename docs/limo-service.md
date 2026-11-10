@@ -2,7 +2,7 @@
 
 **Poslednje ažuriranje:** 2026-10-13
 
-**Produkcija (potvrđeno 2026-10-13):** kartica **Limo** je vidljiva i vodi na informativnu stranicu. QR generisanje, posebna Limo rezervacija i evidentičar **nisu** agencijska funkcija (`LIMO_QR_WORKFLOW_ENABLED` nije uključen). Limo vozilo plaća **dnevnu naknadu** na **Rezervacije**, karticom ili iz avansa. Sadržaj stranice i pravila menija: **[agency-panel.md](./agency-panel.md)**.
+**Produkcija (potvrđeno 2026-10-13):** kartica **Limo** je vidljiva i vodi na informativnu stranicu. QR generisanje, posebna Limo rezervacija i evidentičar **nisu** agencijska funkcija (`LIMO_QR_WORKFLOW_ENABLED` nije uključen). Limo vozilo plaća **dnevnu naknadu** na **Rezervacije**, karticom ili iz avansa, po trenutnom cjenovniku kategorije (ista zakazana promjena cijena kao ostale kategorije). Legacy QR pickup i `LimoPickupService::AMOUNT_EUR` nisu taj cjenovnik i nisu mijenjani. Sadržaj stranice i pravila menija: **[agency-panel.md](./agency-panel.md)**.
 
 **Phase 2 (2026-06):** QR workflow je **deaktiviran** (`LIMO_QR_WORKFLOW_ENABLED=false`). Kod, tabele i admin istorija su očuvani; rollback preko ENV flaga nije produkcijski režim.
 

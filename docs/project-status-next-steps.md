@@ -1,10 +1,12 @@
 # Project status — indeks
 
-**Poslednje ažuriranje:** 2026-06-19
+**Poslednje ažuriranje:** 2026-11-10
 
 **Završena tranzicija (2026-06):** Dnevna naknada / Daily fee (korisnički naziv), Limo QR workflow ukinut, Control provjera dnevne naknade, Termini bez limo putničkih kategorija 4+1–7+1, **Promjena tablica** (bivše Predstojeće rezervacije; dnevna naknada — promjena tablice samo za buduće datume od 2026-06-25). Sažetak: `project-done.md` sekcija 2026-06.
 
 **Produkcija V2 (2026-06-19):** **`https://bus.kotor.me`** (folder `bus-v2.kotor.me`, baza `bus`). V1 rezerva: **`https://bus-v1.kotor.me`**. Cut-over + migracija 21.342 rezervacija: **`production-runbook.md`**. Otvoreno u **`project-todo.md`**: post-go-live **operational tuning / production hardening** (npr. retencija `temp_data`, alert pragovi) — **ne** blokada za rad produkcije.
+
+**Lokalno, nije deployovano (2026-11-10):** zakazana promjena cijena je implementirana i QA je prošao. Sledeći korak je odobreni produkcijski deploy. Ne tretirati feature kao već pušten. Sažetak: `project-done.md`. Deploy i rollback: `production-runbook.md`. Pravila iznosa: `payment-state-machine.md`. Admin UI: `admin-panel.md` §5.1.
 
 Ovaj fajl je **kratak smerač**. Detalji su podeljeni da bi novi chat mogao da učita samo ono što treba. Ako prilažeš samo folder **`docs/`**, počni od **[README.md](./README.md)** pa ovde.
 

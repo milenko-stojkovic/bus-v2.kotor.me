@@ -22,6 +22,7 @@
 - **Always in Montenegrin (cg).** Legal requirement (local government issuer).
 - **Never** generate invoice in en or any other language.
 - **PaidInvoicePdfGenerator** / **FreeReservationPdfGenerator** use **hardcoded Montenegrin strings** for PDF content and set `app()->setLocale('cg')` while rendering. Do not rely on app locale from request/callback for invoice content.
+- Iznos plaćenog PDF-a i fiskalizacije je **`reservations.invoice_amount`**. Kasnija promjena `vehicle_types.price` ne preračunava taj iznos ni retry. Autoritet: **`payment-state-machine.md`**.
 
 ### 3.1 PDF attachment / download filenames
 
