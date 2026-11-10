@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Notifications\NoreplyResetPassword;
 use App\Notifications\NoreplyVerifyEmail;
+use App\Services\Reservation\HistoricalReservationAttributionService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -32,6 +33,15 @@ class User extends Authenticatable implements MustVerifyEmail
             DB::table('free_reservation_requests')
                 ->where('user_id', $user->id)
                 ->update(['user_id' => null]);
+        });
+
+        static::deleted(function (User $user): void {
+            if (! Schema::hasTable('reservation_attributions')) {
+                return;
+            }
+
+            app(HistoricalReservationAttributionService::class)
+                ->releaseAfterAgencyAccountDeleted((int) $user->id);
         });
     }
 

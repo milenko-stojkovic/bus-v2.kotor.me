@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -78,7 +79,9 @@ class ProfileController extends Controller
         Auth::logout();
 
         try {
-            $deleted = $user->delete();
+            // One transaction covers the user DELETE (including MySQL ON DELETE SET NULL)
+            // and the deleted-event attribution cleanup. A cleanup failure rolls the account back.
+            $deleted = DB::transaction(fn () => $user->delete());
         } catch (QueryException $e) {
             report($e);
 

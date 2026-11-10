@@ -58,7 +58,7 @@ final class AdminAgencyReservationStatisticsTest extends TestCase
         $slot = $this->seedSlot();
         $vt = VehicleType::query()->first() ?? VehicleType::query()->create(['price' => 20]);
 
-        return Reservation::query()->create(array_merge([
+        $attributes = array_merge([
             'user_name' => 'Test User',
             'country' => 'ME',
             'license_plate' => 'KO'.Str::upper(Str::random(4)).'AA',
@@ -74,7 +74,20 @@ final class AdminAgencyReservationStatisticsTest extends TestCase
             'created_by_admin' => false,
             'created_at' => now()->subYear(),
             'updated_at' => now()->subYear(),
-        ], $overrides));
+        ], $overrides);
+        $createdAt = $attributes['created_at'] ?? null;
+        $updatedAt = $attributes['updated_at'] ?? $createdAt;
+        unset($attributes['created_at'], $attributes['updated_at']);
+
+        $reservation = Reservation::query()->create($attributes);
+        if ($createdAt !== null) {
+            DB::table('reservations')->where('id', $reservation->id)->update([
+                'created_at' => $createdAt,
+                'updated_at' => $updatedAt,
+            ]);
+        }
+
+        return $reservation->fresh();
     }
 
     public function test_a_v2_statistics_calculated_correctly_for_current_year(): void
@@ -540,15 +553,13 @@ final class AdminAgencyReservationStatisticsTest extends TestCase
 
     public function test_post_cutover_guest_reservations_excluded_from_v1_pool(): void
     {
-        config(['agency_statistics.v1_cutover_at' => '2020-01-01 00:00:00']);
-
         $agency = User::factory()->create(['email' => 'info@montetravel.me']);
 
         $this->createReservation([
             'user_id' => null,
             'email' => 'info@montetravel.me',
-            'created_at' => Carbon::parse('2025-06-01'),
-            'updated_at' => Carbon::parse('2025-06-01'),
+            'created_at' => Carbon::parse('2026-06-18 00:00:00'),
+            'updated_at' => Carbon::parse('2026-06-18 00:00:00'),
         ]);
 
         $v1 = app(AgencyV1HistoricalEstimateService::class)->compute($agency);

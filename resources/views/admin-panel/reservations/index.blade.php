@@ -214,6 +214,7 @@
                                             <div><span class="text-gray-500">Email rezervacije:</span> {{ $reservationEmail }}</div>
                                         @endif
                                     @endif
+                                    <div><span class="text-gray-500">Porijeklo:</span> {{ \App\Support\ReservationOrigin::adminLabel($r) }}</div>
                                     <div><span class="text-gray-500">Država:</span> {{ $r->country }}</div>
                                     <div><span class="text-gray-500">Tablica:</span> {{ $r->license_plate }}</div>
                                     <div><span class="text-gray-500">Vozilo:</span> {{ $r->vehicleType?->formatLabel('cg', 'EUR') ?? '—' }}</div>

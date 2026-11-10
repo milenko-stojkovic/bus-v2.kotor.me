@@ -140,6 +140,10 @@
                         </div>
                     @endif
                 @endif
+                <div>
+                    <dt class="text-gray-500">Porijeklo</dt>
+                    <dd class="font-medium text-gray-900 mt-0.5">{{ \App\Support\ReservationOrigin::adminLabel($reservation) }}</dd>
+                </div>
                 @if ($reservation->status === 'paid')
                     <div>
                         <dt class="text-gray-500">Fiskalni JIR</dt>

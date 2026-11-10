@@ -12,6 +12,7 @@ use App\Support\ReservationKind;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -53,8 +54,7 @@ final class AdminPanelReservationShowTest extends TestCase
     {
         $slot = $this->seedSlot();
         $vt = VehicleType::query()->first() ?? VehicleType::query()->create(['price' => 20]);
-
-        return Reservation::query()->create(array_merge([
+        $attributes = array_merge([
             'user_name' => 'Past Guest',
             'country' => 'ME',
             'license_plate' => 'KO'.Str::upper(Str::random(4)).'AA',
@@ -75,7 +75,20 @@ final class AdminPanelReservationShowTest extends TestCase
             'created_by_admin' => false,
             'created_at' => now()->subYear(),
             'updated_at' => now()->subYear(),
-        ], $overrides));
+        ], $overrides);
+        $createdAt = $attributes['created_at'] ?? null;
+        $updatedAt = $attributes['updated_at'] ?? $createdAt;
+        unset($attributes['created_at'], $attributes['updated_at']);
+
+        $reservation = Reservation::query()->create($attributes);
+        if ($createdAt !== null) {
+            DB::table('reservations')->where('id', $reservation->id)->update([
+                'created_at' => $createdAt,
+                'updated_at' => $updatedAt,
+            ]);
+        }
+
+        return $reservation->fresh();
     }
 
     public function test_a_admin_can_click_reservation_id_from_agency_detail_and_gets_200(): void

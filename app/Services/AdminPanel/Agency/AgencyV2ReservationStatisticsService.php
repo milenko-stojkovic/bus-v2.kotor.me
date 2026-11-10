@@ -6,13 +6,15 @@ use App\Models\Reservation;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\ReservationKind;
+use App\Support\ReservationOrigin;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class AgencyV2ReservationStatisticsService
 {
     /**
-     * Official V2 statistics for the current calendar year (agency-linked only).
+     * Official V2 statistics for the current calendar year.
+     * Agency-linked native V2 rows only. Imported V1 rows stay out after user_id is set.
      *
      * @return array<string, mixed>
      */
@@ -27,6 +29,7 @@ final class AgencyV2ReservationStatisticsService
             ->where('user_id', $agency->id)
             ->whereDate('reservation_date', '>=', $from)
             ->whereDate('reservation_date', '<=', $to);
+        ReservationOrigin::scopeNativeV2($base);
 
         $aggregate = (clone $base)->select([
             DB::raw('COUNT(*) as total'),

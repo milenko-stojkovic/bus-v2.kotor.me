@@ -8,7 +8,7 @@ use App\Models\Vehicle;
 use App\Support\AgencyHeuristicConfidence;
 use App\Support\MontenegroLicensePlate;
 use App\Support\ReservationKind;
-use Carbon\Carbon;
+use App\Support\ReservationOrigin;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +21,7 @@ final class AgencyV1HistoricalEstimateService
     public function compute(User $agency, string $tableSort = 'confidence'): array
     {
         $ttl = (int) config('agency_statistics.heuristic_cache_ttl', 3600);
-        $cacheKey = 'agency_v1_hist:'.$agency->id.':'.config('agency_statistics.v1_cutover_at');
+        $cacheKey = 'agency_v1_hist:'.$agency->id.':'.ReservationOrigin::IMPORTED_BEFORE;
 
         if ($ttl <= 0) {
             return $this->buildEstimate($agency, $tableSort);
@@ -158,11 +158,9 @@ final class AgencyV1HistoricalEstimateService
      */
     private function fetchCandidateReservations(User $agency, array $context): Collection
     {
-        $cutover = Carbon::parse((string) config('agency_statistics.v1_cutover_at', '2026-06-19 00:00:00'));
-
         $query = Reservation::query()
             ->whereNull('user_id')
-            ->where('created_at', '<', $cutover)
+            ->where('created_at', '<', ReservationOrigin::IMPORTED_BEFORE)
             ->select([
                 'id',
                 'reservation_date',

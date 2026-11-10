@@ -307,6 +307,7 @@ Sve statistike poštuju:
 
 - `WHERE user_id = auth()->id()`
 - `reservation_date` u \([date_from, date_to]\)
+- Pripisana uvezena V1 rezervacija ulazi u ovaj pregled zajedno sa nativnim V2 rezervacijama te agencije. Službena admin V2 statistika je isključuje (`ReservationOrigin`).
 
 KPI-ovi ostaju isti (samo uz filter):
 
@@ -383,4 +384,4 @@ Ovo nije potvrđeno i dokument ne smije da ga predstavi kao ponašanje sučelja:
 - **Prijevodi.** Neki kontroli ostaju na engleskom ili na crnogorskom bez obzira na zastavicu: **Log Out** u meniju naloga (`__('Log Out')`), **Email** i **Reset Password** na resetu lozinke, `auth.failed` / `auth.throttle` (nema `lang/` u repou). Predmeti mejla potvrde avansa i godišnje kartice avansa su fiksni crnogorski tekst. `user.delete_account_blocked` i `user.delete_account_failed_title` koriste se u Blade-u, a nisu u `UiTranslationsSeeder`. Tekst na ekranu zavisi od reda u `ui_translations`, ne samo od seedera.
 - **Lozinka.** Registracija, reset i profil koriste `Password::defaults()` bez lokalnog pravila u `AppServiceProvider`. Tačna minimalna dužina i složenost nisu ovdje utvrđene.
 - **PDF uputstvo.** `public/docs/cgbuskotor.pdf` i `engbuskotor.pdf` postoje i link se prikazuje ako je fajl na disku. Usklađenost cijelog PDF-a sa trenutnim ekranima nije provjerena. Tekstualna napomena za promjenu tablice: **[agency-user-guide.md](./agency-user-guide.md)** i `docs/agency-user-guide-plate-change.txt`.
-- **Brisanje naloga.** `ProfileController::destroy` traži trenutnu lozinku. Ako brisanje baci `QueryException` ili vrati false, nalog ostaje i korisnik vidi poruku iz `user.delete_account_blocked` (fallback na crnogorskom ako ključ nije u bazi). Koji tačno zapisi blokiraju brisanje nije posebno dokumentovan izvan tog hvatanja izuzetka.
+- **Brisanje naloga.** `ProfileController::destroy` traži trenutnu lozinku. Brisanje naloga, MySQL `ON DELETE SET NULL` i zatvaranje aktivne istorijske atribucije izvršavaju se u jednoj transakciji. Ako brisanje baci `QueryException` ili vrati false, nalog ostaje i korisnik vidi poruku iz `user.delete_account_blocked` (fallback na crnogorskom ako ključ nije u bazi). Koji tačno zapisi blokiraju brisanje nije posebno dokumentovan izvan tog hvatanja izuzetka.

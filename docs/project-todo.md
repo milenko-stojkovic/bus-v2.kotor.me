@@ -37,3 +37,12 @@ Ove stavke **nisu blokada za produkciju**. Predviđene su za **doradu nakon real
 - [ ] **iPhone (opciono):** eventualno samo za agencije i samo ako bude traženo (nije prioritet sada).
 - [ ] **Prije mobile produkcije:** poseban audit backend-a (kontroleri/Blade/session/redirect) i identifikacija mjesta koja su previše web-specifična ili nisu API-friendly; definisati šta izdvojiti u servise/API tokove za mobile klijente.
 - [ ] **Ograničenje ovog TODO-a:** u ovoj fazi **ne** mijenjati PHP kod, rute, validaciju, poslovnu logiku niti uvoditi API — samo plan i evidencija.
+
+---
+
+## 4. Istorijska V1 atribucija i agencijski izvještaji
+
+Priprema je lokalno implementirana i nije deployovana (`project-done.md`, 2026-11-10). Ovo i dalje nije završeno:
+
+- [ ] Pripisivanje istorijskih V1 rezervacija na `reservations.user_id` nije odobreno i nije izvršeno. Nijedan postojeći `user_id` nije mijenjan.
+- [ ] Novi agencijski finansijski izvještaji (lista sa V1 istorijom, rezervacije po tablici, finansijska kartica) nisu implementirani.

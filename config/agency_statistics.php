@@ -7,13 +7,14 @@ return [
     | V1 cut-over timestamp
     |--------------------------------------------------------------------------
     |
-    | Reservations with user_id = null and created_at strictly before this
-    | moment are treated as the unmigrated V1 historical pool for heuristic
-    | reconstruction on the agency detail page. Post-cut-over guest reservations
-    | are excluded from that pool.
+    | Canonical imported-V1 boundary. The value lives on ReservationOrigin so
+    | origin stays independent of user_id and is not overridden by env.
+    | Heuristic reconstruction still also requires user_id null. Attributed
+    | V1 rows leave that pool. Official V2 statistics use the same boundary
+    | to exclude imported rows after user_id is set.
     |
     */
-    'v1_cutover_at' => env('AGENCY_STATS_V1_CUTOVER_AT', '2026-06-19 00:00:00'),
+    'v1_cutover_at' => \App\Support\ReservationOrigin::IMPORTED_BEFORE,
 
     /*
     |--------------------------------------------------------------------------

@@ -196,7 +196,7 @@ Operativna lista rezervacija (naredna 3 sata + pretraga). Kontroler akcija: **`R
 - **Kategorija vozila:** u edit formi samo tipovi sa **`price` ≤** cene trenutnog tipa (`vehicle_types` po postojećem poretku cene).
 - **Kalendar:** granice pretrage — `AdminReservationDateBounds` (min = najraniji datum u `reservations`, max = danas + 90 dana); edit — danas … danas + 90.
 - **Email i slanje dokumenta:** račun (paid) i potvrda (free) uvek se šalju na **`reservations.email`** — to je snapshot na rezervaciji, isti izvor kao u PDF-u. **Admin** ima pravo da menja taj snapshot (uključujući email) u toku izmene rezervacije. Posle uspješne izmene: **`SendAdminUpdatedReservationDocumentJob`** regeneriše PDF iz trenutnih podataka rezervacije i šalje ažurirani prilog (predmet/tijelo `paid_invoice_updated_*` / `free_reservation_updated_*` u **`ui_translations`**). **Ne mijenjaju se** MTID, status, `invoice_amount`, JIR/IKOF ni fiskalni zapisi. **`users.email`** se ne koristi kao primalac.
-- **Lista rezultata:** **PDF**; **Izmeni** (aktivan link dok rezervacija nije realizovana po `AdminReservationEditPolicy` / `PanelReservationListService`, vremenska zona **Europe/Podgorica**); za **realizovane** — link **Detalj** na **`panel_admin.reservations.show`** (read-only, sa `rq` za povratak na pretragu).
+- **Lista rezultata:** **PDF**; **Izmeni** (aktivan link dok rezervacija nije realizovana po `AdminReservationEditPolicy` / `PanelReservationListService`, vremenska zona **Europe/Podgorica**); za **realizovane** — link **Detalj** na **`panel_admin.reservations.show`** (read-only, sa `rq` za povratak na pretragu). Lista i detalj prikazuju **Porijeklo** preko `ReservationOrigin::adminLabel`: V1 istorijska pripisana agenciji, V1 istorijska nije pripisana, V2 agencijska, V2 gost. **Tip korisnika** i dalje prati trenutni `user_id`.
 
 **Bez izmena na `temp_data`:** ovaj modul ne čita i ne piše `temp_data`.
 
@@ -510,7 +510,7 @@ Uvijek prikazuje sekciju **Statistika rezervacija** (ne zavisi od `advance_payme
 **Službena V2 statistika (autoritativno):**
 
 - Period: **tekuća kalendarska godina** (`reservation_date`, timezone `Europe/Podgorica`).
-- Izvor: samo rezervacije sa `reservations.user_id = {agencija}`.
+- Izvor: rezervacije sa `reservations.user_id = {agencija}` koje su **nativni V2** zapis. Uvezena V1 kohorta (`created_at < 2026-06-18 00:00:00`, `App\Support\ReservationOrigin`) ostaje van ovog bloka i poslije pripisivanja `user_id`.
 - Servis: **`AgencyV2ReservationStatisticsService`**.
 - Prikaz: ukupno / plaćene / besplatne; Termini vs dnevna naknada (`reservation_kind`); sume `invoice_amount` po tipu; broj različitih tablica u godini; broj aktivnih vozila agencije; **aktivnost agencije** (prva/posljednja rezervacija u godini, `—` ako nema); prosjek rezervacija po mjesecu (do tekućeg mjeseca).
 
@@ -518,7 +518,7 @@ Uvijek prikazuje sekciju **Statistika rezervacija** (ne zavisi od `advance_payme
 
 - Vidljiva napomena da su podaci rekonstruisani heurističkim uparivanjem — **ne** koriste se za izvještaje, fakture, dozvole ili poslovnu logiku.
 - **Ne** mijenja `reservations` (nema upisa `user_id`).
-- Pool kandidata: `user_id IS NULL` i `created_at < AGENCY_STATS_V1_CUTOVER_AT` (default `2026-06-19`, config `agency_statistics.v1_cutover_at`) — migrirane V1 rezervacije bez agencijskog linka; post-cut-over guest rezervacije su isključene.
+- Pool kandidata: `user_id IS NULL` i `created_at < 2026-06-18 00:00:00` (`ReservationOrigin::IMPORTED_BEFORE`). Granica je provjerena na produkciji i ne zavisi od env vrijednosti. `user_id` je trenutna atribucija, ne porijeklo: pripisana V1 rezervacija izlazi iz ovog poola, a i dalje je V1 po `created_at`. Gost rezervacija od `2026-06-18 00:00:00` nije u poolu.
 - Servis: **`AgencyV1HistoricalEstimateService`**; rezultat se kešira po agenciji (`agency_statistics.heuristic_cache_ttl`, default 3600 s).
 - Kandidati se sužavaju SQL-om (email, **poslovni** domen emaila, tablice aktivnih vozila / ponovljenih u V2) prije skoriranja u PHP-u. **Public/free domeni** (npr. `gmail.com`) se **ne koriste** za domain prefilter ni kao signal (config `agency_statistics.public_email_domains`).
 

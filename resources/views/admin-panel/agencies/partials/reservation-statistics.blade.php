@@ -29,7 +29,7 @@
             <h3 class="text-base font-semibold text-gray-900">Službena V2 statistika</h3>
             <p class="text-xs text-gray-600 mt-1">
                 Period: tekuća kalendarska godina ({{ $v2['period_year'] ?? now()->year }}).
-                Samo autoritativni V2 podaci vezani za ovu agenciju (<code class="text-xs">user_id</code>).
+                Samo nativne V2 rezervacije ove agencije. Uvezena V1 istorija ostaje van ovog bloka.
             </p>
         </div>
 
