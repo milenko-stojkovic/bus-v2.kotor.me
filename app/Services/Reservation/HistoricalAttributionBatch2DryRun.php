@@ -144,6 +144,35 @@ final class HistoricalAttributionBatch2DryRun
     }
 
     /**
+     * One read of the current user and vehicle identity maps.
+     * The same maps classify() uses. Callers must not treat the result as
+     * still unique after another account is created or renamed.
+     *
+     * @return array{
+     *     emails: array<string, list<int>>,
+     *     names: array<string, list<int>>,
+     *     plates: array<string, list<int>>
+     * }
+     */
+    public function currentIdentitySnapshot(): array
+    {
+        return $this->readIdentityMaps();
+    }
+
+    /**
+     * @param  array{
+     *     emails: array<string, list<int>>,
+     *     names: array<string, list<int>>,
+     *     plates: array<string, list<int>>
+     * }  $snapshot
+     * @return array{category: string, agency_id: int, a1_split: ?string}
+     */
+    public function classifyIdentity(mixed $email, mixed $userName, mixed $plate, array $snapshot): array
+    {
+        return $this->classifyRow($email, $userName, $plate, $snapshot);
+    }
+
+    /**
      * @param  array{
      *     emails: array<string, list<int>>,
      *     names: array<string, list<int>>,
