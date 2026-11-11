@@ -16,6 +16,7 @@ class PanelStatisticsRequest extends FormRequest
         return [
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'report' => ['nullable', 'in:statistics,financial_card'],
         ];
     }
 }

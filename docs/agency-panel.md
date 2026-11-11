@@ -315,6 +315,35 @@ KPI-ovi ostaju isti (samo uz filter):
 - **Broj posjeta** = broj realizovanih rezervacija u opsegu
 - **Tabela vozila** = grupisano po `license_plate + vehicle_type_id` nad realizovanim u opsegu
 
+### Finansijska kartica
+
+Isti ekran, drugi izvještaj: `report=financial_card` na `GET /panel/statistics` i `GET /panel/statistics/pdf`. Podrazumijevani izvještaj ostaje postojeća statistika. PDF kartice koristi isti dataset kao ekran (`AgencyFinancialCardService`). Izvještaj po tablici još nije u izboru.
+
+Kartica nije stanje avansa i nije izvod banke. Četiri vrste stavki, svaka na svoj datum, u `Europe/Podgorica`:
+
+| Stavka | Izvor | Datum | Iznos |
+|---|---|---|---|
+| Ulazna kupovina karticom | `reservations`, `status=paid` | `created_at` | `invoice_amount` |
+| Avansna uplata | `agency_advance_topups`, `status=paid` | `paid_at` | `amount` |
+| Realizovana usluga | plaćena realizovana rezervacija | `reservation_date` | `invoice_amount` |
+| Korekcija avansa | `agency_advance_transactions.type=correction` | `created_at` | potpisani `amount` |
+
+Kupovina karticom za uvezene redove (`created_at < 2026-06-18 00:00:00`) uzima pripisanu plaćenu rezervaciju. Za nativni V2 red traži `payment_method` prazan i nema ledger `usage` sa `reference_type=reservation`. Avansna rezervacija i besplatna rezervacija nisu ulazna kupovina. Ledger `topup` i `usage` se ne sabiraju ponovo. Limo QR nije u kartici.
+
+Isti dan se slaže po zabilježenom vremenu, zatim po vrsti (kupovina, avansna uplata, usluga, korekcija), zatim po id. Usluga nema sat i stoji na `00:00:00` tog dana. Jedna kartična rezervacija može imati dva reda: kupovinu na `created_at` i uslugu na `reservation_date`.
+
+`created_at` i `paid_at` su vrijeme kada je aplikacija zabilježila događaj, ne potvrda banke. Eloquent upisuje `Y-m-d H:i:s` u vremenskoj zoni aplikacije (`Europe/Podgorica`). Te kolone su MySQL `TIMESTAMP`. `config/database.php` nema `timezone`, pa aplikacija ne šalje `SET time_zone`. MySQL poredi `TIMESTAMP` u zoni sesije. Kartica koristi isti naivni literal koji Eloquent upisuje i koji konekcija vrati, bez `DATE(kolona)` i bez druge PHP konverzije. Kalendarski dan je dan tog literala. To je podgorički civilni dan kad je sesija ista kao pri upisu i kad ta sesija prikazuje zidno vrijeme Podgorice. `reservation_date` je `DATE`; predikat je `[od, sljedeći dan)`.
+
+Produkcijski phpMyAdmin, 2026-11-11: `@@session.time_zone` i `@@global.time_zone` su `SYSTEM`, `@@system_time_zone` je `CEST`, `NOW()` je `2026-11-11 02:19:26`, `UTC_TIMESTAMP()` je `2026-11-11 01:19:26`. Rezervacija `id = 1` ima `created_at = 2025-07-28 17:13:47` i `UNIX_TIMESTAMP(created_at) = 1753715627`, što je `2025-07-28 15:13:47 UTC`. Ta sesija prikazuje julski podgorički zidni sat. To je sesija phpMyAdmin-a. Laravel konekcija nije posebno izmjerena. Aplikacija ne mijenja `time_zone`, pa nova konekcija na istom serveru kreće od istog globalnog `SYSTEM`, ali to nije očitano iz same Laravel sesije.
+
+Plaćen top-up sa `paid_at` NULL nema zamjenski datum. Nije u stavkama ni u ukupnoj uplati. Broj takvih redova je za cijelu ulogovanu agenciju i nije ograničen izabranim periodom. Ekran i PDF to kažu.
+
+Ako izabrani period siječe 27. 7. 2025. do 17. 6. 2026., ekran i PDF kažu da neke starije rezervacije možda još nisu na kartici i da zabilježeni datum kupovine može odstupati od datuma kartičnog plaćanja zbog ranijih administrativnih izmjena. Tekst ne koristi oznake V1/V2.
+
+Donja granica zajedničkog kalendara je raniji od statističkog minimuma i najranijeg datuma kupovine, plaćenog top-up-a ili korekcije te agencije. Gornja granica ostaje danas + 90 dana.
+
+Test: **`AgencyFinancialCardTest`**. Postojeći **`PanelStatisticsDateFilterTest`** i **`PanelStatisticsPdfExportTest`** i dalje pokrivaju agregat.
+
 ## Veza: besplatne rezervacije
 
 Checkout za besplatan termin **ne** ide na banku i **ne** pokreće fiskalizaciju; vidi kratku napomenu u **[success-payment-pipeline.md](./success-payment-pipeline.md)** i kod: **`CheckoutController`**, **`PaymentSuccessHandler`**, **`SendFreeReservationConfirmationJob`**, **`FreeReservationRules`**.

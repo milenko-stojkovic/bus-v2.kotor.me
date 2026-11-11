@@ -117,13 +117,32 @@ class PanelStatisticsDateFilterTest extends TestCase
             ->withSession(['locale' => 'en']);
 
         $resp = $this->get(route('panel.statistics', [], false))->assertOk();
+        $html = $resp->getContent();
 
-        $resp->assertSee('From', false);
-        $resp->assertSee('To', false);
-        $resp->assertSee('Apply', false);
-        $resp->assertDontSee('Primijeni', false);
-        $resp->assertDontSee('Od', false);
-        $resp->assertDontSee('Do', false);
+        $this->assertMatchesRegularExpression(
+            '/<label[^>]*for="date_from_display"[^>]*>\s*From\s*<\/label>/',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/<label[^>]*for="date_to_display"[^>]*>\s*To\s*<\/label>/',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*type="submit"[^>]*>\s*Apply\s*<\/button>/',
+            $html,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<label[^>]*for="date_from_display"[^>]*>\s*Od\s*<\/label>/',
+            $html,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<label[^>]*for="date_to_display"[^>]*>\s*Do\s*<\/label>/',
+            $html,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<button[^>]*type="submit"[^>]*>\s*Primijeni\s*<\/button>/',
+            $html,
+        );
     }
 
     public function test_statistics_page_uses_hybrid_iso_date_inputs_for_from_and_to(): void

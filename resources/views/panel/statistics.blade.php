@@ -6,7 +6,11 @@
 <x-app-layout>
     <x-slot name="header">
         @php
-            $pdfParams = array_filter(request()->only(['date_from', 'date_to']), fn ($v) => is_string($v) && trim($v) !== '');
+            $pdfParams = array_filter(
+                request()->only(['date_from', 'date_to', 'report']),
+                fn ($v) => is_string($v) && trim($v) !== '',
+            );
+            $report = $report ?? 'statistics';
         @endphp
 
         <div class="flex items-center justify-between gap-4">
@@ -26,7 +30,19 @@
     <div class="py-6">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <form method="GET" class="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <form method="GET" class="space-y-4">
+                    <fieldset class="flex flex-col sm:flex-row gap-4">
+                        <legend class="sr-only">{{ $s('report_choice', $locale === 'en' ? 'Report' : 'Izvještaj') }}</legend>
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-800">
+                            <input type="radio" name="report" value="statistics" class="rounded border-red-200" @checked($report !== 'financial_card')>
+                            {{ $s('report_statistics', $locale === 'en' ? 'Statistics' : 'Statistika') }}
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-800">
+                            <input type="radio" name="report" value="financial_card" class="rounded border-red-200" @checked($report === 'financial_card')>
+                            {{ $s('report_financial_card', $locale === 'en' ? 'Financial card' : 'Finansijska kartica') }}
+                        </label>
+                    </fieldset>
+                    <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
                     <div>
                         <x-iso-date-input
                             id="date_from"
@@ -61,9 +77,13 @@
                             {{ $s('reset_filters', $locale === 'en' ? 'Reset' : 'Resetuj') }}
                         </a>
                     </div>
+                    </div>
                 </form>
             </div>
 
+            @if (($report ?? 'statistics') === 'financial_card')
+                @include('partials.agency-financial-card', ['financial_card' => $financial_card, 'locale' => $locale])
+            @else
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                     <p class="text-sm font-medium text-gray-500">{{ $s('total_paid', 'Total paid') }}</p>
@@ -107,6 +127,7 @@
                     @endif
                 </div>
             </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

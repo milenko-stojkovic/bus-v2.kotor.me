@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Panel\PanelStatisticsRequest;
+use App\Services\Reservation\AgencyFinancialCardService;
 use App\Services\Reservation\PanelReservationListService;
 use App\Services\Reservation\PanelStatisticsDateBounds;
 use App\Services\Reservation\PanelStatisticsService;
@@ -24,6 +25,10 @@ class PanelController extends Controller
 
         $bounds = app(PanelStatisticsDateBounds::class);
         $min = $bounds->minDateFor($user);
+        $financialMin = app(AgencyFinancialCardService::class)->earliestSelectableDate($user);
+        if ($financialMin instanceof Carbon && $financialMin->lt($min)) {
+            $min = $financialMin;
+        }
         $max = $bounds->maxDateFor($user);
 
         $validated = $request->validated();
@@ -47,12 +52,17 @@ class PanelController extends Controller
             $to = $max->copy();
         }
 
+        $report = isset($validated['report']) && $validated['report'] === 'financial_card'
+            ? 'financial_card'
+            : 'statistics';
+
         return [
             'user' => $user,
             'from' => $from,
             'to' => $to,
             'minDate' => $min->toDateString(),
             'maxDate' => $max->toDateString(),
+            'report' => $report,
         ];
     }
 
@@ -87,12 +97,27 @@ class PanelController extends Controller
         ]);
     }
 
-    public function statistics(PanelStatisticsRequest $request, PanelStatisticsService $statisticsService): View
-    {
+    public function statistics(
+        PanelStatisticsRequest $request,
+        PanelStatisticsService $statisticsService,
+        AgencyFinancialCardService $financialCard,
+    ): View {
         $range = $this->resolveStatisticsRange($request);
+
+        if ($range['report'] === 'financial_card') {
+            return view('panel.statistics', [
+                'report' => 'financial_card',
+                'financial_card' => $financialCard->build($range['user'], $range['from'], $range['to']),
+                'minDate' => $range['minDate'],
+                'maxDate' => $range['maxDate'],
+                'date_from' => $range['from']->toDateString(),
+                'date_to' => $range['to']->toDateString(),
+            ]);
+        }
 
         return view('panel.statistics', [
             ...$statisticsService->overview($range['user'], $range['from'], $range['to']),
+            'report' => 'statistics',
             'minDate' => $range['minDate'],
             'maxDate' => $range['maxDate'],
         ]);
@@ -101,9 +126,30 @@ class PanelController extends Controller
     public function statisticsPdf(
         PanelStatisticsRequest $request,
         PanelStatisticsService $statisticsService,
-        \App\Services\Pdf\PanelStatisticsPdfGenerator $pdfGenerator
+        AgencyFinancialCardService $financialCard,
+        \App\Services\Pdf\PanelStatisticsPdfGenerator $pdfGenerator,
+        \App\Services\Pdf\AgencyFinancialCardPdfGenerator $financialCardPdf,
     ): Response {
         $range = $this->resolveStatisticsRange($request);
+
+        if ($range['report'] === 'financial_card') {
+            $dataset = [
+                ...$financialCard->build($range['user'], $range['from'], $range['to']),
+                'agency_name' => (string) ($range['user']->name ?? ''),
+            ];
+            $userLocale = is_string($range['user']->lang ?? null) ? (string) $range['user']->lang : 'cg';
+            $binary = $financialCardPdf->renderBinary($dataset, $userLocale);
+            $filename = sprintf(
+                'finansijska-kartica-agencije-%s-%s.pdf',
+                $dataset['date_from'],
+                $dataset['date_to'],
+            );
+
+            return response($binary, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            ]);
+        }
 
         $dataset = $statisticsService->overview($range['user'], $range['from'], $range['to']);
 
