@@ -357,7 +357,7 @@ Kalendar je isti kao za druga dva izvještaja: najraniji dozvoljeni datum do dan
 
 PDF je `rezervacije-po-tablici-{tablica}-{od}-{do}.pdf`, pejzaž, isti dataset kao ekran, sa agencijom, tablicom, periodom, brojem redova i zbirom. HTML nema posebnu paginaciju; PDF dobija cijeli spisak. Upit je ograničen na jednu agenciju i jednu tablicu. Koriste se postojeći indeksi `idx_res_user` i `idx_res_plate_date`. Novi indeks nije dodat.
 
-Test: **`AgencyLicensePlateReportTest`**. Izvještaj je deployovan sa commitom `39b37d28c1927f0c24f13e5f15b742ec24bb2584` i ručno funkcionalno provjeren na produkciji. Ostale uvezene V1 rezervacije, van batcha 1, nisu pripisane i ne ulaze u izvještaje agencije.
+Test: **`AgencyLicensePlateReportTest`**. Izvještaj je deployovan sa commitom `39b37d28c1927f0c24f13e5f15b742ec24bb2584` i ručno funkcionalno provjeren na produkciji. U izvještaje agencije ulaze rezervacije kojima je `user_id` postavljen, uključujući pripisane batch 1 i batch 2. Rezervacije uvezene V1 kohorte van ta dva batcha nisu tim upisima pripisane i bez `user_id` ne ulaze.
 
 ## Veza: besplatne rezervacije
 

@@ -80,7 +80,7 @@ Podaci preneseni iz V1 tabele `reservations` u V2 bazu **`bus`**, preko privreme
 
 ### V1 batch 1 atribucija — izvršeno i provjereno
 
-Batch 1 je završen na produkciji 2026-11-11, commit `829aa6dc5bc313f0034a108b2cde6d336bc7268b`. Writer je javio `Complete: yes`. SQL provjera: kandidata 4.609, pripisano 4.609, agencija 151, preostalih 0, blokiranih 0, aktivnih audit redova 4.609, različitih rezervacija 4.609, `user_id` jednak `agency_user_id` na 4.609, neslaganja 0, nedostajućih agencija 0. Ostale uvezene V1 rezervacije nisu u ovom batchu i nisu pripisane.
+Batch 1 je završen na produkciji 2026-11-11, commit `829aa6dc5bc313f0034a108b2cde6d336bc7268b`. Writer je javio `Complete: yes`. SQL provjera: kandidata 4.609, pripisano 4.609, agencija 151, preostalih 0, blokiranih 0, aktivnih audit redova 4.609, različitih rezervacija 4.609, `user_id` jednak `agency_user_id` na 4.609, neslaganja 0, nedostajućih agencija 0. Ostale uvezene V1 rezervacije nisu u ovom batchu. Kasniji prijavljeni SQL i dalje broji 4.609 aktivnih redova ove evidence. Dio ostatka kohorte zatvoren je batchom 2, odjeljak ispod.
 
 Kriterijum ostaje tačan normalizovan email, jedinstveno tačno ime i isključiva normalizovana tablica među `active` i `removed` vozilima. Evidence je `v1-phase2-batch1:exact_email_unique_exact_name_exclusive_plate`. Komanda nije u scheduleru. Ne šalje mejl, ne pravi račun i ne dira plaćanje. Jedina izmjena rezervacije je `reservations.user_id`, preko `HistoricalReservationAttributionService`.
 
@@ -117,6 +117,16 @@ php artisan reservations:apply-v1-attribution --report=/path/outside/repo/v1-bat
 ```
 
 `--rollback` bez `--execute` ne piše. Poništavaju se samo aktivni audit redovi sa tom evidence, jedan po jedan. Drugačija evidence ostaje. Ako red ili agencija više ne postoje, rollback staje i javlja djelimično poništenje; ne ide drugim SQL putem.
+
+### V1 batch 2 atribucija — COMPLETE i VERIFIED
+
+Batch 2 je zatvoren na produkciji 2026-11-11. Writer je `reservations:apply-v1-batch2`, implementacija `896d503fd5329d941aa34045e3773bef32b791f5`. Sve grupe preddefiniranog skupa kandidata prošle su preflight i ograničen upis. Prijavljeni izvještaji nemaju odbijene, preskočene ni redove za ručnu provjeru. Posljednja grupa, C-005, imala je dvije rezervacije i završila je sa `Wrote: 2`. Za taj skup novi upis nije potreban.
+
+Prijavljeni završni SQL spaja `reservation_attributions` i `reservations` i provjerava aktivne brojeve, evidence i jednakost `reservations.user_id` sa `reservation_attributions.agency_user_id`. Rezultat: aktivnih atribucija 7.305, batch 1 4.609, batch 2 2.696, neslaganja 0. Batch 2: R 7, A1 1.406, A2 244, B 837, C 202. Evidence su `v1-phase2-batch2:exact_email_unique_exact_name:plate_R`, `plate_A1`, `plate_A2`, `plate_B` i `plate_C`. Batch 1 evidence ostaje posebna i njen aktivni broj je i dalje 4.609. Ovaj runbook nije ponovo izvršio taj SQL.
+
+Provjera ne znači da je pripisana cijela uvezena kohorta. Kohorta je i dalje `created_at < 2026-06-18 00:00:00`, ranije utvrđenih 21.342 rezervacija. Pripisano je 7.305, oko 34,2%. Van batcha 1 i batcha 2 ostaje 14.037. Ranija klasifikacija D 4.909, E 2.054 i F 7.074 nije ponovo provjerena poslije upisa i nije osnov za automatski sljedeći batch. Izvještaji izvršenja su na serveru, ne u repozitorijumu: `/var/www/vhosts/kotor.me/tmp/v1-batch2-remaining-20261111/reports/`.
+
+Komanda nije u scheduleru. Podrazumijevani poziv ne piše. Upis traži `--execute`, `--confirm=APPLY-V1-BATCH-2`, administratora sa `admin_access`, ispravan CSV, `--category` (`R`, `A1`, `A2`, `B`, `C` ili `all`) i `--limit` od 1 do 50. `--attempts` je najviše 50 i podrazumijevano jednak `--limit`. Identitet je tačan email i tačno jedinstveno ime iste agencije; tablica je oznaka kategorije. Mijenja se samo `reservations.user_id`, plus audit red. Zatvoren audit sa jednom od pet batch 2 evidence traži ručnu provjeru i ne pripisuje se ponovo. Rollback, ako bude posebno naložen, traži svoj confirm i dira samo rezervacije navedene u tom CSV-u i u izabranoj kategoriji. Ne dira batch 1 i ne dira batch 2 red koji nije u tom CSV-u.
 
 ### Seeder / referentni podaci
 
