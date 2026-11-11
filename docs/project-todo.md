@@ -1,6 +1,6 @@
 ﻿# Project TODO (otvoreno)
 
-**Poslednje ažuriranje:** 2026-11-10
+**Poslednje ažuriranje:** 2026-11-11
 
 Stavke su prioritetne grupe. Kada nešto **završiš**, premesti opis u `docs/project-done.md` i ukloni odavde.
 
@@ -45,5 +45,6 @@ Ove stavke **nisu blokada za produkciju**. Predviđene su za **doradu nakon real
 Batch 1 je završen i provjeren na produkciji: 4.609 pripisanih rezervacija, 151 agencija. Ostale uvezene V1 rezervacije nisu u tom batchu i nisu pripisane. Ovo i dalje nije završeno:
 
 - [ ] Pripisivanje ostalih istorijskih V1 rezervacija, van batcha 1, nije odobreno i nije izvršeno.
+- [ ] Korisnička PDF uputstva (`cgbuskotor.pdf`, `engbuskotor.pdf`) za tri izvještaja statistike nisu ažurirana. Uređuje ih vlasnik proizvoda.
 - [x] Finansijska kartica agencije je deployovana i ručno funkcionalno provjerena na produkciji. Nije stanje avansa.
-- [x] Rezervacije po tablici su implementirane lokalno na `/panel/statistics?report=license_plate`. Nisu deployovane.
+- [x] Rezervacije po tablici su deployovane i ručno funkcionalno provjerene na produkciji, zajedno sa postojećom statistikom i finansijskom karticom.

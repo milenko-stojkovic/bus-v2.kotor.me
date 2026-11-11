@@ -198,13 +198,13 @@ After a verified login the red bar is the whole navigation. Order, left to right
 6. **Besplatne rezervacije** / **Free reservations**. Request a free reservation. It does not create one by itself.
 7. **Promjena tablica** / **Plate change**. Change the plate on an upcoming reservation.
 8. **Realizovane rezervacije** / **Realized reservations**. Past reservations and PDFs.
-9. **Statistika** / **Statistic**. The menu word in English is **Statistic**. The page title is **Statistics** / **Statistika**.
+9. **Statistika** / **Statistic**. The menu word in English is **Statistic**. The page title is **Statistics** / **Statistika**. The page has three reports, described under Statistics.
 
 **I am on my phone. Where is Avans?** Open bus.kotor.me, sign in, tap the hamburger (three lines, top right), and look near the top of the list for **Avans** / **Advance**, directly under **Rezervacije** / **Reservations**. **Limo** is the next row.
 
 **I am on a computer. Where is Avans?** It is the second name in the red bar, after **Rezervacije** / **Reservations**.
 
-There is no menu item called payment history. Past reservations are **Realizovane rezervacije** / **Realized reservations**. Totals are **Statistika** / **Statistic**.
+There is no menu item called payment history. Past reservations are **Realizovane rezervacije** / **Realized reservations**. Recorded totals and the other two reports are on **Statistika** / **Statistic**.
 
 ## 7. Reservations
 
@@ -635,13 +635,31 @@ Empty: **Nema realizovanih rezervacija.** / **No realized reservations.**
 
 Open **Statistika** / **Statistic**. Page title **Statistika** / **Statistics**.
 
-Filters **Od** / **From** and **Do** / **To**, day/month/year. The figures include only this agency's realized reservations in that date range.
+The same **Od** / **From** and **Do** / **To** dates apply to every report. Choose the report, then **Primijeni** / **Apply**. **PDF** downloads that report in the agency's language. It is not the fiscal invoice.
+
+The report choices are **Statistika** / **Statistics**, **Finansijska kartica** / **Financial card**, and **Rezervacije po tablici** / **Reservations by license plate**. One report is shown at a time.
+
+**Statistika** / **Statistics** counts realized reservations in the selected dates.
 
 - **Ukupno plaćeno** / **Total paid**
-- **Posjete** / **Visits**
-- A table by plate and category
+- **Broj posjeta** / **Number of visits**
+- **Korišćenje vozila** / **Vehicles usage**, grouped by **Registarske tablice** / **Registration plates** and **Kategorija vozila** / **Vehicle category**. The visit column in that table is **Posjete** / **Visits**.
 
-**PDF** on this page downloads an informational export in the agency's language. It is not the fiscal invoice. If the vehicle table has nothing to list, the page says **Još nema podataka.** / **No data yet.** The totals can still show zero. The PDF for an empty range says **Nema podataka za izabrani period.** / **No data for the selected period.** Those two sentences are the empty state, not a failed page.
+If the vehicle table has nothing to list, the page says **Još nema podataka.** / **No data yet.** The totals can still show zero. The PDF for an empty range says **Nema podataka za izabrani period.** / **No data for the selected period.** Those two sentences are the empty state, not a failed page.
+
+**Finansijska kartica** / **Financial card** lists recorded incoming payments, realized services, and advance corrections. The totals stay separate.
+
+- Incoming payments: **Plaćanje karticom** / **Card payment** on the recorded purchase date, and **Avansna uplata** / **Advance top-up** on its payment date. Total: **Ukupno uplata** / **Total incoming payments**.
+- Realized services: a paid reservation on its reservation date, whether it was paid by card or from advance. Total: **Ukupno usluga** / **Total realized services**.
+- Advance corrections stay in their own signed total: **Ukupno korekcija avansa** / **Total advance corrections**. They are not incoming payments and they are not services.
+
+A card reservation can appear twice, once as the recorded card payment and once as the realized service. That is not a second charge. The purchase date and the service date may differ. Do not subtract services from incoming payments and present the result as the advance balance. The card says **Ova kartica prikazuje zabilježene uplate, realizovane usluge i korekcije avansa. Nije stanje avansa.** / **This card lists recorded payments, realized services, and advance corrections. It is not the advance balance.** The available advance is **Trenutno stanje avansa** / **Current advance balance** on **Avans** / **Advance**. This card is not a bank statement. Empty: **Nema stavki u izabranom periodu.** / **No entries in the selected period.**
+
+**Rezervacije po tablici** / **Reservations by license plate** lists individual reservations for one stored plate. The field **Registarska tablica** / **License plate** appears only for this report. Choose a plate already stored on this agency's reservations. The match is the stored plate, so a different spelling is not the same plate. Another agency's plate is rejected: **Izaberite registarsku tablicu sa rezervacija ove agencije.** / **Choose a license plate from this agency's reservations.**
+
+The list uses the reservation date, not only realized visits. It includes paid and free reservations, and past and future dates inside the selected range. A row shows the date, the plate, the vehicle category, arrival and departure, or **Dnevna naknada** / **Daily fee** instead of those times, the transaction when one was recorded, the status, and the amount. A missing transaction stays blank. A free reservation is shown as 0.00. Empty: **Nema rezervacija u izabranom periodu.** / **No reservations in the selected period.** The amount total adds the recorded amounts on the list. The page says it is not a bank-confirmed payment total.
+
+Some older reservations are not yet linked to this agency account. They do not appear on any of these reports. Reservations that are linked to the account can appear, including older ones. If the selected dates overlap 27 July 2025 through 17 June 2026, the financial card says that some older reservations may not yet appear, and that the recorded purchase date may differ from the actual card payment date because of earlier administrative adjustments.
 
 If **Do** / **To** is before **Od** / **From**, the form rejects the range. Make the end date the same day as the start date, or a later day. Dates outside the allowed span are brought back inside it.
 

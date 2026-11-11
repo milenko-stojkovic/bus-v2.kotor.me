@@ -317,7 +317,7 @@ KPI-ovi ostaju isti (samo uz filter):
 
 ### Finansijska kartica
 
-Isti ekran, drugi izvještaj: `report=financial_card` na `GET /panel/statistics` i `GET /panel/statistics/pdf`. Podrazumijevani izvještaj ostaje postojeća statistika. PDF kartice koristi isti dataset kao ekran (`AgencyFinancialCardService`). Finansijska kartica je deployovana i ručno funkcionalno provjerena na produkciji. Nije posebno deployovan izvještaj po tablici.
+Isti ekran, drugi izvještaj: `report=financial_card` na `GET /panel/statistics` i `GET /panel/statistics/pdf`. Podrazumijevani izvještaj ostaje postojeća statistika. PDF kartice koristi isti dataset kao ekran (`AgencyFinancialCardService`). Sva tri izvještaja na ovom ekranu — postojeća statistika, finansijska kartica i rezervacije po tablici — deployovana su i ručno funkcionalno provjerena na produkciji. Svaki ima PDF.
 
 Kartica nije stanje avansa i nije izvod banke. Četiri vrste stavki, svaka na svoj datum, u `Europe/Podgorica`:
 
@@ -356,7 +356,7 @@ Kalendar je isti kao za druga dva izvještaja: najraniji dozvoljeni datum do dan
 
 PDF je `rezervacije-po-tablici-{tablica}-{od}-{do}.pdf`, pejzaž, isti dataset kao ekran, sa agencijom, tablicom, periodom, brojem redova i zbirom. HTML nema posebnu paginaciju; PDF dobija cijeli spisak. Upit je ograničen na jednu agenciju i jednu tablicu. Koriste se postojeći indeksi `idx_res_user` i `idx_res_plate_date`. Novi indeks nije dodat.
 
-Test: **`AgencyLicensePlateReportTest`**. Izvještaj nije deployovan.
+Test: **`AgencyLicensePlateReportTest`**. Izvještaj je deployovan sa commitom `39b37d28c1927f0c24f13e5f15b742ec24bb2584` i ručno funkcionalno provjeren na produkciji. Ostale uvezene V1 rezervacije, van batcha 1, nisu pripisane i ne ulaze u izvještaje agencije.
 
 ## Veza: besplatne rezervacije
 
