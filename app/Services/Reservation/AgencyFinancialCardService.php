@@ -106,6 +106,12 @@ final class AgencyFinancialCardService
         $created = Reservation::query()->where('user_id', $user->id)->min('created_at');
         $dates[] = self::storedDate($created);
 
+        $service = Reservation::query()
+            ->where('user_id', $user->id)
+            ->where('reservation_date', '>=', '1000-01-01')
+            ->min('reservation_date');
+        $dates[] = self::storedDate($service);
+
         $paidAt = AgencyAdvanceTopup::query()
             ->where('agency_user_id', $user->id)
             ->where('status', AgencyAdvanceTopup::STATUS_PAID)

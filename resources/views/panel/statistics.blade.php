@@ -74,7 +74,7 @@
                             id="date_from"
                             name="date_from"
                             :label="$s('date_from', $locale === 'en' ? 'From' : 'Od')"
-                            :value="request('date_from', $date_from)"
+                            :value="$date_from"
                             :min="$minDate"
                             :max="$maxDate"
                         />
@@ -84,7 +84,7 @@
                             id="date_to"
                             name="date_to"
                             :label="$s('date_to', $locale === 'en' ? 'To' : 'Do')"
-                            :value="request('date_to', $date_to)"
+                            :value="$date_to"
                             :min="$minDate"
                             :max="$maxDate"
                         />

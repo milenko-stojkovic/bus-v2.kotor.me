@@ -30,6 +30,10 @@ class PanelController extends Controller
         if ($financialMin instanceof Carbon && $financialMin->lt($min)) {
             $min = $financialMin;
         }
+        $globalMin = $bounds->globalHistoricalMinDate();
+        if ($globalMin instanceof Carbon && $globalMin->lt($min)) {
+            $min = $globalMin;
+        }
         $max = $bounds->maxDateFor($user);
 
         $validated = $request->validated();

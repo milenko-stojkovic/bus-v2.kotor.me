@@ -294,12 +294,13 @@ Servis **`App\Services\Reservation\PanelStatisticsService`**: koristi **`PanelRe
 - PDF export: `GET /panel/statistics/pdf` (`panel.statistics.pdf`) — koristi **identičan dataset** kao UI (isti request + bounds + `PanelStatisticsService::overview`), vraća PDF **inline**.
   - Za razliku od zvaničnih PDF dokumenata (račun/potvrde) koji su cg-only, ovaj PDF je **informativni export** i jezik prati agenciju (`users.lang`, cg/en; fallback cg).
 
-### Bounds (source of truth: samo agencija)
+### Bounds
 
-Bounds se računaju **isključivo iz rezervacija ulogovane agencije** (nikad globalno), servis: `App\Services\Reservation\PanelStatisticsDateBounds`:
+Servis: `App\Services\Reservation\PanelStatisticsDateBounds`. Upiti izvještaja ostaju `WHERE user_id = auth()->id()`. Globalni minimum samo otvara kalendar; ne ubacuje tuđe redove.
 
-- **min date**: najranija *realizovana* `reservation_date` za tog korisnika (fallback: najranija `reservation_date`; fallback: danas)
-- **max date**: danas + 90 dana
+- **min date**: raniji od (1) kalendarskog dana najranijeg uvezenog V1 `created_at` u sistemu (`created_at < ReservationOrigin::IMPORTED_BEFORE`, jedan `MIN`, bez `DATE(kolona)`, bez upisanog jula 2025) i (2) najranijeg događaja **te** agencije (`reservation_date`, kupovina `created_at`, plaćeni top-up `paid_at`, korekcija `created_at`). Agencija bez pripisane V1 rezervacije i dalje može izabrati taj globalni dan.
+- **max date**: danas + 90 dana (`Europe/Podgorica`)
+- Isti raspon ide u `min`/`max` kalendara, u primijenjeni HTML interval i u PDF. Datum van raspona vraća se unutar njega i kontrole prikazuju taj datum.
 
 ### Šta je obuhvaćeno filterom
 
@@ -340,7 +341,7 @@ Plaćen top-up sa `paid_at` NULL nema zamjenski datum. Nije u stavkama ni u ukup
 
 Ako izabrani period siječe 27. 7. 2025. do 17. 6. 2026., ekran i PDF kažu da neke starije rezervacije možda još nisu na kartici i da zabilježeni datum kupovine može odstupati od datuma kartičnog plaćanja zbog ranijih administrativnih izmjena. Tekst ne koristi oznake V1/V2.
 
-Donja granica zajedničkog kalendara je raniji od statističkog minimuma i najranijeg datuma kupovine, plaćenog top-up-a ili korekcije te agencije. Gornja granica ostaje danas + 90 dana.
+Donja granica zajedničkog kalendara je raniji od najranijeg V1 `created_at` u sistemu i najranijeg datuma kupovine, usluge, plaćenog top-up-a ili korekcije te agencije. Gornja granica ostaje danas + 90 dana.
 
 Test: **`AgencyFinancialCardTest`**. Postojeći **`PanelStatisticsDateFilterTest`** i **`PanelStatisticsPdfExportTest`** i dalje pokrivaju agregat.
 
