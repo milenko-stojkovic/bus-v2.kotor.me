@@ -13,6 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // The license-plate report matches the stored string, including a trailing space.
+        // Checkout still normalizes plates on write. This only skips trimming on the statistics requests.
+        $middleware->trimStrings(except: [
+            static fn (\Illuminate\Http\Request $request): bool => $request->is('panel/statistics', 'panel/statistics/*'),
+        ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
         ]);

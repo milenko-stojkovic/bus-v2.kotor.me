@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Panel\PanelStatisticsRequest;
 use App\Services\Reservation\AgencyFinancialCardService;
+use App\Services\Reservation\AgencyLicensePlateReportService;
 use App\Services\Reservation\PanelReservationListService;
 use App\Services\Reservation\PanelStatisticsDateBounds;
 use App\Services\Reservation\PanelStatisticsService;
@@ -52,9 +53,11 @@ class PanelController extends Controller
             $to = $max->copy();
         }
 
-        $report = isset($validated['report']) && $validated['report'] === 'financial_card'
-            ? 'financial_card'
-            : 'statistics';
+        $report = match ($validated['report'] ?? null) {
+            'financial_card' => 'financial_card',
+            'license_plate' => 'license_plate',
+            default => 'statistics',
+        };
 
         return [
             'user' => $user,
@@ -63,6 +66,9 @@ class PanelController extends Controller
             'minDate' => $min->toDateString(),
             'maxDate' => $max->toDateString(),
             'report' => $report,
+            'license_plate' => $report === 'license_plate' && is_string($validated['license_plate'] ?? null)
+                ? $validated['license_plate']
+                : null,
         ];
     }
 
@@ -101,25 +107,42 @@ class PanelController extends Controller
         PanelStatisticsRequest $request,
         PanelStatisticsService $statisticsService,
         AgencyFinancialCardService $financialCard,
+        AgencyLicensePlateReportService $plateReport,
     ): View {
         $range = $this->resolveStatisticsRange($request);
+        $shared = [
+            'report' => $range['report'],
+            'minDate' => $range['minDate'],
+            'maxDate' => $range['maxDate'],
+            'date_from' => $range['from']->toDateString(),
+            'date_to' => $range['to']->toDateString(),
+            'plates' => $plateReport->platesFor($range['user']),
+            'license_plate' => $range['license_plate'],
+        ];
 
         if ($range['report'] === 'financial_card') {
             return view('panel.statistics', [
-                'report' => 'financial_card',
+                ...$shared,
                 'financial_card' => $financialCard->build($range['user'], $range['from'], $range['to']),
-                'minDate' => $range['minDate'],
-                'maxDate' => $range['maxDate'],
-                'date_from' => $range['from']->toDateString(),
-                'date_to' => $range['to']->toDateString(),
+            ]);
+        }
+
+        if ($range['report'] === 'license_plate') {
+            return view('panel.statistics', [
+                ...$shared,
+                'license_plate_report' => $plateReport->build(
+                    $range['user'],
+                    (string) $range['license_plate'],
+                    $range['from'],
+                    $range['to'],
+                    app()->getLocale(),
+                ),
             ]);
         }
 
         return view('panel.statistics', [
             ...$statisticsService->overview($range['user'], $range['from'], $range['to']),
-            'report' => 'statistics',
-            'minDate' => $range['minDate'],
-            'maxDate' => $range['maxDate'],
+            ...$shared,
         ]);
     }
 
@@ -127,10 +150,39 @@ class PanelController extends Controller
         PanelStatisticsRequest $request,
         PanelStatisticsService $statisticsService,
         AgencyFinancialCardService $financialCard,
+        AgencyLicensePlateReportService $plateReport,
         \App\Services\Pdf\PanelStatisticsPdfGenerator $pdfGenerator,
         \App\Services\Pdf\AgencyFinancialCardPdfGenerator $financialCardPdf,
+        \App\Services\Pdf\AgencyLicensePlateReportPdfGenerator $platePdf,
     ): Response {
         $range = $this->resolveStatisticsRange($request);
+
+        if ($range['report'] === 'license_plate') {
+            $userLocale = is_string($range['user']->lang ?? null) ? (string) $range['user']->lang : 'cg';
+            $dataset = [
+                ...$plateReport->build(
+                    $range['user'],
+                    (string) $range['license_plate'],
+                    $range['from'],
+                    $range['to'],
+                    $userLocale,
+                ),
+                'agency_name' => (string) ($range['user']->name ?? ''),
+            ];
+            $binary = $platePdf->renderBinary($dataset, $userLocale);
+            $safePlate = preg_replace('/[^A-Za-z0-9]+/', '', $dataset['license_plate']) ?: 'tablica';
+            $filename = sprintf(
+                'rezervacije-po-tablici-%s-%s-%s.pdf',
+                $safePlate,
+                $dataset['date_from'],
+                $dataset['date_to'],
+            );
+
+            return response($binary, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            ]);
+        }
 
         if ($range['report'] === 'financial_card') {
             $dataset = [

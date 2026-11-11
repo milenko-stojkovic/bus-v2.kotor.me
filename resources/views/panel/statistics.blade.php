@@ -2,15 +2,17 @@
     $locale = app()->getLocale();
     $p = fn (string $key, ?string $fallback = null) => \App\Support\UiText::t('panel', $key, $fallback);
     $s = fn (string $key, ?string $fallback = null) => \App\Support\UiText::t('statistics', $key, $fallback);
+    $report = $report ?? 'statistics';
+    $plates = $plates ?? [];
+    $selectedPlate = $license_plate ?? '';
 @endphp
 <x-app-layout>
     <x-slot name="header">
         @php
             $pdfParams = array_filter(
-                request()->only(['date_from', 'date_to', 'report']),
+                request()->only(['date_from', 'date_to', 'report', 'license_plate']),
                 fn ($v) => is_string($v) && trim($v) !== '',
             );
-            $report = $report ?? 'statistics';
         @endphp
 
         <div class="flex items-center justify-between gap-4">
@@ -28,20 +30,44 @@
     </x-slot>
 
     <div class="py-6">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-8">
+        <div class="{{ $report === 'license_plate' ? 'max-w-7xl' : 'max-w-3xl' }} mx-auto sm:px-6 lg:px-8 space-y-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <form method="GET" class="space-y-4">
-                    <fieldset class="flex flex-col sm:flex-row gap-4">
+                <form method="GET" class="space-y-4" x-data="{ report: @js($report) }">
+                    <fieldset class="flex flex-col sm:flex-row sm:flex-wrap gap-4">
                         <legend class="sr-only">{{ $s('report_choice', $locale === 'en' ? 'Report' : 'Izvještaj') }}</legend>
                         <label class="inline-flex items-center gap-2 text-sm text-gray-800">
-                            <input type="radio" name="report" value="statistics" class="rounded border-red-200" @checked($report !== 'financial_card')>
+                            <input type="radio" name="report" value="statistics" class="rounded border-red-200" x-model="report" @checked($report === 'statistics')>
                             {{ $s('report_statistics', $locale === 'en' ? 'Statistics' : 'Statistika') }}
                         </label>
                         <label class="inline-flex items-center gap-2 text-sm text-gray-800">
-                            <input type="radio" name="report" value="financial_card" class="rounded border-red-200" @checked($report === 'financial_card')>
+                            <input type="radio" name="report" value="financial_card" class="rounded border-red-200" x-model="report" @checked($report === 'financial_card')>
                             {{ $s('report_financial_card', $locale === 'en' ? 'Financial card' : 'Finansijska kartica') }}
                         </label>
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-800">
+                            <input type="radio" name="report" value="license_plate" class="rounded border-red-200" x-model="report" @checked($report === 'license_plate')>
+                            {{ $s('report_license_plate', $locale === 'en' ? 'Reservations by license plate' : 'Rezervacije po tablici') }}
+                        </label>
                     </fieldset>
+                    <div x-show="report === 'license_plate'" x-cloak>
+                        <label for="license_plate" class="block text-sm font-medium text-gray-700">
+                            {{ $s('plate_label', $locale === 'en' ? 'License plate' : 'Registarska tablica') }}
+                        </label>
+                        <input
+                            id="license_plate"
+                            name="license_plate"
+                            list="agency-reservation-plates"
+                            value="{{ $selectedPlate }}"
+                            maxlength="50"
+                            autocomplete="off"
+                            class="mt-1 block w-full rounded-md border-red-200 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                            :disabled="report !== 'license_plate'"
+                        />
+                        <datalist id="agency-reservation-plates">
+                            @foreach ($plates as $plate)
+                                <option value="{{ $plate }}"></option>
+                            @endforeach
+                        </datalist>
+                    </div>
                     <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
                     <div>
                         <x-iso-date-input
@@ -83,6 +109,8 @@
 
             @if (($report ?? 'statistics') === 'financial_card')
                 @include('partials.agency-financial-card', ['financial_card' => $financial_card, 'locale' => $locale])
+            @elseif (($report ?? 'statistics') === 'license_plate')
+                @include('partials.agency-license-plate-report', ['license_plate_report' => $license_plate_report, 'locale' => $locale])
             @else
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">

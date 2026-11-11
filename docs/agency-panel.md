@@ -317,7 +317,7 @@ KPI-ovi ostaju isti (samo uz filter):
 
 ### Finansijska kartica
 
-Isti ekran, drugi izvještaj: `report=financial_card` na `GET /panel/statistics` i `GET /panel/statistics/pdf`. Podrazumijevani izvještaj ostaje postojeća statistika. PDF kartice koristi isti dataset kao ekran (`AgencyFinancialCardService`). Izvještaj po tablici još nije u izboru.
+Isti ekran, drugi izvještaj: `report=financial_card` na `GET /panel/statistics` i `GET /panel/statistics/pdf`. Podrazumijevani izvještaj ostaje postojeća statistika. PDF kartice koristi isti dataset kao ekran (`AgencyFinancialCardService`). Finansijska kartica je deployovana i ručno funkcionalno provjerena na produkciji. Nije posebno deployovan izvještaj po tablici.
 
 Kartica nije stanje avansa i nije izvod banke. Četiri vrste stavki, svaka na svoj datum, u `Europe/Podgorica`:
 
@@ -343,6 +343,20 @@ Ako izabrani period siječe 27. 7. 2025. do 17. 6. 2026., ekran i PDF kažu da n
 Donja granica zajedničkog kalendara je raniji od statističkog minimuma i najranijeg datuma kupovine, plaćenog top-up-a ili korekcije te agencije. Gornja granica ostaje danas + 90 dana.
 
 Test: **`AgencyFinancialCardTest`**. Postojeći **`PanelStatisticsDateFilterTest`** i **`PanelStatisticsPdfExportTest`** i dalje pokrivaju agregat.
+
+### Rezervacije po tablici
+
+Treći izvještaj na istom ekranu: `report=license_plate`. Agencija bira tačno sačuvanu tablicu i isti Od/Do. Spisak je pojedinačne rezervacije, ne grupna statistika.
+
+Filter je `reservations.user_id` ulogovane agencije, tačan `license_plate` i uključiv `reservation_date`. Upoređivanje tablice je tačan sačuvani niz, znak po znak, uključujući velika i mala slova i završni razmak. Kolona je `utf8mb4_unicode_ci`. `utf8mb4_bin` ima PAD SPACE, pa ni on ne razlikuje završni razmak. Na MySQL/MariaDB spisak tablica je `DISTINCT CAST(license_plate AS BINARY)`. Taj izraz vraća originalne bajtove bez `ANY_VALUE()`, koje MariaDB nema prije 13.2. EXPLAIN na lokalnom MySQL 8.4.3 koristi `idx_res_user` za taj spisak. Red i validacija i dalje imaju `license_plate = ?`, što bez datuma EXPLAIN koristi kao `ref` nad `idx_res_plate_date`, i dodaju `CAST(license_plate AS BINARY) = CAST(? AS BINARY)`. Pročitani red ostaje samo kad je sačuvani niz identičan. Dvije različito zapisane tablice se ne spajaju. Nema SQL normalizacije, sečenja razmaka ni promjene sačuvanih tablica. `TrimStrings` se ne primjenjuje na `/panel/statistics` i `/panel/statistics/pdf`, da završni razmak stigne do validacije i do istog spiska. Checkout i dalje normalizuje tablicu pri upisu. Padajući predlog je pretraga po tablicama koje već stoje na rezervacijama te agencije, uključujući pripisanu istoriju. `vehicles.user_id` nije izvor vlasništva. Tuđa ili nepoznata tablica se odbija i na HTML i na PDF.
+
+U opsegu su pripisane uvezene rezervacije, nativne rezervacije, plaćene, besplatne i buduće. Realizacija se ne traži. Status se ne izbacuje. Dnevna naknada prikazuje oznaku dnevne naknade umjesto termina. Besplatna rezervacija se prikazuje kao 0.00, a sačuvani `invoice_amount` se ne mijenja. Nedostajući MTID ostaje prazan. Zbir je zbir prikazanih zabilježenih iznosa, ne bankom potvrđena uplata.
+
+Kalendar je isti kao za druga dva izvještaja: najraniji dozvoljeni datum do danas + 90, `Europe/Podgorica`. Taj maksimum je i granica rezervacije, pa buduća rezervacija u tom prozoru ostaje u izvještaju. Datum filtra je `reservation_date`, poluotvoreno `[od, sljedeći dan)`, bez `DATE(kolona)`.
+
+PDF je `rezervacije-po-tablici-{tablica}-{od}-{do}.pdf`, pejzaž, isti dataset kao ekran, sa agencijom, tablicom, periodom, brojem redova i zbirom. HTML nema posebnu paginaciju; PDF dobija cijeli spisak. Upit je ograničen na jednu agenciju i jednu tablicu. Koriste se postojeći indeksi `idx_res_user` i `idx_res_plate_date`. Novi indeks nije dodat.
+
+Test: **`AgencyLicensePlateReportTest`**. Izvještaj nije deployovan.
 
 ## Veza: besplatne rezervacije
 

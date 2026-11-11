@@ -45,5 +45,5 @@ Ove stavke **nisu blokada za produkciju**. Predviđene su za **doradu nakon real
 Batch 1 je završen i provjeren na produkciji: 4.609 pripisanih rezervacija, 151 agencija. Ostale uvezene V1 rezervacije nisu u tom batchu i nisu pripisane. Ovo i dalje nije završeno:
 
 - [ ] Pripisivanje ostalih istorijskih V1 rezervacija, van batcha 1, nije odobreno i nije izvršeno.
-- [x] Finansijska kartica agencije je na `/panel/statistics?report=financial_card`. Nije stanje avansa.
-- [ ] Izvještaj rezervacija po tablici nije implementiran.
+- [x] Finansijska kartica agencije je deployovana i ručno funkcionalno provjerena na produkciji. Nije stanje avansa.
+- [x] Rezervacije po tablici su implementirane lokalno na `/panel/statistics?report=license_plate`. Nisu deployovane.
