@@ -58,7 +58,7 @@ final class HistoricalAttributionBatch3DryRun
 
     private const CHUNK = 500;
 
-    private const CANDIDATE = 'name_unique_email_unregistered';
+    public const CANDIDATE = 'name_unique_email_unregistered';
 
     /**
      * @return array{
@@ -149,10 +149,7 @@ final class HistoricalAttributionBatch3DryRun
                     }
 
                     $normalizedEmail = HistoricalAttributionBatchDryRun::normalizeEmail(is_string($row->email) ? $row->email : (string) $row->email);
-                    $normalizedName = HistoricalAttributionBatchDryRun::normalizeAgencyName(is_string($row->user_name) ? $row->user_name : (string) $row->user_name);
-                    $emailOwners = $normalizedEmail === '' ? [] : ($snapshot['emails'][$normalizedEmail] ?? []);
-                    $nameOwners = $normalizedName === '' ? [] : ($snapshot['names'][$normalizedName] ?? []);
-                    $decision = $this->decide($userId, $audits[$reservationId] ?? [], $normalizedEmail, $normalizedName, $emailOwners, $nameOwners);
+                    $decision = $this->classifyRow($row, $audits[$reservationId] ?? [], $snapshot);
 
                     $counts[$decision['class']]++;
                     if ($decision['class9_part'] !== null) {
@@ -238,6 +235,23 @@ final class HistoricalAttributionBatch3DryRun
             'reconciliation_passed' => $reconciliationPassed,
             'rows' => $rows,
         ];
+    }
+
+    /**
+     * Same decision as one row of classify(), for a snapshot the caller already holds.
+     *
+     * @param  array{emails: array<string, list<int>>, names: array<string, list<int>>, plates?: array<string, list<int>>}  $snapshot
+     * @param  list<object>  $audits
+     * @return array{class: string, class9_part: ?string, email_shape: string, name_owner_user_id: ?int}
+     */
+    public function classifyRow(object $reservation, array $audits, array $snapshot): array
+    {
+        $normalizedEmail = HistoricalAttributionBatchDryRun::normalizeEmail(is_string($reservation->email) ? $reservation->email : (string) $reservation->email);
+        $normalizedName = HistoricalAttributionBatchDryRun::normalizeAgencyName(is_string($reservation->user_name) ? $reservation->user_name : (string) $reservation->user_name);
+        $emailOwners = $normalizedEmail === '' ? [] : ($snapshot['emails'][$normalizedEmail] ?? []);
+        $nameOwners = $normalizedName === '' ? [] : ($snapshot['names'][$normalizedName] ?? []);
+
+        return $this->decide($this->userId($reservation->user_id), $audits, $normalizedEmail, $normalizedName, $emailOwners, $nameOwners);
     }
 
     /**
