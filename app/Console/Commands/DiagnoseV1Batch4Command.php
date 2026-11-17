@@ -13,7 +13,8 @@ use Throwable;
 class DiagnoseV1Batch4Command extends Command
 {
     protected $signature = 'reservations:diagnose-v1-batch4
-        {--report= : Optional private CSV outside this repository and the public document root}';
+        {--report= : Optional private CSV outside this repository and the public document root}
+        {--reservation= : Optional one reservation id. Prints a masked line and writes nothing to the database}';
 
     protected $description = 'Read-only Batch 4 discovery profile. Writes nothing to the database.';
 
@@ -26,7 +27,7 @@ class DiagnoseV1Batch4Command extends Command
         }
 
         try {
-            $result = $diagnostics->collect();
+            $result = $diagnostics->collect($this->reservationId());
         } catch (RuntimeException $e) {
             $this->error($e->getMessage());
 
@@ -136,12 +137,144 @@ class DiagnoseV1Batch4Command extends Command
         $this->line('Reservations with contradictory evidence: '.$overlap['contradictory']);
         $this->line('Reservations with no credible candidate: '.$overlap['no_credible_candidate']);
         $this->line('Batch 3 plate groups were not used as plate evidence: '.$result['batch3_plate_groups']);
+        $this->printEvidence($result);
         $this->line('Samples are limited to '.HistoricalAttributionBatch4Diagnostics::SAMPLE_LIMIT.' rows in each category. Addresses and names are not printed in full.');
         foreach ($result['samples'] as $signal => $samples) {
             foreach ($samples as $sample) {
                 $this->line($this->sampleLine((string) $signal, $sample));
             }
         }
+        $this->printReservation($result['reservation'] ?? null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function printEvidence(array $result): void
+    {
+        $evidence = $result['evidence'];
+        $this->line('B4-A name buckets. Each B4-A reservation is in exactly one.');
+        foreach ($evidence['b4a_buckets'] as $bucket => $count) {
+            $this->line('B4-A bucket '.$bucket.': '.$count);
+        }
+        $ac = $evidence['ac'];
+        $this->line('B4-A and B4-C same user with exclusive registry plate: '.$ac['same_user_exclusive_plate']);
+        $this->line('B4-A and B4-C same user without exclusive registry plate: '.$ac['same_user_without_exclusive_plate']);
+        $this->line('B4-A and B4-C different proposed users: '.$ac['different_user']);
+        $this->line('B4-A and B4-C rows with conflict flags: '.$ac['with_conflict']);
+        $this->line('B4-A and B4-C rows with ambiguity flags: '.$ac['with_ambiguity']);
+        $this->line('The same-user and different-user lines partition B4-A with B4-C. Conflict and ambiguity lines are cross-cuts.');
+        $without = $evidence['a_without_c_or_d'];
+        $this->line('B4-A without B4-C or B4-D: '.$without['reservations']);
+        foreach (['no_alias_key', 'alias_matches_no_user', 'ambiguous_alias', 'other_alias_without_support', 'alias_email_owner_blocked'] as $reason) {
+            $this->line('B4-A alias failure '.$reason.': '.$without[$reason]);
+        }
+        $this->line('Conflict flags count contradictory rows. An ambiguity flag is not an identity conflict.');
+        foreach ($evidence['conflict_flags'] as $flag => $count) {
+            $this->line('Conflict flag '.$flag.': '.$count);
+        }
+        foreach ($evidence['conflict_combinations'] as $combo => $count) {
+            $this->line('Conflict combination '.$combo.': '.$count);
+        }
+        foreach ($evidence['conflict_families'] as $family => $count) {
+            $this->line('Conflict family '.$family.': '.$count);
+        }
+        $this->line('Overlap reconciliation. These cells are disjoint.');
+        foreach ($evidence['overlap_cells'] as $cell => $count) {
+            $this->line('Overlap cell '.$cell.': '.$count);
+        }
+        $this->line('Unique discovery candidates in B4-A through B4-D: '.$result['overlap']['any_of_abcd']);
+        $this->line('Overlap reconciliation agrees: '.($evidence['reconciliation_agrees'] ? 'yes' : 'no'));
+        $this->line('B4-A distinct agencies: '.$evidence['distinct_agencies']);
+        $this->line('B4-A distinct names: '.$evidence['distinct_names']);
+        if ($evidence['largest_agency_id'] !== null) {
+            $this->line('Largest B4-A agency: '.$evidence['largest_agency_id'].' reservations '.$evidence['largest_agency_count']);
+        }
+        foreach ($this->topAgencies($evidence['by_agency']) as $agencyId => $count) {
+            $this->line('B4-A agency '.$agencyId.': reservations '.$count);
+        }
+    }
+
+    /**
+     * @param  array<int|string, int>  $agencies
+     * @return array<int|string, int>
+     */
+    private function topAgencies(array $agencies): array
+    {
+        uksort($agencies, static function ($left, $right) use ($agencies): int {
+            $byCount = $agencies[$right] <=> $agencies[$left];
+
+            return $byCount !== 0 ? $byCount : ((int) $left <=> (int) $right);
+        });
+
+        return array_slice($agencies, 0, 10, true);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $reservation
+     */
+    private function printReservation(?array $reservation): void
+    {
+        if ($reservation === null) {
+            return;
+        }
+        $id = $reservation['id'];
+        if ($reservation['status'] === 'missing') {
+            $this->line('Reservation '.$id.': not found.');
+
+            return;
+        }
+        if ($reservation['status'] === 'outside_cohort') {
+            $this->line('Reservation '.$id.': outside the historical cohort. Not a discovery candidate.');
+
+            return;
+        }
+        if ($reservation['status'] === 'attributed') {
+            $this->line('Reservation '.$id.': historical and linked to user '.$reservation['linked_user_id'].'. Not a discovery candidate.');
+
+            return;
+        }
+        if ($reservation['status'] === 'excluded_by_audit') {
+            $this->line('Reservation '.$id.': historical and unattributed, excluded from discovery because an attribution audit exists.');
+
+            return;
+        }
+        if ($reservation['status'] === 'no_credible_candidate') {
+            $this->line('Reservation '.$id.': in the historical discovery population with no credible candidate.');
+        } else {
+            $this->line('Reservation '.$id.': discovery candidate.');
+        }
+        $proposed = $reservation['proposed_user_ids'] === [] ? 'none' : implode('|', $reservation['proposed_user_ids']);
+        $this->line('Signals: '.$this->joinList($reservation['signals']));
+        $this->line('Proposed users: '.$proposed);
+        $this->line('Provenance: '.$this->joinList($reservation['provenance']));
+        $this->line('Conflicts: '.$this->joinList($reservation['conflicting']));
+        $this->line('Ambiguity: '.$this->joinList($reservation['ambiguity']));
+        $this->line('B4-A bucket: '.($reservation['b4a_bucket'] ?? 'none'));
+        $this->line('Overlap cell: '.($reservation['overlap_cell'] ?? 'none'));
+        $this->line('Masked email: '.$reservation['masked_email']);
+        if ($reservation['weak_reviewed_name']) {
+            $this->line('Weak reviewed-name email reference is not approved evidence.');
+        }
+        if ($reservation['weak_batch3_email']) {
+            $this->line('Weak Batch 3 email reference is not approved evidence.');
+        }
+    }
+
+    private function reservationId(): ?int
+    {
+        $value = $this->option('reservation');
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+        if (is_string($value) && preg_match('/^[1-9][0-9]*$/', $value) === 1) {
+            return (int) $value;
+        }
+
+        throw new RuntimeException('The reservation id must be a positive integer.');
     }
 
     /**
@@ -289,6 +422,75 @@ class DiagnoseV1Batch4Command extends Command
                 ]);
             }
         }
+        $this->writeEvidenceRows($handle, $result);
+    }
+
+    /**
+     * @param  resource  $handle
+     * @param  array<string, mixed>  $result
+     */
+    private function writeEvidenceRows($handle, array $result): void
+    {
+        $evidence = $result['evidence'];
+        foreach ($evidence['b4a_buckets'] as $label => $count) {
+            $this->writeAggregate($handle, 'b4a_bucket', (string) $label, (int) $count);
+        }
+        foreach ($evidence['ac'] as $label => $count) {
+            $this->writeAggregate($handle, 'ac_split', (string) $label, (int) $count);
+        }
+        foreach ($evidence['a_without_c_or_d'] as $label => $count) {
+            $this->writeAggregate($handle, 'a_without_c_or_d', (string) $label, (int) $count);
+        }
+        foreach ($evidence['conflict_flags'] as $label => $count) {
+            $this->writeAggregate($handle, 'conflict_flag', (string) $label, (int) $count);
+        }
+        foreach ($evidence['conflict_combinations'] as $label => $count) {
+            $this->writeAggregate($handle, 'conflict_combination', (string) $label, (int) $count);
+        }
+        foreach ($evidence['conflict_families'] as $label => $count) {
+            $this->writeAggregate($handle, 'conflict_family', (string) $label, (int) $count);
+        }
+        foreach ($evidence['overlap_cells'] as $label => $count) {
+            $this->writeAggregate($handle, 'overlap_cell', (string) $label, (int) $count);
+        }
+        foreach ($evidence['by_agency'] as $agencyId => $count) {
+            $this->writeAggregate($handle, 'b4a_agency', '', (int) $count, (string) $agencyId);
+        }
+        foreach ($evidence['by_name'] as $name => $count) {
+            $this->writeAggregate($handle, 'b4a_name', $name === '' ? '(empty)' : (string) $name, (int) $count);
+        }
+        foreach ($evidence['by_agency_name'] as $agencyId => $names) {
+            ksort($names);
+            foreach ($names as $name => $count) {
+                $this->writeAggregate($handle, 'b4a_agency_name', $name === '' ? '(empty)' : (string) $name, (int) $count, (string) $agencyId);
+            }
+        }
+        $reservation = $result['reservation'] ?? null;
+        if (! is_array($reservation)) {
+            return;
+        }
+        $this->writeCsvRow($handle, [
+            'reservation_detail',
+            (string) ($reservation['normalized_name'] ?? $reservation['status']),
+            '',
+            (string) $reservation['id'],
+            isset($reservation['proposed_user_id']) && $reservation['proposed_user_id'] !== null ? (string) $reservation['proposed_user_id'] : '',
+            implode('|', $reservation['signals'] ?? []),
+            implode('|', $reservation['supporting'] ?? []),
+            implode('|', $reservation['conflicting'] ?? []),
+            implode('|', $reservation['provenance'] ?? []),
+            '',
+            implode('|', $reservation['ambiguity'] ?? []),
+            (string) ($reservation['masked_email'] ?? ''),
+        ]);
+    }
+
+    /**
+     * @param  resource  $handle
+     */
+    private function writeAggregate($handle, string $type, string $label, int $count, string $userId = ''): void
+    {
+        $this->writeCsvRow($handle, [$type, $label, (string) $count, '', $userId, '', '', '', '', '', '', '']);
     }
 
     /**

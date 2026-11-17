@@ -26,6 +26,20 @@ final class HistoricalAttributionBatch4Diagnostics
 
     private const CHUNK = 500;
 
+    /**
+     * Conflict flags grouped for reporting. Ambiguity flags are not conflicts.
+     * A reservation is counted once per family even when it carries two flags
+     * from that family.
+     *
+     * @var array<string, list<string>>
+     */
+    private const CONFLICT_FAMILIES = [
+        'competing_proposals' => ['proposals_disagree'],
+        'ambiguous_or_shared_contact' => ['alias_ambiguous', 'trusted_email_multi_agency', 'email_multi_user'],
+        'vehicle_ownership' => ['vehicle_fk_other_user'],
+        'plate_sharing' => ['trusted_plate_multi_agency', 'registry_plate_other_agency'],
+    ];
+
     /** Last owner-verified production snapshot. Not a live query. */
     public const VERIFIED_HISTORICAL = 21342;
 
@@ -46,21 +60,21 @@ final class HistoricalAttributionBatch4Diagnostics
     /**
      * @return array<string, mixed>
      */
-    public function collect(): array
+    public function collect(?int $reservationId = null): array
     {
         if (! Schema::hasTable('reservation_attributions')) {
             throw new RuntimeException('The reservation_attributions table is missing. This diagnostic does not migrate.');
         }
 
-        return DB::transaction(function (): array {
-            return $this->collectFromSnapshot();
+        return DB::transaction(function () use ($reservationId): array {
+            return $this->collectFromSnapshot($reservationId);
         });
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function collectFromSnapshot(): array
+    private function collectFromSnapshot(?int $focusId = null): array
     {
         $users = $this->loadUsers();
         $registryPlates = $this->loadRegistryPlates();
@@ -234,8 +248,17 @@ final class HistoricalAttributionBatch4Diagnostics
         $excluded = 0;
 
         $uncertainEmail = $this->uncertainEmailCounts($rows);
+        $evidence = $this->emptyEvidence();
+        $focus = $focusId === null || isset($rows[$focusId]) ? null : [
+            'id' => $focusId,
+            'status' => 'missing',
+        ];
 
         foreach ($rows as $id => $row) {
+            $isFocus = $focusId !== null && $id === $focusId;
+            if ($isFocus) {
+                $focus = $this->focusShell($row, $audits[$id] ?? []);
+            }
             if (! $row['historical'] || $row['user_id'] !== null) {
                 continue;
             }
@@ -260,6 +283,7 @@ final class HistoricalAttributionBatch4Diagnostics
                 $reviewedEmail,
                 $uncertainEmail
             );
+            $bucket = null;
             foreach (['b4a', 'b4b', 'b4c', 'b4d'] as $signal) {
                 if (! isset($decision['proposals'][$signal])) {
                     continue;
@@ -294,11 +318,43 @@ final class HistoricalAttributionBatch4Diagnostics
             }
             if ($decision['contradictory']) {
                 $contradictory++;
+                $this->tallyConflict($evidence, $decision['sample']['conflicting']);
             }
             foreach ($weak as $key => $unused) {
                 if (in_array($key, $decision['weak'], true)) {
                     $weak[$key]++;
                 }
+            }
+            $cell = $this->overlapCell($decision['proposals']);
+            if ($cell !== null) {
+                $evidence['overlap_cells'][$cell]++;
+                if ($cell === 'three_or_more') {
+                    foreach (['b4a', 'b4b', 'b4c', 'b4d'] as $signal) {
+                        if (isset($decision['proposals'][$signal])) {
+                            $evidence['three_with'][$signal]++;
+                        }
+                    }
+                }
+            }
+            if (isset($decision['proposals']['b4a'])) {
+                $emailOwner = (int) $decision['proposals']['b4a'];
+                $bucket = $this->b4aBucket($row, $users, $emailOwner);
+                $evidence['b4a_buckets'][$bucket]++;
+                $evidence['by_agency'][$emailOwner] = ($evidence['by_agency'][$emailOwner] ?? 0) + 1;
+                $name = $row['name'];
+                $evidence['by_name'][$name] = ($evidence['by_name'][$name] ?? 0) + 1;
+                $evidence['by_agency_name'][$emailOwner][$name] = ($evidence['by_agency_name'][$emailOwner][$name] ?? 0) + 1;
+                if (! isset($decision['proposals']['b4c']) && ! isset($decision['proposals']['b4d'])) {
+                    $evidence['a_without_c_or_d']['reservations']++;
+                    $reason = $this->aOnlyAliasFailure($row, $users, $emailOwner);
+                    $evidence['a_without_c_or_d'][$reason]++;
+                }
+            }
+            if (isset($decision['proposals']['b4a'], $decision['proposals']['b4c'])) {
+                $this->tallyAc($evidence, $decision, $registryPlates[$row['plate']] ?? []);
+            }
+            if ($isFocus) {
+                $focus = $this->focusCandidate($row, $decision, $bucket, $cell);
             }
         }
 
@@ -332,6 +388,325 @@ final class HistoricalAttributionBatch4Diagnostics
             'weak' => $weak,
             'samples' => $samples,
             'batch3_plate_groups' => count($batch3Plate),
+            'evidence' => $this->finishEvidence($evidence, count($categories['b4a']), count($categories['b4c']), count($categories['b4d']), count($any), $threeOrMore, $pairs['b4a_b4c'], $contradictory),
+            'reservation' => $focus,
+        ];
+    }
+
+    /**
+     * One primary name bucket per B4-A row. Earlier checks win.
+     * Email-owner alias compatibility is first, then a unique other agency,
+     * then an ambiguous alias, then an exact canonical name of another agency.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array{by_id: array<int, array{email: string, name: string, alias: string}>, emails: array<string, list<int>>, names: array<string, list<int>>, aliases: array<string, list<int>>}  $users
+     */
+    private function b4aBucket(array $row, array $users, int $emailOwner): string
+    {
+        $alias = (string) $row['alias'];
+        $ownerAlias = (string) ($users['by_id'][$emailOwner]['alias'] ?? '');
+        if ($alias !== '' && $ownerAlias !== '' && $alias === $ownerAlias) {
+            return 'alias_matches_email_owner';
+        }
+        $aliasUser = $this->uniqueAliasUser((string) $row['name'], $alias, $users);
+        if ($aliasUser > 0 && $aliasUser !== $emailOwner) {
+            return 'alias_matches_other_agency';
+        }
+        if ($aliasUser === -1) {
+            return 'ambiguous_alias';
+        }
+        foreach ($users['names'][(string) $row['name']] ?? [] as $nameOwner) {
+            if ($nameOwner !== $emailOwner) {
+                return 'canonical_name_matches_other_agency';
+            }
+        }
+
+        return 'unresolved_name';
+    }
+
+    /**
+     * Why a B4-A row that is neither B4-C nor B4-D failed the current alias rule.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array{by_id: array<int, array{email: string, name: string, alias: string}>, emails: array<string, list<int>>, names: array<string, list<int>>, aliases: array<string, list<int>>}  $users
+     */
+    private function aOnlyAliasFailure(array $row, array $users, int $emailOwner): string
+    {
+        if ((string) $row['alias'] === '') {
+            return 'no_alias_key';
+        }
+        $aliasUser = $this->uniqueAliasUser((string) $row['name'], (string) $row['alias'], $users);
+        if ($aliasUser === -1) {
+            return 'ambiguous_alias';
+        }
+        if ($aliasUser === 0) {
+            return 'alias_matches_no_user';
+        }
+        if ($aliasUser === $emailOwner) {
+            return 'alias_email_owner_blocked';
+        }
+
+        return 'other_alias_without_support';
+    }
+
+    /**
+     * @param  array<string, int>  $proposals
+     */
+    private function overlapCell(array $proposals): ?string
+    {
+        $present = [];
+        foreach (['b4a' => 'a', 'b4b' => 'b', 'b4c' => 'c', 'b4d' => 'd'] as $key => $letter) {
+            if (isset($proposals[$key])) {
+                $present[] = $letter;
+            }
+        }
+        if ($present === []) {
+            return null;
+        }
+        if (count($present) >= 3) {
+            return 'three_or_more';
+        }
+
+        return [
+            'a' => 'a_only',
+            'b' => 'b_only',
+            'c' => 'c_only',
+            'd' => 'd_only',
+            'a,b' => 'ab_only',
+            'a,c' => 'ac_only',
+            'a,d' => 'ad_only',
+            'b,c' => 'bc_only',
+            'b,d' => 'bd_only',
+            'c,d' => 'cd_only',
+        ][implode(',', $present)];
+    }
+
+    /**
+     * @param  array<string, mixed>  $evidence
+     * @param  array<string, mixed>  $decision
+     * @param  list<int>  $registryOwners
+     */
+    private function tallyAc(array &$evidence, array $decision, array $registryOwners): void
+    {
+        $emailOwner = (int) $decision['proposals']['b4a'];
+        $aliasOwner = (int) $decision['proposals']['b4c'];
+        if ($emailOwner === $aliasOwner) {
+            if ($registryOwners === [$emailOwner]) {
+                $evidence['ac']['same_user_exclusive_plate']++;
+            } else {
+                $evidence['ac']['same_user_without_exclusive_plate']++;
+            }
+        } else {
+            $evidence['ac']['different_user']++;
+        }
+        if ($decision['sample']['conflicting'] !== []) {
+            $evidence['ac']['with_conflict']++;
+        }
+        foreach ($decision['sample']['ambiguity'] as $flag) {
+            if ($flag !== 'no_signal') {
+                $evidence['ac']['with_ambiguity']++;
+                break;
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $evidence
+     * @param  list<string>  $flags
+     */
+    private function tallyConflict(array &$evidence, array $flags): void
+    {
+        $sorted = $flags;
+        sort($sorted);
+        foreach ($sorted as $flag) {
+            $evidence['conflict_flags'][$flag] = ($evidence['conflict_flags'][$flag] ?? 0) + 1;
+        }
+        $combo = implode('|', $sorted);
+        $evidence['conflict_combinations'][$combo] = ($evidence['conflict_combinations'][$combo] ?? 0) + 1;
+        $known = [];
+        foreach (self::CONFLICT_FAMILIES as $family => $members) {
+            $known = array_merge($known, $members);
+            if (array_intersect($sorted, $members) !== []) {
+                $evidence['conflict_families'][$family]++;
+            }
+        }
+        if (array_diff($sorted, $known) !== []) {
+            $evidence['conflict_families']['other_conflict']++;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emptyEvidence(): array
+    {
+        return [
+            'b4a_buckets' => [
+                'alias_matches_email_owner' => 0,
+                'alias_matches_other_agency' => 0,
+                'ambiguous_alias' => 0,
+                'canonical_name_matches_other_agency' => 0,
+                'unresolved_name' => 0,
+            ],
+            'ac' => [
+                'same_user_exclusive_plate' => 0,
+                'same_user_without_exclusive_plate' => 0,
+                'different_user' => 0,
+                'with_conflict' => 0,
+                'with_ambiguity' => 0,
+            ],
+            'a_without_c_or_d' => [
+                'reservations' => 0,
+                'no_alias_key' => 0,
+                'alias_matches_no_user' => 0,
+                'ambiguous_alias' => 0,
+                'other_alias_without_support' => 0,
+                'alias_email_owner_blocked' => 0,
+            ],
+            'conflict_flags' => [],
+            'conflict_combinations' => [],
+            'conflict_families' => [
+                'competing_proposals' => 0,
+                'ambiguous_or_shared_contact' => 0,
+                'vehicle_ownership' => 0,
+                'plate_sharing' => 0,
+                'other_conflict' => 0,
+            ],
+            'overlap_cells' => [
+                'a_only' => 0,
+                'ac_only' => 0,
+                'ad_only' => 0,
+                'c_only' => 0,
+                'cd_only' => 0,
+                'd_only' => 0,
+                'b_only' => 0,
+                'ab_only' => 0,
+                'bc_only' => 0,
+                'bd_only' => 0,
+                'three_or_more' => 0,
+            ],
+            'three_with' => ['b4a' => 0, 'b4b' => 0, 'b4c' => 0, 'b4d' => 0],
+            'by_agency' => [],
+            'by_name' => [],
+            'by_agency_name' => [],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $evidence
+     * @param  array<string, int>  $acPair
+     * @return array<string, mixed>
+     */
+    private function finishEvidence(array $evidence, int $b4a, int $b4c, int $b4d, int $unique, int $threeOrMore, int $acPair, int $contradictory): array
+    {
+        ksort($evidence['conflict_flags']);
+        ksort($evidence['conflict_combinations']);
+        ksort($evidence['by_agency']);
+        ksort($evidence['by_name']);
+        ksort($evidence['by_agency_name']);
+        $cells = $evidence['overlap_cells'];
+        $three = $evidence['three_with'];
+        $aFromCells = $cells['a_only'] + $cells['ab_only'] + $cells['ac_only'] + $cells['ad_only'] + $three['b4a'];
+        $cFromCells = $cells['c_only'] + $cells['ac_only'] + $cells['bc_only'] + $cells['cd_only'] + $three['b4c'];
+        $dFromCells = $cells['d_only'] + $cells['ad_only'] + $cells['bd_only'] + $cells['cd_only'] + $three['b4d'];
+        $cellSum = array_sum($cells);
+        $bucketSum = array_sum($evidence['b4a_buckets']);
+        $without = $evidence['a_without_c_or_d'];
+        $reasonSum = $without['no_alias_key']
+            + $without['alias_matches_no_user']
+            + $without['ambiguous_alias']
+            + $without['other_alias_without_support']
+            + $without['alias_email_owner_blocked'];
+        $acSum = $evidence['ac']['same_user_exclusive_plate']
+            + $evidence['ac']['same_user_without_exclusive_plate']
+            + $evidence['ac']['different_user'];
+        $comboSum = array_sum($evidence['conflict_combinations']);
+        $evidence['reconciliation_agrees'] = $cellSum === $unique
+            && $cells['three_or_more'] === $threeOrMore
+            && $aFromCells === $b4a
+            && $cFromCells === $b4c
+            && $dFromCells === $b4d
+            && $bucketSum === $b4a
+            && $reasonSum === $without['reservations']
+            && $acSum === $acPair
+            && $comboSum === $contradictory;
+        $largestId = null;
+        $largestCount = 0;
+        foreach ($evidence['by_agency'] as $agencyId => $count) {
+            if ($count > $largestCount || ($count === $largestCount && ($largestId === null || (int) $agencyId < $largestId))) {
+                $largestId = (int) $agencyId;
+                $largestCount = (int) $count;
+            }
+        }
+        $evidence['distinct_agencies'] = count($evidence['by_agency']);
+        $evidence['distinct_names'] = count($evidence['by_name']);
+        $evidence['largest_agency_id'] = $largestId;
+        $evidence['largest_agency_count'] = $largestCount;
+
+        return $evidence;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  list<array{active: bool, agency: int, family: string}>  $auditRows
+     * @return array<string, mixed>
+     */
+    private function focusShell(array $row, array $auditRows): array
+    {
+        $shell = [
+            'id' => $row['id'],
+            'status' => 'pending',
+            'masked_email' => self::maskEmail((string) $row['email']),
+            'normalized_name' => $row['name'],
+            'signals' => [],
+            'proposed_user_id' => null,
+            'proposed_user_ids' => [],
+            'supporting' => [],
+            'conflicting' => [],
+            'provenance' => [],
+            'ambiguity' => [],
+            'b4a_bucket' => null,
+            'overlap_cell' => null,
+            'weak_reviewed_name' => false,
+            'weak_batch3_email' => false,
+        ];
+        if (! $row['historical']) {
+            $shell['status'] = 'outside_cohort';
+        } elseif ($row['user_id'] !== null) {
+            $shell['status'] = 'attributed';
+            $shell['linked_user_id'] = $row['user_id'];
+        } elseif ($auditRows !== []) {
+            $shell['status'] = 'excluded_by_audit';
+        }
+
+        return $shell;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $decision
+     * @return array<string, mixed>
+     */
+    private function focusCandidate(array $row, array $decision, ?string $bucket, ?string $cell): array
+    {
+        $sample = $decision['sample'];
+
+        return [
+            'id' => $row['id'],
+            'status' => $decision['proposals'] === [] ? 'no_credible_candidate' : 'candidate',
+            'masked_email' => $sample['masked_email'],
+            'normalized_name' => $row['name'],
+            'signals' => $sample['signals'],
+            'proposed_user_id' => $sample['proposed_user_id'],
+            'proposed_user_ids' => $sample['proposed_user_ids'],
+            'supporting' => $sample['supporting'],
+            'conflicting' => $sample['conflicting'],
+            'provenance' => $sample['anchor_provenance'],
+            'ambiguity' => $sample['ambiguity'],
+            'b4a_bucket' => $bucket,
+            'overlap_cell' => $cell,
+            'weak_reviewed_name' => in_array('reviewed_name_email_seen', $sample['ambiguity'], true),
+            'weak_batch3_email' => in_array('batch3_email_seen', $sample['ambiguity'], true),
         ];
     }
 

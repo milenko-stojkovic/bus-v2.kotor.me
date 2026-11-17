@@ -290,6 +290,178 @@ final class HistoricalAttributionBatch4DiagnosticsTest extends TestCase
         $this->assertSame(1, $result['weak']['reviewed_email_only']);
     }
 
+    public function test_b4a_buckets_overlap_cells_and_conflict_combinations_partition(): void
+    {
+        $alpha = $this->agency('Alpha Travel', 'alpha@example.com');
+        $beta = $this->agency('Beta Travel', 'beta@example.com');
+        $gamma = $this->agency('Travel Gamma', 'gamma@example.com');
+        $rent = $this->agency('Rent Cars', 'rent@example.com');
+        $cars = $this->agency('Cars Rent', 'cars@example.com');
+        $desk = $this->agency('Desk Travel', 'desk-d@example.com');
+        $deskOther = $this->agency('Travel Desk', 'desk-e@example.com');
+        $this->vehicle($alpha->id, 'PG1');
+        $this->vehicle($gamma->id, 'PG2');
+        $this->vehicle($beta->id, 'REG1');
+        $batch1 = $this->reservation('Beta Travel', 'beta-anchor@example.com', 'KO9', '2026-03-01 10:00:00', $beta->id);
+        $batch2 = $this->reservation('Alpha Travel', 'label-anchor@example.com', 'KO8', '2026-03-02 10:00:00', $alpha->id);
+        DB::table('reservation_attributions')->insert($this->auditRow($batch1->id, $beta->id, HistoricalAttributionBatchWriter::EVIDENCE, $batch1->id));
+        DB::table('reservation_attributions')->insert($this->auditRow(
+            $batch2->id,
+            $alpha->id,
+            HistoricalAttributionBatch2Preflight::EVIDENCE_BY_CATEGORY['B'],
+            $batch2->id,
+        ));
+
+        $samePlate = $this->reservation('Travel Alpha', 'alpha@example.com', 'PG1', '2026-04-01 10:00:00');
+        $sameNoPlate = $this->reservation('Travel Alpha', 'alpha@example.com', 'ZZ1', '2026-04-02 10:00:00');
+        $different = $this->reservation('Gamma Travel', 'alpha@example.com', 'PG2', '2026-04-03 10:00:00');
+        $adOnly = $this->reservation('Beta Travel', 'alpha@example.com', 'KO9', '2026-04-04 10:00:00');
+        $cOnly = $this->reservation('Travel Alpha', '', 'PG1', '2026-04-05 10:00:00');
+        $dOnly = $this->reservation('Alpha Travel', 'other@example.com', 'KO8', '2026-04-06 10:00:00');
+        $unresolved = $this->reservation('Completely Different Desk', 'alpha@example.com', 'ZZ2', '2026-04-07 10:00:00');
+        $noAlias = $this->reservation('Zz', 'alpha@example.com', 'ZZ3', '2026-04-08 10:00:00');
+        $ambiguous = $this->reservation('Desk-Travel', 'alpha@example.com', 'ZZ4', '2026-04-09 10:00:00');
+        $otherAlias = $this->reservation('Gamma Travel', 'alpha@example.com', 'ZZ5', '2026-04-10 10:00:00');
+        $combo = $this->reservation('Desk-Travel', 'alpha@example.com', 'REG1', '2026-04-11 10:00:00');
+        $emailOwnerFirst = $this->reservation('Rent-Cars', 'rent@example.com', 'ZZ6', '2026-04-12 10:00:00');
+
+        $this->gate->listen = true;
+        $result = app(HistoricalAttributionBatch4Diagnostics::class)->collect($emailOwnerFirst->id);
+        $this->assertSame([], $this->gate->writes);
+        $evidence = $result['evidence'];
+
+        $this->assertSame(10, $result['categories']['b4a']['reservations']);
+        $this->assertSame([
+            'alias_matches_email_owner' => 3,
+            'alias_matches_other_agency' => 2,
+            'ambiguous_alias' => 2,
+            'canonical_name_matches_other_agency' => 1,
+            'unresolved_name' => 2,
+        ], $evidence['b4a_buckets']);
+        $this->assertSame(10, array_sum($evidence['b4a_buckets']));
+        $this->assertSame('alias_matches_email_owner', $result['reservation']['b4a_bucket']);
+        $this->assertSame('a_only', $result['reservation']['overlap_cell']);
+
+        $this->assertSame(3, $evidence['ac']['same_user_exclusive_plate'] + $evidence['ac']['same_user_without_exclusive_plate'] + $evidence['ac']['different_user']);
+        $this->assertSame(1, $evidence['ac']['same_user_exclusive_plate']);
+        $this->assertSame(1, $evidence['ac']['same_user_without_exclusive_plate']);
+        $this->assertSame(1, $evidence['ac']['different_user']);
+        $this->assertSame(1, $evidence['ac']['with_conflict']);
+        $this->assertSame(['b4a', 'b4c'], $this->sampleFor($result, 'b4a', $samePlate->id)['signals']);
+        $this->assertSame($alpha->id, $this->sampleFor($result, 'b4a', $samePlate->id)['proposed_user_id']);
+        $this->assertEqualsCanonicalizing(
+            [$alpha->id, $gamma->id],
+            $this->sampleFor($result, 'b4a', $different->id)['proposed_user_ids']
+        );
+        $this->assertNull($this->sampleFor($result, 'b4a', $different->id)['proposed_user_id']);
+        $this->assertEqualsCanonicalizing(
+            [$alpha->id, $gamma->id],
+            $this->sampleFor($result, 'b4c', $different->id)['proposed_user_ids']
+        );
+        $this->assertSame(['b4c'], $this->sampleFor($result, 'b4c', $cOnly->id)['signals']);
+        $this->assertSame(['b4d'], $this->sampleFor($result, 'b4d', $dOnly->id)['signals']);
+
+        $this->assertSame(6, $evidence['a_without_c_or_d']['reservations']);
+        $this->assertSame(1, $evidence['a_without_c_or_d']['no_alias_key']);
+        $this->assertSame(1, $evidence['a_without_c_or_d']['alias_matches_no_user']);
+        $this->assertSame(3, $evidence['a_without_c_or_d']['ambiguous_alias']);
+        $this->assertSame(1, $evidence['a_without_c_or_d']['other_alias_without_support']);
+        $this->assertSame(0, $evidence['a_without_c_or_d']['alias_email_owner_blocked']);
+        $this->assertSame(6, $evidence['a_without_c_or_d']['no_alias_key']
+            + $evidence['a_without_c_or_d']['alias_matches_no_user']
+            + $evidence['a_without_c_or_d']['ambiguous_alias']
+            + $evidence['a_without_c_or_d']['other_alias_without_support']
+            + $evidence['a_without_c_or_d']['alias_email_owner_blocked']);
+
+        $this->assertSame(0, $evidence['overlap_cells']['three_or_more']);
+        $this->assertSame(0, $result['overlap']['three_or_more']);
+        $this->assertSame(6, $evidence['overlap_cells']['a_only']);
+        $this->assertSame(3, $evidence['overlap_cells']['ac_only']);
+        $this->assertSame(1, $evidence['overlap_cells']['ad_only']);
+        $this->assertSame(1, $evidence['overlap_cells']['c_only']);
+        $this->assertSame(1, $evidence['overlap_cells']['d_only']);
+        $this->assertSame(0, $evidence['overlap_cells']['cd_only']);
+        $this->assertSame(12, array_sum($evidence['overlap_cells']));
+        $this->assertSame(12, $result['overlap']['any_of_abcd']);
+        $this->assertTrue($evidence['reconciliation_agrees']);
+
+        $this->assertSame(5, array_sum($evidence['conflict_combinations']));
+        $this->assertSame(5, $result['overlap']['contradictory']);
+        $this->assertSame(2, $evidence['conflict_combinations']['proposals_disagree']);
+        $this->assertSame(1, $evidence['conflict_combinations']['alias_ambiguous|registry_plate_other_agency']);
+        $this->assertSame(3, $evidence['conflict_flags']['alias_ambiguous']);
+        $this->assertSame(1, $evidence['conflict_flags']['registry_plate_other_agency']);
+        $this->assertSame(2, $evidence['conflict_families']['competing_proposals']);
+        $this->assertSame(3, $evidence['conflict_families']['ambiguous_or_shared_contact']);
+        $this->assertSame(1, $evidence['conflict_families']['plate_sharing']);
+        $this->assertSame(0, $evidence['conflict_families']['vehicle_ownership']);
+        $this->assertGreaterThan(
+            $result['overlap']['contradictory'],
+            $evidence['conflict_families']['competing_proposals']
+                + $evidence['conflict_families']['ambiguous_or_shared_contact']
+                + $evidence['conflict_families']['plate_sharing']
+        );
+
+        $this->assertNotContains($sameNoPlate->id, array_column($result['samples']['b4d'], 'reservation_id'));
+        $this->assertSame(['b4a', 'b4d'], $this->sampleFor($result, 'b4a', $adOnly->id)['signals']);
+        $this->assertNotNull($unresolved->id);
+        $this->assertNotNull($noAlias->id);
+        $this->assertNotNull($ambiguous->id);
+        $this->assertNotNull($otherAlias->id);
+        $this->assertNotNull($combo->id);
+        $this->assertNotNull($desk->id);
+        $this->assertNotNull($deskOther->id);
+        $this->assertNotNull($cars->id);
+    }
+
+    public function test_individual_lookup_keeps_a_reviewed_name_email_weak_and_hides_the_name(): void
+    {
+        $adria = $this->agency('Adria', 'adria@example.com');
+        foreach (['one', 'two', 'three', 'four'] as $label) {
+            $anchor = $this->reservation('Adria', 'shared-guest@example.com', 'AD'.$label, '2026-03-01 10:00:00', $adria->id);
+            DB::table('reservation_attributions')->insert($this->auditRow(
+                $anchor->id,
+                $adria->id,
+                HistoricalAttributionBatch3Catalog::EVIDENCE_REVIEWED,
+                $anchor->id,
+            ));
+        }
+        $candidate = $this->reservation('Adria transfer', 'shared-guest@example.com', 'AD9', '2026-04-01 10:00:00');
+        $outside = $this->reservation('Adria transfer', 'later@example.com', 'AD8', '2026-06-18 00:00:00');
+
+        $result = app(HistoricalAttributionBatch4Diagnostics::class)->collect($candidate->id);
+        $detail = $result['reservation'];
+        $this->assertSame('no_credible_candidate', $detail['status']);
+        $this->assertSame(['b4e'], $detail['signals']);
+        $this->assertNull($detail['proposed_user_id']);
+        $this->assertTrue($detail['weak_reviewed_name']);
+        $this->assertFalse($detail['weak_batch3_email']);
+        $this->assertSame(0, $result['categories']['b4a']['reservations']);
+        $this->assertSame(0, $result['categories']['b4c']['reservations']);
+        $this->assertSame(1, $result['weak']['reviewed_email_only']);
+
+        $this->gate->listen = true;
+        $this->assertSame(0, Artisan::call('reservations:diagnose-v1-batch4', [
+            '--reservation' => (string) $candidate->id,
+        ]));
+        $output = Artisan::output();
+        $this->assertSame([], $this->gate->writes);
+        $this->assertStringContainsString('Reservation '.$candidate->id.': in the historical discovery population with no credible candidate.', $output);
+        $this->assertStringContainsString('Weak reviewed-name email reference is not approved evidence.', $output);
+        $this->assertStringContainsString('s***@example.com', $output);
+        $this->assertStringNotContainsString('shared-guest@example.com', $output);
+        $this->assertStringNotContainsString('Adria transfer', $output);
+        $this->assertStringNotContainsString('adria transfer', $output);
+
+        $missing = app(HistoricalAttributionBatch4Diagnostics::class)->collect(999999);
+        $this->assertSame('missing', $missing['reservation']['status']);
+        $later = app(HistoricalAttributionBatch4Diagnostics::class)->collect($outside->id);
+        $this->assertSame('outside_cohort', $later['reservation']['status']);
+        $this->artisan('reservations:diagnose-v1-batch4', ['--reservation' => '0'])
+            ->expectsOutputToContain('positive integer')
+            ->assertFailed();
+    }
+
     public function test_command_is_read_only_and_refuses_a_report_inside_the_repository(): void
     {
         $alpha = $this->agency('Alpha Travel', 'alpha@example.com');
@@ -305,10 +477,15 @@ final class HistoricalAttributionBatch4DiagnosticsTest extends TestCase
         $this->assertStringContainsString('a***@example.com', $output);
         $this->assertStringNotContainsString('alpha@example.com', $output);
         $this->assertStringNotContainsString('Alpha Travel', $output);
+        $this->assertStringNotContainsString('different desk', $output);
+        $this->assertStringNotContainsString('alpha travel', $output);
         $this->assertSame([], $this->gate->writes);
         $this->assertSame($before, $this->storedRows());
-        $this->assertStringNotContainsString('alpha@example.com', (string) file_get_contents($this->reportPath));
-        $this->assertStringContainsString('a***@example.com', (string) file_get_contents($this->reportPath));
+        $report = (string) file_get_contents($this->reportPath);
+        $this->assertStringNotContainsString('alpha@example.com', $report);
+        $this->assertStringContainsString('a***@example.com', $report);
+        $this->assertStringContainsString('b4a_name', $report);
+        $this->assertStringContainsString('different desk', $report);
 
         $inside = base_path('v1-batch4-diag-should-not-exist.csv');
         $this->artisan('reservations:diagnose-v1-batch4', ['--report' => $inside])
